@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # Workspace
-models = { workspace = true }
+models = { workspace = true, features = ["sqlx"] }
 
 # External
-sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }
+sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }

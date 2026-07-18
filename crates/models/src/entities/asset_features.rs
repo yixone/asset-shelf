@@ -5,7 +5,7 @@ use crate::types::AssetId;
 pub struct AssetFeatures {
     pub asset_id: AssetId,
 
-    pub p_hash: i64,
-    pub a_hash: i64,
-    pub aspect_ratio: f32,
+    pub p_hash: Option<i64>,
+    pub a_hash: Option<i64>,
+    pub aspect_ratio: Option<f32>,
 }
