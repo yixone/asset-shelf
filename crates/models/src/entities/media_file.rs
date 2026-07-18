@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use mimetype::MimeType;
 
-use crate::{MediaFileId, MediaId};
+use crate::types::{MediaFileId, MediaId};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]

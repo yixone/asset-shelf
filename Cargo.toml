@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["crates/domains", "crates/mimetype", "crates/flake_id", "crates/db"]
+members = ["crates/models", "crates/mimetype", "crates/flake_id", "crates/db"]
 
 [workspace.dependencies]
 # Workspace crates
 db = { path = "crates/db" }
-domains = { path = "crates/domains" }
+models = { path = "crates/models" }
 mimetype = { path = "crates/mimetype" }
 flake_id = { path = "crates/flake_id" }
 

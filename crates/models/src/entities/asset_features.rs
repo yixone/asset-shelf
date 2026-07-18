@@ -1,4 +1,4 @@
-use crate::AssetId;
+use crate::types::AssetId;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]

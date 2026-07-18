@@ -1,8 +1,8 @@
 use std::{collections::HashMap, hash::Hash};
 
-use domains::{
-    AssetId, CollectionId, MediaId, asset::Asset, collection::Collection,
-    collection_item::CollectionItem, media::Media, media_file::MediaFile,
+use models::{
+    entities::{Asset, Collection, CollectionItem, Media, MediaFile},
+    types::{AssetId, CollectionId, MediaId},
 };
 
 /// Specifies conditions for joining `Self` with `<R>`

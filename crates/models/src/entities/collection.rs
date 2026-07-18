@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::CollectionId;
+use crate::types::CollectionId;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]

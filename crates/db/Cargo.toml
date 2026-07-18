@@ -4,4 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-domains = { workspace = true }
+# Workspace
+models = { workspace = true }
+
+# External
+sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }

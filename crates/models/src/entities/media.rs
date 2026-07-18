@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::MediaId;
+use crate::types::MediaId;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]

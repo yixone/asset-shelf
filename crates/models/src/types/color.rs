@@ -23,7 +23,7 @@ impl Color {
 
 #[cfg(test)]
 mod tests {
-    use crate::Color;
+    use crate::types::Color;
 
     #[test]
     fn color_from_rgb() {
