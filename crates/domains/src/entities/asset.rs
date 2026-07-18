@@ -1,0 +1,33 @@
+use chrono::{DateTime, Utc};
+
+use crate::{AssetId, Color, MediaId};
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
+pub struct Asset {
+    pub id: AssetId,
+    pub state: AssetState,
+
+    pub media_id: MediaId,
+
+    pub created_at: DateTime<Utc>,
+    pub deleted_at: DateTime<Utc>,
+
+    pub title: Option<String>,
+    pub caption: Option<String>,
+    pub source_url: Option<String>,
+
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    pub accent_color: Option<Color>,
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum AssetState {
+    Pending,
+    Processing,
+    Ready,
+    Failed,
+}

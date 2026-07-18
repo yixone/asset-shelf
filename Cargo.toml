@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["crates/domains", "crates/mimetype", "crates/flake_id", "crates/db"]
+
+[workspace.dependencies]
+# Workspace crates
+db = { path = "crates/db" }
+domains = { path = "crates/domains" }
+mimetype = { path = "crates/mimetype" }
+flake_id = { path = "crates/flake_id" }
+
+# External crates
+chrono = "0.4.42"
+rand = "0.10.1"
+serde = "1.0.219"
+sqlx = "0.8.5"

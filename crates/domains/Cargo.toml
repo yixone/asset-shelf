@@ -1,0 +1,20 @@
+[package]
+name = "domains"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+serde = ["dep:serde", "chrono/serde", "flake_id/serde", "mimetype/serde"]
+sqlx = ["dep:sqlx", "flake_id/sqlx", "mimetype/sqlx"]
+
+[dependencies]
+# Workspace
+flake_id = { workspace = true }
+mimetype = { workspace = true }
+
+# External
+chrono = { workspace = true }
+
+# External (opts)
+serde = { workspace = true, features = ["derive"], optional = true }
+sqlx = { workspace = true, features = ["chrono"], optional = true }
