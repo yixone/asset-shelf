@@ -6,13 +6,13 @@ pub enum InsertResult {
 
 /// Result of updating records in the database
 pub enum UpdateResult {
-    Updated(usize),
+    Updated(u64),
     NoChanges,
 }
 
 /// Result of deleting records from the database
 pub enum DeleteResult {
-    Deleted(usize),
+    Deleted(u64),
     NoChanges,
 }
 

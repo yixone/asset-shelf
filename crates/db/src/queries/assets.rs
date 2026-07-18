@@ -2,11 +2,11 @@ use models::entities::Asset;
 
 use crate::{
     core::{Result, result::InsertResult},
-    ops::AssetsOps,
+    ops::AssetOps,
     sqlite::SqliteUnit,
 };
 
-impl<T> AssetsOps for T
+impl<T> AssetOps for T
 where
     T: SqliteUnit,
 {
