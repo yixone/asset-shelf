@@ -41,7 +41,7 @@ impl<T> JoinBuilder<T> {
     where
         B: Fn(T) -> R,
     {
-        self.join.into_iter().map(mapper).collect()
+        self.build().into_iter().map(mapper).collect()
     }
 
     /// Performs an **inner join** for a one-to-one relationship.
