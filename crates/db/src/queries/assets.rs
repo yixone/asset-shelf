@@ -3,12 +3,12 @@ use models::entities::Asset;
 use crate::{
     core::{Result, result::InsertResult},
     ops::AssetsOps,
-    provider::ExecutorUnit,
+    sqlite::SqliteUnit,
 };
 
 impl<T> AssetsOps for T
 where
-    T: ExecutorUnit<Executor = sqlx::SqliteConnection>,
+    T: SqliteUnit,
 {
     async fn insert_asset(&mut self, asset: &Asset) -> Result<InsertResult> {
         let res = sqlx::query(

@@ -2,7 +2,7 @@
 
 pub mod core;
 pub mod ops;
-pub mod repositories;
+pub mod queries;
 
 pub mod join;
 
