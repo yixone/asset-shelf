@@ -90,6 +90,29 @@ impl<T> JoinBuilder<T> {
         }
     }
 
+    /// Performs an **left join** for a one-to-one relationship.
+    ///
+    /// Join based on the `on.reference_key` = `ref.join_on_key` condition
+    pub fn with_option<W, F, J>(self, with: Vec<W>, on: F) -> JoinBuilder<(T, Option<W>)>
+    where
+        F: Fn(&T) -> &J,
+        J: Joinable<W>,
+        W: Clone,
+    {
+        let hash_idx = Self::build_idx(with, J::reference);
+        JoinBuilder {
+            join: self
+                .join
+                .into_iter()
+                .map(|j| {
+                    let key = on(&j).join_on();
+                    let r = hash_idx.get(key).cloned();
+                    (j, r)
+                })
+                .collect(),
+        }
+    }
+
     /// Constructs a [`HashMap`] for indexing a list of models
     fn build_idx<I, K, F>(table: Vec<I>, key: F) -> HashMap<K, I>
     where
