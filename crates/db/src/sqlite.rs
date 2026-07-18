@@ -5,7 +5,7 @@ use sqlx::{
 
 use crate::{
     core::result::{DeleteResult, InsertResult, UpdateResult},
-    provider::{ConnectionUnit, DbProvider, ExecutorUnit, Provider, TransactionUnit},
+    provider::{ConnectionUnit, DatabaseProvider, DatabaseProviderExt, TransactionUnit},
 };
 
 pub struct SqliteDb {
@@ -20,12 +20,12 @@ pub struct SqliteConn {
     conn: PoolConnection<Sqlite>,
 }
 
-impl Provider for SqliteDb {
+impl DatabaseProvider for SqliteDb {
     type Connection = SqliteConn;
     type Transaction<'a> = SqliteTx<'a>;
 }
 
-impl DbProvider for SqliteDb {
+impl DatabaseProviderExt for SqliteDb {
     type Error = sqlx::Error;
 
     async fn acquire(&self) -> Result<Self::Connection, Self::Error> {
@@ -38,16 +38,18 @@ impl DbProvider for SqliteDb {
     }
 }
 
-impl ExecutorUnit for SqliteTx<'_> {
-    type Executor = SqliteConnection;
-    fn exec(&mut self) -> &mut Self::Executor {
+pub(crate) trait SqliteUnit {
+    fn exec(&mut self) -> &mut SqliteConnection;
+}
+
+impl SqliteUnit for SqliteTx<'_> {
+    fn exec(&mut self) -> &mut SqliteConnection {
         &mut self.tx
     }
 }
 
-impl ExecutorUnit for SqliteConn {
-    type Executor = SqliteConnection;
-    fn exec(&mut self) -> &mut Self::Executor {
+impl SqliteUnit for SqliteConn {
+    fn exec(&mut self) -> &mut SqliteConnection {
         &mut self.conn
     }
 }
