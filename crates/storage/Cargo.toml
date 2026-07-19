@@ -12,12 +12,7 @@ flake_id = { workspace = true }
 # External
 bytes.workspace = true
 futures.workspace = true
-tokio = { workspace = true, features = [
-    "fs",
-    "io-util",
-    "macros",
-    "rt-multi-thread",
-] }
+tokio = { workspace = true, features = ["fs", "io-util"] }
 tokio-util = { workspace = true, features = ["io"] }
 tracing.workspace = true
 

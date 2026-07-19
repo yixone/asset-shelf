@@ -35,6 +35,11 @@ impl Storage {
         self.id_gen.generate_as::<FlakeIdHex>().to_string()
     }
 
+    async fn remove_safely(&self, path: &StoragePath) {
+        // TODO: ADD ERROR TRACING!
+        let _ = self.backend.remove(path).await;
+    }
+
     pub async fn upload<D>(
         &self,
         namespace: &str,
@@ -48,7 +53,6 @@ impl Storage {
 
         let temp_path = StoragePath::new(TEMP_NAMESPACE.into(), key.clone());
         let mut size_bytes = 0;
-        let mut mimetype = None;
 
         let mut data_reader = ReaderStream::with_capacity(data, 32 * 1024);
         let mut blob_writer = self.backend.open_writer(&temp_path).await?;
@@ -72,21 +76,17 @@ impl Storage {
                 let h_chunk = &chunk[..chunk.len().min(header_cap - header_len)];
                 header_buf.extend_from_slice(h_chunk);
             }
-            if mimetype.is_none() && header_len >= header_cap {
-                mimetype = match MimeType::guess(&header_buf) {
-                    Ok(m) => Some(m),
-                    Err(_) => {
-                        blob_writer.abort().await?;
-                        return Err(StorageError::UnsuppotedMimetype);
-                    }
-                };
-            }
             blob_writer.write_chunk(chunk).await?;
         }
-        let Some(mimetype) = mimetype else {
-            blob_writer.abort().await?;
-            return Err(StorageError::UnsuppotedMimetype);
+
+        let mimetype = match MimeType::guess(&header_buf) {
+            Ok(m) => m,
+            Err(_) => {
+                blob_writer.abort().await?;
+                return Err(StorageError::UnsuppotedMimetype);
+            }
         };
+
         blob_writer.finalize().await?;
 
         let key = shard_key(&key, SHARDING_LEVEL);
@@ -95,13 +95,17 @@ impl Storage {
             namespace: namespace.into(),
             key,
         };
-        self.backend.rename(&temp_path, &dest).await?;
+
+        if !self.backend.rename(&temp_path, &dest).await? {
+            self.remove_safely(&temp_path).await;
+            return Err(StorageError::AlreadyExists);
+        }
 
         let res = StorageUploadResult {
             path: dest,
             mimetype,
             size_bytes,
-            elapsed_ms: (Instant::now() - start_time).as_millis() as u64,
+            elapsed_ms: start_time.elapsed().as_millis() as u64,
         };
 
         Ok(res)
@@ -115,9 +119,9 @@ impl Storage {
         Ok(reader)
     }
 
-    pub async fn remove(&self, path: &StoragePath) -> Result<bool, StorageError> {
-        let res = self.backend.remove(path).await?;
-        Ok(res)
+    pub async fn remove(&self, path: &StoragePath) -> Result<(), StorageError> {
+        self.remove_safely(path).await;
+        Ok(())
     }
 }
 

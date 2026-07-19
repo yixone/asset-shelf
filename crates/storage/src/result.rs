@@ -4,6 +4,7 @@ use storage_backend::core::result::StorageBackendError;
 pub enum StorageError {
     BackendErr(StorageBackendError),
     FileTooLarge { received: usize, excepted: usize },
+    AlreadyExists,
     UnsuppotedMimetype,
 }
 
