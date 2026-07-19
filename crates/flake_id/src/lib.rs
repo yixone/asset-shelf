@@ -6,6 +6,9 @@ use std::sync::Mutex;
 
 use chrono::Utc;
 
+/// The starting epoch for generating timestamps
+pub const DEFAULT_EPOCH: i64 = 1735678800000;
+
 /// Runtime generator for FlakeId
 ///
 /// ### Id parts
@@ -53,7 +56,11 @@ pub struct FlakeId(pub i64);
 pub struct FlakeIdHex(String);
 
 impl FlakeIdGenerator {
-    pub fn new(base_epoch: i64, node_id: u8) -> Self {
+    pub fn new(node_id: u8) -> Self {
+        FlakeIdGenerator::new_with_epoch(DEFAULT_EPOCH, node_id)
+    }
+
+    pub fn new_with_epoch(base_epoch: i64, node_id: u8) -> Self {
         let now = Utc::now().timestamp_millis();
         if now < base_epoch {
             panic!("System clock before generator base_epoch");

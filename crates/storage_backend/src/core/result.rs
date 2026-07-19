@@ -1,5 +1,6 @@
 pub type Result<T> = std::result::Result<T, StorageBackendError>;
 
+#[derive(Debug)]
 pub enum StorageBackendError {
     Io(std::io::Error),
 }

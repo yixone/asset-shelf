@@ -11,6 +11,11 @@ pub struct StoragePath {
 }
 
 impl StoragePath {
+    /// Creates a new [`StoragePath`]
+    pub fn new(namespace: String, key: String) -> Self {
+        Self { namespace, key }
+    }
+
     pub fn as_path(&self) -> PathBuf {
         Path::new(&self.namespace).join(&self.key)
     }

@@ -6,7 +6,7 @@ use tokio::{
 };
 
 use crate::core::{
-    ops::{StorageBackend, StorageWriter},
+    ops::{AbstractStorageBackend, AbstractStorageWriter},
     path::StoragePath,
     result::Result,
 };
@@ -20,6 +20,17 @@ pub struct FsStorageBackend {
 }
 
 impl FsStorageBackend {
+    pub async fn new<P>(root: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let root = root.as_ref();
+        tokio::fs::create_dir_all(root).await?;
+        Ok(FsStorageBackend {
+            root: root.to_path_buf(),
+        })
+    }
+
     async fn create_parents(&self, path: &Path) -> Result<()> {
         if let Some(parent) = path.parent() {
             tokio::fs::create_dir_all(parent).await?;
@@ -33,8 +44,8 @@ impl FsStorageBackend {
 }
 
 #[async_trait::async_trait]
-impl StorageBackend for FsStorageBackend {
-    async fn open_writer(&self, path: &StoragePath) -> Result<Box<dyn StorageWriter>> {
+impl AbstractStorageBackend for FsStorageBackend {
+    async fn open_writer(&self, path: &StoragePath) -> Result<Box<dyn AbstractStorageWriter>> {
         let path = self.resolve_path(path);
         self.create_parents(&path).await?;
 
@@ -83,7 +94,7 @@ pub struct FsStorageWriter {
 }
 
 #[async_trait::async_trait]
-impl StorageWriter for FsStorageWriter {
+impl AbstractStorageWriter for FsStorageWriter {
     async fn write_chunk(&mut self, data: bytes::Bytes) -> Result<()> {
         self.writer.write_all(&data).await?;
         Ok(())
