@@ -1,3 +1,4 @@
+pub mod bulk;
 pub mod pagination;
 pub mod patches;
 pub mod result;
