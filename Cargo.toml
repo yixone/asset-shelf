@@ -1,6 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["crates/models", "crates/mimetype", "crates/flake_id", "crates/db"]
+members = [
+    "crates/models",
+    "crates/mimetype",
+    "crates/flake_id",
+    "crates/db",
+    "crates/storage",
+    "crates/storage_backend",
+]
 
 [workspace.dependencies]
 # Workspace crates
