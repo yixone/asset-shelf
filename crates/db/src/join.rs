@@ -1,7 +1,7 @@
 use std::{collections::HashMap, hash::Hash};
 
 use models::{
-    entities::{Asset, Collection, CollectionItem, Media, MediaFile},
+    entities::{Asset, AssetFeatures, Collection, CollectionItem, Media, MediaFile},
     types::{AssetId, CollectionId, MediaId},
 };
 

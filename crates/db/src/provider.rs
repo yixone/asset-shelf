@@ -3,7 +3,7 @@ pub trait DatabaseProvider {
     type Connection: ConnectionUnit;
 }
 
-pub trait DatabaseProviderExt: DatabaseProvider {
+pub trait DatabaseConnector: DatabaseProvider {
     type Error;
 
     async fn begin(&self) -> Result<Self::Transaction<'_>, Self::Error>;
