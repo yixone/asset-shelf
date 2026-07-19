@@ -177,6 +177,11 @@ define_joinable!(
     id == asset_id as AssetId
 );
 
+define_joinable!(
+    AssetFeatures => Asset,
+    asset_id == id as AssetId
+);
+
 #[cfg(test)]
 mod tests {
     #![allow(dead_code)]
