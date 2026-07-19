@@ -1,15 +1,48 @@
+use std::path::Path;
+
 use sqlx::{
-    Sqlite, SqliteConnection, SqlitePool, SqliteTransaction, pool::PoolConnection,
-    sqlite::SqliteQueryResult,
+    Sqlite, SqliteConnection, SqlitePool, SqliteTransaction,
+    migrate::Migrator,
+    pool::PoolConnection,
+    sqlite::{
+        SqliteAutoVacuum, SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions,
+        SqliteQueryResult,
+    },
 };
 
 use crate::{
     core::result::{DeleteResult, InsertResult, UpdateResult},
-    provider::{ConnectionUnit, DatabaseProvider, DatabaseProviderExt, TransactionUnit},
+    provider::{ConnectionUnit, DatabaseConnector, DatabaseProvider, TransactionUnit},
 };
+
+static SQLITE_MIGRATOR: Migrator = sqlx::migrate!();
 
 pub struct SqliteDb {
     pool: SqlitePool,
+}
+
+impl SqliteDb {
+    pub async fn open(p: impl AsRef<Path>) -> sqlx::Result<Self> {
+        let path = p.as_ref();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let options = SqliteConnectOptions::new()
+            .filename(path)
+            .create_if_missing(true)
+            .auto_vacuum(SqliteAutoVacuum::Incremental)
+            .journal_mode(SqliteJournalMode::Wal)
+            .foreign_keys(true);
+
+        let pool = SqlitePoolOptions::new().connect_with(options).await?;
+        Ok(SqliteDb { pool })
+    }
+
+    pub async fn migrate(&self) -> sqlx::Result<()> {
+        SQLITE_MIGRATOR.run(&self.pool).await?;
+        Ok(())
+    }
 }
 
 pub struct SqliteTx<'a> {
@@ -25,7 +58,7 @@ impl DatabaseProvider for SqliteDb {
     type Transaction<'a> = SqliteTx<'a>;
 }
 
-impl DatabaseProviderExt for SqliteDb {
+impl DatabaseConnector for SqliteDb {
     type Error = sqlx::Error;
 
     async fn acquire(&self) -> Result<Self::Connection, Self::Error> {
