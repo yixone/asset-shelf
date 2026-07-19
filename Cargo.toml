@@ -1,13 +1,20 @@
 [workspace]
 resolver = "2"
-members = ["crates/models", "crates/mimetype", "crates/flake_id", "crates/db"]
+members = [
+    "crates/db",
+    "crates/flake_id",
+    "crates/media",
+    "crates/mimetype",
+    "crates/models",
+]
 
 [workspace.dependencies]
 # Workspace crates
 db = { path = "crates/db" }
-models = { path = "crates/models" }
-mimetype = { path = "crates/mimetype" }
 flake_id = { path = "crates/flake_id" }
+media = { path = "crates/media" }
+mimetype = { path = "crates/mimetype" }
+models = { path = "crates/models" }
 
 # External crates
 chrono = "0.4.42"
