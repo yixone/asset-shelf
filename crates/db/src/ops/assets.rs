@@ -17,13 +17,15 @@ pub trait AssetOps {
     async fn delete_asset(&mut self, id: &AssetId) -> Result<DeleteResult>;
 
     async fn get_asset(&mut self, id: &AssetId) -> Result<Option<Asset>>;
-    async fn get_many_assets(&mut self, ids: &[AssetId]) -> Result<Vec<Asset>>;
+    async fn get_assets_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<Asset>>;
 
     // TODO: ADD SORTING QUERY!
     async fn list_assets(&mut self, p: Pagination) -> Result<Vec<Asset>>;
+    async fn random_assets(&mut self, limit: u32) -> Result<Vec<Asset>>;
     async fn count_assets(&mut self) -> Result<u64>;
 }
 
+// TODO: add `get similarity search candidates` or something like this
 pub trait AssetFeaturesOps {
     async fn insert_asset_features(&mut self, af: &AssetFeatures) -> Result<InsertResult>;
 
@@ -34,7 +36,5 @@ pub trait AssetFeaturesOps {
     ) -> Result<UpdateResult>;
 
     async fn get_asset_features(&mut self, id: &AssetId) -> Result<Option<AssetFeatures>>;
-    async fn get_many_assets_features(&mut self, ids: &[AssetId]) -> Result<Vec<AssetFeatures>>;
-
-    // TODO: add get similarity search candidates or something like this
+    async fn get_assets_features_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<AssetFeatures>>;
 }
