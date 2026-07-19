@@ -15,6 +15,8 @@ db = { path = "crates/db" }
 models = { path = "crates/models" }
 mimetype = { path = "crates/mimetype" }
 flake_id = { path = "crates/flake_id" }
+storage = { path = "crates/storage" }
+storage_backend = { path = "crates/storage_backend" }
 
 # External crates
 chrono = "0.4.42"
