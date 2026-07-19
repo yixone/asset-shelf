@@ -12,14 +12,6 @@ struct MimePattern {
     pub matcher: fn(&[u8]) -> bool,
 }
 
-generate_ptree! {
-    0x42 => [Bmp] as _PB_42;
-    0x47 => [Gif] as _PB_47;
-    0x52 => [Webp] as _PB_52;
-    0x89 => [Png] as _PB_89;
-    0xFF => [Jpeg] as _PB_FF;
-}
-
 define_mimes! {
     Jpeg, "image/jpeg", [
         (0, [0xFF, 0xD8, 0xFF, 0xDB]),
@@ -43,9 +35,17 @@ define_mimes! {
     ];
 }
 
+generate_ptree! {
+    0x42 => [Bmp] as _PB_42;
+    0x47 => [Gif] as _PB_47;
+    0x52 => [Webp] as _PB_52;
+    0x89 => [Png] as _PB_89;
+    0xFF => [Jpeg] as _PB_FF;
+}
+
 impl MimeType {
     /// Guesses and returns the [`MimeType`] using magic bytes slice,
-    /// otherwise returns `UnsupportedMediaType` error
+    /// otherwise returns [`GuessMimetypeError`] error
     pub fn guess(slice: &[u8]) -> Result<Self, GuessMimetypeError> {
         if slice.is_empty() {
             return Err(GuessMimetypeError);
