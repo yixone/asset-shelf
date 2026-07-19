@@ -3,45 +3,23 @@ use std::time::Instant;
 use flake_id::{FlakeIdGenerator, FlakeIdHex};
 use futures::TryStreamExt;
 use mimetype::MimeType;
-use storage_backend::{
-    StorageBackend,
-    core::{path::StoragePath, result::StorageBackendError},
-};
+use storage_backend::{StorageBackend, core::path::StoragePath};
 use tokio::io::AsyncRead;
 use tokio_util::io::ReaderStream;
 
-#[derive(Debug)]
-pub enum StorageError {
-    BackendErr(StorageBackendError),
-    FileTooLarge { received: usize, excepted: usize },
-    UnsuppotedMimetype,
-}
+use crate::{result::StorageError, types::StorageUploadResult};
 
-impl<E> From<E> for StorageError
-where
-    StorageBackendError: From<E>,
-{
-    fn from(err: E) -> Self {
-        StorageError::BackendErr(err.into())
-    }
-}
+pub mod result;
+pub mod types;
+
+const TEMP_NAMESPACE: &str = "temp";
+const SHARDING_LEVEL: usize = 2;
 
 pub struct Storage {
     backend: StorageBackend,
     id_gen: FlakeIdGenerator,
     max_size: usize,
 }
-
-#[derive(Debug)]
-pub struct StorageUploadResult {
-    path: StoragePath,
-    mimetype: MimeType,
-    size_bytes: usize,
-    // TODO: MOVE TO UploadStats
-    elapsed_ms: u64,
-}
-
-const TEMP_NAMESPACE: &str = "temp";
 
 impl Storage {
     /// Creates a new [`Storage`]
@@ -75,8 +53,8 @@ impl Storage {
         let mut data_reader = ReaderStream::with_capacity(data, 32 * 1024);
         let mut blob_writer = self.backend.open_writer(&temp_path).await?;
 
-        let mut header_buffer = Vec::with_capacity(128);
-        let header_cap = header_buffer.capacity();
+        let mut header_buf = Vec::with_capacity(128);
+        let header_cap = header_buf.capacity();
 
         while let Some(chunk) = data_reader.try_next().await? {
             size_bytes += chunk.len();
@@ -89,13 +67,13 @@ impl Storage {
                 });
             }
 
-            let header_len = header_buffer.len();
+            let header_len = header_buf.len();
             if header_len < header_cap {
                 let h_chunk = &chunk[..chunk.len().min(header_cap - header_len)];
-                header_buffer.extend_from_slice(h_chunk);
+                header_buf.extend_from_slice(h_chunk);
             }
             if mimetype.is_none() && header_len >= header_cap {
-                mimetype = match MimeType::guess(&header_buffer) {
+                mimetype = match MimeType::guess(&header_buf) {
                     Ok(m) => Some(m),
                     Err(_) => {
                         blob_writer.abort().await?;
@@ -103,7 +81,6 @@ impl Storage {
                     }
                 };
             }
-
             blob_writer.write_chunk(chunk).await?;
         }
         let Some(mimetype) = mimetype else {
@@ -112,7 +89,7 @@ impl Storage {
         };
         blob_writer.finalize().await?;
 
-        let key = shard_key(&key, 2);
+        let key = shard_key(&key, SHARDING_LEVEL);
 
         let dest = StoragePath {
             namespace: namespace.into(),
