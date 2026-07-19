@@ -10,9 +10,9 @@ use sqlx::{
     },
 };
 
-use crate::{
-    core::result::{DeleteResult, InsertResult, UpdateResult},
+use crate::core::{
     provider::{ConnectionUnit, DatabaseConnector, DatabaseProvider, TransactionUnit},
+    result::{DeleteResult, InsertResult, UpdateResult},
 };
 
 static SQLITE_MIGRATOR: Migrator = sqlx::migrate!();

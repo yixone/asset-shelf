@@ -5,5 +5,4 @@ pub mod ops;
 pub mod queries;
 pub mod utils;
 
-pub mod provider;
 pub mod sqlite;
