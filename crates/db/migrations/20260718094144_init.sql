@@ -16,7 +16,7 @@ CREATE TABLE assets (
     accent_color    INTEGER,
 
     PRIMARY KEY (id),
-    FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
+    FOREIGN KEY (media_id) REFERENCES media(id)
 );
 
 CREATE INDEX idx_asset_media ON assets(media_id);

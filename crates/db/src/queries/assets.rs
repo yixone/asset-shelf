@@ -86,11 +86,6 @@ where
         Ok(res.into())
     }
 
-    async fn get_asset(&mut self, id: &AssetId) -> Result<Option<Asset>> {
-        self.get_assets_bulk(std::slice::from_ref(id))
-            .await
-            .map(|a| a.into_iter().next())
-    }
     async fn get_assets_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<Asset>> {
         if ids.is_empty() {
             return Ok(Vec::new());
@@ -234,12 +229,6 @@ where
 
         let res = qb.build().execute(self.exec()).await?;
         Ok(res.into())
-    }
-
-    async fn get_asset_features(&mut self, id: &AssetId) -> Result<Option<AssetFeatures>> {
-        self.get_assets_features_bulk(std::slice::from_ref(id))
-            .await
-            .map(|a| a.into_iter().next())
     }
 
     async fn get_assets_features_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<AssetFeatures>> {

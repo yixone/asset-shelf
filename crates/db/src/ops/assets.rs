@@ -16,7 +16,11 @@ pub trait AssetOps {
     async fn update_asset(&mut self, id: &AssetId, patch: AssetPatch) -> Result<UpdateResult>;
     async fn delete_asset(&mut self, id: &AssetId) -> Result<DeleteResult>;
 
-    async fn get_asset(&mut self, id: &AssetId) -> Result<Option<Asset>>;
+    async fn get_asset(&mut self, id: &AssetId) -> Result<Option<Asset>> {
+        self.get_assets_bulk(std::slice::from_ref(id))
+            .await
+            .map(|a| a.into_iter().next())
+    }
     async fn get_assets_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<Asset>>;
 
     async fn list_assets(&mut self, p: Pagination, o: AssetsOrdering) -> Result<Vec<Asset>>;
@@ -36,6 +40,10 @@ pub trait AssetFeaturesOps {
         patch: AssetFeaturesPatch,
     ) -> Result<UpdateResult>;
 
-    async fn get_asset_features(&mut self, id: &AssetId) -> Result<Option<AssetFeatures>>;
+    async fn get_asset_features(&mut self, id: &AssetId) -> Result<Option<AssetFeatures>> {
+        self.get_assets_features_bulk(std::slice::from_ref(id))
+            .await
+            .map(|a| a.into_iter().next())
+    }
     async fn get_assets_features_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<AssetFeatures>>;
 }
