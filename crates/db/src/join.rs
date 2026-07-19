@@ -214,25 +214,15 @@ mod tests {
         author_id: u32,
     }
 
-    impl Joinable<Profile> for User {
-        type Key = u32;
-        fn join_on(&self) -> &Self::Key {
-            &self.id
-        }
-        fn reference(t: &Profile) -> &Self::Key {
-            &t.user_id
-        }
-    }
+    define_joinable!(
+        Profile => User,
+        user_id == id as u32
+    );
 
-    impl Joinable<Post> for User {
-        type Key = u32;
-        fn join_on(&self) -> &Self::Key {
-            &self.id
-        }
-        fn reference(t: &Post) -> &Self::Key {
-            &t.author_id
-        }
-    }
+    define_joinable!(
+        Post => User,
+        author_id == id as u32
+    );
 
     #[test]
     fn test() {
