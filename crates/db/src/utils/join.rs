@@ -195,7 +195,7 @@ define_joinable!(
 mod tests {
     #![allow(dead_code)]
 
-    use crate::join::{JoinBuilder, Joinable};
+    use crate::utils::join::{JoinBuilder, Joinable};
 
     #[derive(Debug, Clone)]
     struct User {
