@@ -1,6 +1,6 @@
 use models::{
     entities::{Asset, AssetFeatures},
-    types::AssetId,
+    types::{AssetId, AssetsOrdering},
 };
 
 use crate::core::{
@@ -19,10 +19,11 @@ pub trait AssetOps {
     async fn get_asset(&mut self, id: &AssetId) -> Result<Option<Asset>>;
     async fn get_assets_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<Asset>>;
 
-    // TODO: ADD SORTING QUERY!
-    async fn list_assets(&mut self, p: Pagination) -> Result<Vec<Asset>>;
+    async fn list_assets(&mut self, p: Pagination, o: AssetsOrdering) -> Result<Vec<Asset>>;
     async fn random_assets(&mut self, limit: u32) -> Result<Vec<Asset>>;
     async fn count_assets(&mut self) -> Result<u64>;
+
+    async fn get_deleted_assets(&mut self, p: Pagination) -> Result<Vec<Asset>>;
 }
 
 // TODO: add `get similarity search candidates` or something like this
