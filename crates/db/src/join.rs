@@ -44,6 +44,15 @@ impl<T> JoinBuilder<T> {
         self.build().into_iter().map(mapper).collect()
     }
 
+    pub fn transform<M, R>(self, mapper: M) -> JoinBuilder<R>
+    where
+        M: Fn(T) -> R,
+    {
+        JoinBuilder {
+            join: self.join.into_iter().map(mapper).collect(),
+        }
+    }
+
     /// Performs an **inner join** for a one-to-one relationship.
     ///
     /// Join based on the `on.reference_key` = `ref.join_on_key` condition

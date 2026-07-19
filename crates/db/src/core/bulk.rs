@@ -1,5 +1,5 @@
 use models::{
-    entities::{Asset, AssetFeatures, MediaFile},
+    entities::{Asset, AssetFeatures, Media, MediaFile},
     types::{AssetId, MediaId},
 };
 
@@ -15,6 +15,12 @@ impl CollectIds<AssetId> for Vec<Asset> {
 impl CollectIds<MediaId> for Vec<Asset> {
     fn ids(&self) -> Vec<MediaId> {
         self.iter().map(|a| a.media_id.clone()).collect()
+    }
+}
+
+impl CollectIds<MediaId> for Vec<Media> {
+    fn ids(&self) -> Vec<MediaId> {
+        self.iter().map(|m| m.id.clone()).collect()
     }
 }
 
