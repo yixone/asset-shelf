@@ -19,6 +19,8 @@ storage = { path = "crates/storage" }
 storage_backend = { path = "crates/storage_backend" }
 
 # External crates
+async-trait = "0.1.89"
+bytes = "1.11.1"
 chrono = "0.4.42"
 rand = "0.10.1"
 serde = "1.0.219"

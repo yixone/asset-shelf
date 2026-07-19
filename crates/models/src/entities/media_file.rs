@@ -10,7 +10,7 @@ pub struct MediaFile {
     pub media_id: MediaId,
 
     pub variant: MediaVariant,
-    pub storage_key: String,
+    pub storage_path: String,
 
     pub created_at: DateTime<Utc>,
 
