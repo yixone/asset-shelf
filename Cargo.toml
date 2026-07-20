@@ -6,6 +6,8 @@ members = [
     "crates/media",
     "crates/mimetype",
     "crates/models",
+    "crates/storage",
+    "crates/storage_backend",
 ]
 
 [workspace.dependencies]
@@ -15,13 +17,20 @@ flake_id = { path = "crates/flake_id" }
 media = { path = "crates/media" }
 mimetype = { path = "crates/mimetype" }
 models = { path = "crates/models" }
+storage = { path = "crates/storage" }
+storage_backend = { path = "crates/storage_backend" }
 
 # External crates
+async-trait = "0.1.89"
 bytes = "1.11.1"
 chrono = "0.4.42"
+futures = "0.3.32"
 image = "0.25.10"
 rand = "0.10.1"
 serde = "1.0.219"
 sqlx = "0.8.5"
+tempfile = "3.27.0"
 tokio = "1.47.1"
 tokio-util = "0.7.16"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"

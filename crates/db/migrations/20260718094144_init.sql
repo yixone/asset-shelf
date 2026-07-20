@@ -42,7 +42,7 @@ CREATE TABLE media (
 
 CREATE TABLE media_files (
     id              VARCHAR(32)     NOT NULL,
-    storage_key     VARCHAR(512)    NOT NULL,
+    storage_path    VARCHAR(512)    NOT NULL,
 
     media_id        VARCHAR(32)     NOT NULL,
     variant         VARCHAR(64)     NOT NULL,
