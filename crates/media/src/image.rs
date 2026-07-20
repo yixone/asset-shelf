@@ -18,7 +18,7 @@ pub struct Image {
     inner: DynamicImage,
 }
 
-pub struct PreparedExtractorImage {
+pub struct FeaturedImage {
     inner: DynamicImage,
 }
 
@@ -66,14 +66,14 @@ impl Image {
         }
     }
 
-    pub fn prepare_features(self) -> PreparedExtractorImage {
-        PreparedExtractorImage {
+    pub fn prepare_features(self) -> FeaturedImage {
+        FeaturedImage {
             inner: self.inner.resize_exact(32, 32, FilterType::Triangle),
         }
     }
 }
 
-impl PreparedExtractorImage {
+impl FeaturedImage {
     pub fn p_hash(&self) -> i64 {
         let luma = self.inner.to_luma8();
         let matrix: [[u8; 32]; 32] = luma
@@ -89,7 +89,7 @@ impl PreparedExtractorImage {
             .expect("Prepared image must be 32 pixels width");
         drop(luma);
 
-        features::hash::calc_phash(matrix)
+        features::hash::p_hash(matrix)
     }
 
     pub fn a_hash(&self) -> i64 {
@@ -104,7 +104,7 @@ impl PreparedExtractorImage {
             .expect("After preparation there should be 64 pixels");
         drop(luma);
 
-        features::hash::calc_ahash(pixels)
+        features::hash::a_hash(pixels)
     }
 
     pub fn avg_color(&self) -> (u8, u8, u8) {

@@ -1,6 +1,6 @@
 use crate::features::dct::apply_dct2;
 
-pub fn calc_phash(matrix: [[u8; 32]; 32]) -> i64 {
+pub fn p_hash(matrix: [[u8; 32]; 32]) -> i64 {
     // Apply DCT to matrix
     let dct = apply_dct2(&matrix);
 
@@ -36,7 +36,7 @@ pub fn calc_phash(matrix: [[u8; 32]; 32]) -> i64 {
     hash
 }
 
-pub fn calc_ahash(pixels: [u8; 64]) -> i64 {
+pub fn a_hash(pixels: [u8; 64]) -> i64 {
     let avg = pixels.iter().map(|p| *p as u32).sum::<u32>() / pixels.len() as u32;
     let mut hash = 0_i64;
     for (idx, p) in pixels.into_iter().enumerate() {
