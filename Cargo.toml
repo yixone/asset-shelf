@@ -6,6 +6,7 @@ members = [
     "crates/media",
     "crates/mimetype",
     "crates/models",
+    "crates/server",
     "crates/storage",
     "crates/storage_backend",
 ]

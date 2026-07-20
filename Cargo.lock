@@ -1865,6 +1865,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "db",
+ "flake_id",
+ "media",
+ "mimetype",
+ "models",
+ "storage",
+ "storage_backend",
+ "tokio",
+]
+
+[[package]]
 name = "sha1"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
