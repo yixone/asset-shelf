@@ -7,7 +7,9 @@ use storage_backend::{StorageBackend, core::path::StoragePath};
 use tokio::io::AsyncRead;
 use tokio_util::io::ReaderStream;
 
-use crate::{result::StorageError, types::StorageUploadResult};
+use crate::types::StorageUploadResult;
+
+pub use result::StorageError;
 
 pub mod result;
 pub mod types;
@@ -67,7 +69,7 @@ impl Storage {
                 blob_writer.abort().await?;
                 return Err(StorageError::FileTooLarge {
                     received: size_bytes,
-                    excepted: self.max_size,
+                    max_size: self.max_size,
                 });
             }
 

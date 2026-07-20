@@ -1,25 +1,31 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/db",
-    "crates/flake_id",
-    "crates/media",
-    "crates/mimetype",
-    "crates/models",
+    # Application core crates
+    "crates/core/db",
+    "crates/core/media",
+    "crates/core/models",
+    "crates/core/storage",
+    "crates/core/storage_backend",
+
+    # Common crates
+    "crates/libs/flake_id",
+    "crates/libs/mimetype",
+
+    # Binary crates
     "crates/server",
-    "crates/storage",
-    "crates/storage_backend",
 ]
 
 [workspace.dependencies]
 # Workspace crates
-db = { path = "crates/db" }
-flake_id = { path = "crates/flake_id" }
-media = { path = "crates/media" }
-mimetype = { path = "crates/mimetype" }
-models = { path = "crates/models" }
-storage = { path = "crates/storage" }
-storage_backend = { path = "crates/storage_backend" }
+db = { path = "crates/core/db" }
+media = { path = "crates/core/media" }
+models = { path = "crates/core/models" }
+storage = { path = "crates/core/storage" }
+storage_backend = { path = "crates/core/storage_backend" }
+
+flake_id = { path = "crates/libs/flake_id" }
+mimetype = { path = "crates/libs/mimetype" }
 
 # External crates
 async-trait = "0.1.89"
