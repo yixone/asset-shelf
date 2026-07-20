@@ -11,9 +11,6 @@ use crate::core::{
     result::Result,
 };
 
-// TODO!
-// pub mod guard;
-
 #[derive(Debug)]
 pub struct FsStorageBackend {
     root: PathBuf,
@@ -39,7 +36,7 @@ impl FsStorageBackend {
     }
 
     fn resolve_path(&self, path: &StoragePath) -> PathBuf {
-        self.root.join::<PathBuf>(path.into())
+        self.root.join::<PathBuf>(path.as_path())
     }
 }
 
@@ -57,7 +54,7 @@ impl AbstractStorageBackend for FsStorageBackend {
     }
 
     async fn get_reader(&self, path: &StoragePath) -> Result<Box<dyn AsyncRead + Send + Unpin>> {
-        let path = self.root.join::<PathBuf>(path.into());
+        let path = self.resolve_path(path);
         let file = File::open(path).await?;
         Ok(Box::new(file))
     }

@@ -40,18 +40,6 @@ impl FromStr for StoragePath {
     }
 }
 
-impl From<StoragePath> for PathBuf {
-    fn from(val: StoragePath) -> Self {
-        Path::new(&val.namespace).join(&val.key)
-    }
-}
-
-impl From<&StoragePath> for PathBuf {
-    fn from(val: &StoragePath) -> Self {
-        Path::new(&val.namespace).join(&val.key)
-    }
-}
-
 #[derive(Debug)]
 pub struct InvalidStoragePathError;
 
