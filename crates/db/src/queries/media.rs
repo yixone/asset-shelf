@@ -80,7 +80,7 @@ where
         let mut qb = QueryBuilder::new(
             "
             INSERT INTO media_files (
-                id, storage_key, media_id,
+                id, storage_path, media_id,
                 variant, created_at, size_bytes, mimetype
             )
             VALUES 
@@ -88,7 +88,7 @@ where
         );
         qb.push_tuples(mf, |mut qb, mf| {
             qb.push_bind(&mf.id);
-            qb.push_bind(&mf.storage_key);
+            qb.push_bind(&mf.storage_path);
             qb.push_bind(&mf.media_id);
             qb.push_bind(mf.variant);
             qb.push_bind(mf.created_at);

@@ -1,0 +1,21 @@
+[package]
+name = "storage"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Workspace
+storage_backend = { workspace = true }
+mimetype = { workspace = true }
+flake_id = { workspace = true }
+
+# External
+bytes.workspace = true
+futures.workspace = true
+tokio = { workspace = true, features = ["fs", "io-util"] }
+tokio-util = { workspace = true, features = ["io"] }
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tempfile.workspace = true
