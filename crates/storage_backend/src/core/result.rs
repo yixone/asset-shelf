@@ -10,3 +10,17 @@ impl From<std::io::Error> for StorageBackendError {
         StorageBackendError::Io(err)
     }
 }
+
+impl std::fmt::Display for StorageBackendError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for StorageBackendError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            StorageBackendError::Io(e) => Some(e),
+        }
+    }
+}
