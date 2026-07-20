@@ -17,7 +17,9 @@ mimetype = { path = "crates/mimetype" }
 models = { path = "crates/models" }
 
 # External crates
+bytes = "1.11.1"
 chrono = "0.4.42"
+image = "0.25.10"
 rand = "0.10.1"
 serde = "1.0.219"
 sqlx = "0.8.5"
