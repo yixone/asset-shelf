@@ -7,3 +7,4 @@ edition = "2024"
 # External
 bytes = { workspace = true }
 image = { workspace = true }
+tokio = { workspace = true, features = ["io-util"] }
