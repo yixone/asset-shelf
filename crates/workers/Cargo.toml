@@ -1,0 +1,20 @@
+[package]
+name = "workers"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Internal
+db = { workspace = true }
+flake_id = { workspace = true }
+media = { workspace = true }
+mimetype = { workspace = true }
+models = { workspace = true }
+result = { workspace = true, features = ["actix"] }
+storage = { workspace = true }
+
+# External
+async-trait = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio-util = { workspace = true, features = ["io"] }
+tracing = { workspace = true }

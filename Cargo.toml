@@ -15,6 +15,7 @@ members = [
 
     # Binary crates
     "crates/server",
+    "crates/workers",
 ]
 
 [workspace.dependencies]
@@ -28,6 +29,8 @@ storage_backend = { path = "crates/core/storage_backend" }
 
 flake_id = { path = "crates/libs/flake_id" }
 mimetype = { path = "crates/libs/mimetype" }
+
+workers = { path = "crates/workers" }
 
 # External crates
 actix-cors = "0.7.1"
