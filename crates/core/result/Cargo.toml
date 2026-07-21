@@ -3,4 +3,12 @@ name = "result"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+serde = ["dep:serde"]
+actix = ["dep:actix-web", "serde"]
+
 [dependencies]
+# External
+actix-web = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"], optional = true }
+tracing.workspace = true

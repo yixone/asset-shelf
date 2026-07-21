@@ -42,6 +42,11 @@ impl Error {
 }
 
 #[derive(Debug)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize),
+    serde(rename_all = "SCREAMING_SNAKE_CASE", tag = "error", content = "kind")
+)]
 pub enum ErrorKind {
     /// File type not supported
     UnsupportedFileType,
@@ -54,7 +59,10 @@ pub enum ErrorKind {
     NotFound,
 
     /// Internal application error
-    Internal { source: BoxDynError },
+    Internal {
+        #[cfg_attr(feature = "serde", serde(skip))]
+        source: BoxDynError,
+    },
 }
 
 impl std::fmt::Display for Error {
