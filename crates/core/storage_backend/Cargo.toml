@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # Workspace
+result = { workspace = true }
 
 # External
 async-trait = { workspace = true }

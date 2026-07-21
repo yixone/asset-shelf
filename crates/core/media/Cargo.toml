@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# Workspace
+result = { workspace = true }
+
 # External
 bytes = { workspace = true }
 image = { workspace = true }

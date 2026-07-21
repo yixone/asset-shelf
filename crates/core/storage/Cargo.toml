@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 # Workspace
+result = { workspace = true }
 storage_backend = { workspace = true }
+
 mimetype = { workspace = true }
 flake_id = { workspace = true }
 

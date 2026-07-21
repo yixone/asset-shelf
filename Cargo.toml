@@ -22,6 +22,7 @@ members = [
 db = { path = "crates/core/db" }
 media = { path = "crates/core/media" }
 models = { path = "crates/core/models" }
+result = { path = "crates/core/result" }
 storage = { path = "crates/core/storage" }
 storage_backend = { path = "crates/core/storage_backend" }
 
