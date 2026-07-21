@@ -2,9 +2,9 @@ use models::{
     entities::{Asset, AssetFeatures},
     types::{AssetId, AssetsOrdering},
 };
+use result::Result;
 
 use crate::core::{
-    Result,
     pagination::Pagination,
     patches::{AssetFeaturesPatch, AssetPatch},
     result::{DeleteResult, InsertResult, UpdateResult},

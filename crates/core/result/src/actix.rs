@@ -21,6 +21,7 @@ impl ResponseError for Error {
             ErrorKind::FileTooLarge { .. } => StatusCode::PAYLOAD_TOO_LARGE,
             ErrorKind::EntityDeleted => StatusCode::FORBIDDEN,
             ErrorKind::NotFound => StatusCode::NOT_FOUND,
+            ErrorKind::AlreadyExists => StatusCode::CONFLICT,
             ErrorKind::Internal { .. } => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

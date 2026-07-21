@@ -57,6 +57,8 @@ pub enum ErrorKind {
     EntityDeleted,
     /// Entity not found
     NotFound,
+    /// Entity already exists
+    AlreadyExists,
 
     /// Internal application error
     Internal {
@@ -73,7 +75,7 @@ impl std::fmt::Display for Error {
 
 pub trait ResultExt<T> {
     #[track_caller]
-    fn to_app_error(self) -> Result<T, Error>;
+    fn to_app_err(self) -> Result<T, Error>;
 }
 
 impl<T, E> ResultExt<T> for Result<T, E>
@@ -81,7 +83,7 @@ where
     E: std::error::Error + Send + Sync + 'static,
 {
     #[track_caller]
-    fn to_app_error(self) -> Result<T, Error> {
+    fn to_app_err(self) -> Result<T, Error> {
         self.map_err(Error::internal)
     }
 }

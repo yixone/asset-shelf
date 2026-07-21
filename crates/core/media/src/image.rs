@@ -7,9 +7,10 @@ use std::{
 
 use bytes::Bytes;
 use image::{DynamicImage, GenericImageView, Pixel, imageops::FilterType};
+use result::{Result, error::ResultExt};
 use tokio::io::{AsyncRead, AsyncReadExt, ReadBuf};
 
-use crate::{Result, features};
+use crate::features;
 
 // `image::ImageFormat` re-export
 pub use image::ImageFormat;
@@ -32,10 +33,14 @@ impl Image {
         R: AsyncRead + Unpin,
     {
         let mut buf = Vec::new();
-        reader.read_to_end(&mut buf).await?;
+        reader.read_to_end(&mut buf).await.to_app_err()?;
 
         let im_reader = image::ImageReader::new(Cursor::new(buf));
-        let decoded = im_reader.with_guessed_format()?.decode()?;
+        let decoded = im_reader
+            .with_guessed_format()
+            .to_app_err()?
+            .decode()
+            .to_app_err()?;
 
         Ok(Image { inner: decoded })
     }
@@ -43,7 +48,9 @@ impl Image {
     // TODO: Optimize image endcoding pipeline
     pub async fn to_reader(self, format: ImageFormat) -> Result<ImageReader> {
         let mut buf = Vec::new();
-        self.inner.write_to(Cursor::new(&mut buf), format)?;
+        self.inner
+            .write_to(Cursor::new(&mut buf), format)
+            .to_app_err()?;
 
         let chunks = buf
             .chunks(1024 * 256)

@@ -3,9 +3,9 @@
 
 use std::{ops::Deref, path::Path, sync::Arc};
 
-use crate::{core::result::Result, fs::FsStorageBackend};
+use result::Result;
 
-pub use core::result::StorageBackendError;
+use crate::fs::FsStorageBackend;
 
 pub mod core;
 

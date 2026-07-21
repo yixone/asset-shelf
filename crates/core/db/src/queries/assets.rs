@@ -2,11 +2,11 @@ use models::{
     entities::{Asset, AssetFeatures},
     types::{AssetId, AssetsOrdering},
 };
+use result::{Result, error::ResultExt};
 use sqlx::QueryBuilder;
 
 use crate::{
     core::{
-        Result,
         pagination::Pagination,
         patches::{AssetFeaturesPatch, AssetPatch},
         result::{DeleteResult, InsertResult, UpdateResult},
@@ -48,7 +48,8 @@ where
         .bind(asset.height)
         .bind(asset.accent_color)
         .execute(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(res.into())
     }
 
@@ -70,7 +71,7 @@ where
         qb.push(" WHERE id = ");
         qb.push_bind(id);
 
-        let res = qb.build().execute(self.exec()).await?;
+        let res = qb.build().execute(self.exec()).await.to_app_err()?;
         Ok(res.into())
     }
     async fn delete_asset(&mut self, id: &AssetId) -> Result<DeleteResult> {
@@ -82,7 +83,8 @@ where
         )
         .bind(id)
         .execute(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(res.into())
     }
 
@@ -101,7 +103,11 @@ where
             qb.push_bind(id);
         });
 
-        let assets = qb.build_query_as().fetch_all(self.exec()).await?;
+        let assets = qb
+            .build_query_as()
+            .fetch_all(self.exec())
+            .await
+            .to_app_err()?;
         Ok(assets)
     }
 
@@ -124,7 +130,11 @@ where
         };
         p.apply_sql(&mut qb);
 
-        let assets = qb.build_query_as().fetch_all(self.exec()).await?;
+        let assets = qb
+            .build_query_as()
+            .fetch_all(self.exec())
+            .await
+            .to_app_err()?;
         Ok(assets)
     }
     async fn random_assets(&mut self, limit: u32) -> Result<Vec<Asset>> {
@@ -142,7 +152,8 @@ where
         )
         .bind(limit)
         .fetch_all(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(assets)
     }
     async fn count_assets(&mut self) -> Result<u64> {
@@ -154,7 +165,8 @@ where
             ",
         )
         .fetch_one(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
 
         Ok(count)
     }
@@ -173,7 +185,11 @@ where
         );
         p.apply_sql(&mut qb);
 
-        let assets = qb.build_query_as().fetch_all(self.exec()).await?;
+        let assets = qb
+            .build_query_as()
+            .fetch_all(self.exec())
+            .await
+            .to_app_err()?;
         Ok(assets)
     }
 }
@@ -202,7 +218,8 @@ where
         .bind(af.a_hash)
         .bind(af.aspect_ratio)
         .execute(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(res.into())
     }
 
@@ -227,7 +244,7 @@ where
         qb.push(" WHERE asset_id = ");
         qb.push_bind(id);
 
-        let res = qb.build().execute(self.exec()).await?;
+        let res = qb.build().execute(self.exec()).await.to_app_err()?;
         Ok(res.into())
     }
 
@@ -246,7 +263,11 @@ where
             qb.push_bind(id);
         });
 
-        let assets = qb.build_query_as().fetch_all(self.exec()).await?;
+        let assets = qb
+            .build_query_as()
+            .fetch_all(self.exec())
+            .await
+            .to_app_err()?;
         Ok(assets)
     }
 }

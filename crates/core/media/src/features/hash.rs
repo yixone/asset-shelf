@@ -1,5 +1,6 @@
 use crate::features::dct::apply_dct2;
 
+/// Calculates a perceptual hash for a 32x32 black-and-white matrix
 pub fn p_hash(matrix: [[u8; 32]; 32]) -> i64 {
     // Apply DCT to matrix
     let dct = apply_dct2(&matrix);
@@ -36,6 +37,7 @@ pub fn p_hash(matrix: [[u8; 32]; 32]) -> i64 {
     hash
 }
 
+/// Calculates the aHash for 64 image pixels (8x8)
 pub fn a_hash(pixels: [u8; 64]) -> i64 {
     let avg = pixels.iter().map(|p| *p as u32).sum::<u32>() / pixels.len() as u32;
     let mut hash = 0_i64;

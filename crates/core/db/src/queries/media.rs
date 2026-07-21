@@ -2,13 +2,11 @@ use models::{
     entities::{Media, MediaFile, MediaVariant},
     types::{MediaFileId, MediaId},
 };
+use result::{Result, error::ResultExt};
 use sqlx::QueryBuilder;
 
 use crate::{
-    core::{
-        Result,
-        result::{DeleteResult, InsertResult},
-    },
+    core::result::{DeleteResult, InsertResult},
     ops::{MediaFilesOps, MediaOps},
     sqlite::SqliteUnit,
 };
@@ -31,7 +29,8 @@ where
         .bind(&m.id)
         .bind(m.created_at)
         .execute(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(res.into())
     }
 
@@ -44,7 +43,8 @@ where
         )
         .bind(id)
         .execute(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(res.into())
     }
 
@@ -63,7 +63,11 @@ where
             qb.push_bind(id);
         });
 
-        let media = qb.build_query_as().fetch_all(self.exec()).await?;
+        let media = qb
+            .build_query_as()
+            .fetch_all(self.exec())
+            .await
+            .to_app_err()?;
         Ok(media)
     }
 }
@@ -96,7 +100,7 @@ where
             qb.push_bind(mf.mimetype);
         });
 
-        let res = qb.build().execute(self.exec()).await?;
+        let res = qb.build().execute(self.exec()).await.to_app_err()?;
         Ok(res.into())
     }
 
@@ -109,7 +113,8 @@ where
         )
         .bind(id)
         .execute(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(res.into())
     }
 
@@ -128,7 +133,11 @@ where
             qb.push_bind(id);
         });
 
-        let media_files = qb.build_query_as().fetch_all(self.exec()).await?;
+        let media_files = qb
+            .build_query_as()
+            .fetch_all(self.exec())
+            .await
+            .to_app_err()?;
         Ok(media_files)
     }
 
@@ -147,7 +156,11 @@ where
             qb.push_bind(id);
         });
 
-        let media_files = qb.build_query_as().fetch_all(self.exec()).await?;
+        let media_files = qb
+            .build_query_as()
+            .fetch_all(self.exec())
+            .await
+            .to_app_err()?;
         Ok(media_files)
     }
 
@@ -166,7 +179,8 @@ where
         .bind(media_id)
         .bind(variant)
         .fetch_optional(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(media_file)
     }
 
@@ -180,7 +194,8 @@ where
         )
         .bind(media_id)
         .fetch_one(self.exec())
-        .await?;
+        .await
+        .to_app_err()?;
         Ok(count)
     }
 }

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use result::{Result, create_error, error::ResultExt};
 use tokio::{
     fs::File,
     io::{AsyncRead, AsyncWriteExt, BufWriter},
@@ -8,7 +9,6 @@ use tokio::{
 use crate::core::{
     ops::{AbstractStorageBackend, AbstractStorageWriter},
     path::StoragePath,
-    result::Result,
 };
 
 #[derive(Debug)]
@@ -22,7 +22,7 @@ impl FsStorageBackend {
         P: AsRef<Path>,
     {
         let root = root.as_ref();
-        tokio::fs::create_dir_all(root).await?;
+        tokio::fs::create_dir_all(root).await.to_app_err()?;
         Ok(FsStorageBackend {
             root: root.to_path_buf(),
         })
@@ -30,7 +30,7 @@ impl FsStorageBackend {
 
     async fn create_parents(&self, path: &Path) -> Result<()> {
         if let Some(parent) = path.parent() {
-            tokio::fs::create_dir_all(parent).await?;
+            tokio::fs::create_dir_all(parent).await.to_app_err()?;
         }
         Ok(())
     }
@@ -46,7 +46,7 @@ impl AbstractStorageBackend for FsStorageBackend {
         let path = self.resolve_path(path);
         self.create_parents(&path).await?;
 
-        let file = File::create_new(&path).await?;
+        let file = File::create_new(&path).await.to_app_err()?;
         let writer = BufWriter::with_capacity(32 * 1024, file);
 
         let writer = FsStorageWriter { writer, path };
@@ -55,7 +55,7 @@ impl AbstractStorageBackend for FsStorageBackend {
 
     async fn get_reader(&self, path: &StoragePath) -> Result<Box<dyn AsyncRead + Send + Unpin>> {
         let path = self.resolve_path(path);
-        let file = File::open(path).await?;
+        let file = File::open(path).await.to_app_err()?;
         Ok(Box::new(file))
     }
 
@@ -64,12 +64,12 @@ impl AbstractStorageBackend for FsStorageBackend {
         let to = self.resolve_path(to);
 
         // TODO: Fix TOCTOU
-        if tokio::fs::try_exists(&to).await? {
+        if tokio::fs::try_exists(&to).await.to_app_err()? {
             return Ok(false);
         }
 
         self.create_parents(&to).await?;
-        tokio::fs::rename(&from, &to).await?;
+        tokio::fs::rename(&from, &to).await.to_app_err()?;
 
         Ok(true)
     }
@@ -80,7 +80,7 @@ impl AbstractStorageBackend for FsStorageBackend {
         match tokio::fs::remove_file(path).await {
             Ok(_) => Ok(true),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
-            Err(e) => Err(e.into()),
+            Err(e) => Err(create_error!(source = e)),
         }
     }
 }
@@ -93,18 +93,18 @@ pub struct FsStorageWriter {
 #[async_trait::async_trait]
 impl AbstractStorageWriter for FsStorageWriter {
     async fn write_chunk(&mut self, data: bytes::Bytes) -> Result<()> {
-        self.writer.write_all(&data).await?;
+        self.writer.write_all(&data).await.to_app_err()?;
         Ok(())
     }
 
     async fn finalize(mut self: Box<Self>) -> Result<()> {
-        self.writer.flush().await?;
+        self.writer.flush().await.to_app_err()?;
         Ok(())
     }
 
     async fn abort(mut self: Box<Self>) -> Result<()> {
         drop(self.writer);
-        tokio::fs::remove_file(&self.path).await?;
+        tokio::fs::remove_file(&self.path).await.to_app_err()?;
         Ok(())
     }
 }

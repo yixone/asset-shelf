@@ -3,15 +3,13 @@ use std::time::Instant;
 use flake_id::{FlakeIdGenerator, FlakeIdHex};
 use futures::TryStreamExt;
 use mimetype::MimeType;
+use result::{Result, create_error, error::ResultExt};
 use storage_backend::{StorageBackend, core::path::StoragePath};
 use tokio::io::AsyncRead;
 use tokio_util::io::ReaderStream;
 
 use crate::types::StorageUploadResult;
 
-pub use result::StorageError;
-
-pub mod result;
 pub mod types;
 
 const TEMP_NAMESPACE: &str = "temp";
@@ -42,11 +40,7 @@ impl Storage {
         let _ = self.backend.remove(path).await;
     }
 
-    pub async fn upload<D>(
-        &self,
-        namespace: &str,
-        data: D,
-    ) -> Result<StorageUploadResult, StorageError>
+    pub async fn upload<D>(&self, namespace: &str, data: D) -> Result<StorageUploadResult>
     where
         D: AsyncRead + Unpin,
     {
@@ -62,15 +56,14 @@ impl Storage {
         let mut header_buf = Vec::with_capacity(128);
         let header_cap = header_buf.capacity();
 
-        while let Some(chunk) = data_reader.try_next().await? {
+        while let Some(chunk) = data_reader.try_next().await.to_app_err()? {
             size_bytes += chunk.len();
 
             if size_bytes > self.max_size {
                 blob_writer.abort().await?;
-                return Err(StorageError::FileTooLarge {
-                    received: size_bytes,
-                    max_size: self.max_size,
-                });
+                return Err(create_error!(FileTooLarge {
+                    max_size: self.max_size
+                }));
             }
 
             let header_len = header_buf.len();
@@ -85,7 +78,7 @@ impl Storage {
             Ok(m) => m,
             Err(_) => {
                 blob_writer.abort().await?;
-                return Err(StorageError::UnsuppotedMimetype);
+                return Err(create_error!(UnsupportedFileType));
             }
         };
 
@@ -100,7 +93,7 @@ impl Storage {
 
         if !self.backend.rename(&temp_path, &dest).await? {
             self.remove_safely(&temp_path).await;
-            return Err(StorageError::AlreadyExists);
+            return Err(create_error!(AlreadyExists));
         }
 
         let res = StorageUploadResult {
@@ -113,15 +106,12 @@ impl Storage {
         Ok(res)
     }
 
-    pub async fn get(
-        &self,
-        path: &StoragePath,
-    ) -> Result<Box<dyn AsyncRead + Send + Unpin>, StorageError> {
+    pub async fn get(&self, path: &StoragePath) -> Result<Box<dyn AsyncRead + Send + Unpin>> {
         let reader = self.backend.get_reader(path).await?;
         Ok(reader)
     }
 
-    pub async fn remove(&self, path: &StoragePath) -> Result<(), StorageError> {
+    pub async fn remove(&self, path: &StoragePath) -> Result<()> {
         self.remove_safely(path).await;
         Ok(())
     }

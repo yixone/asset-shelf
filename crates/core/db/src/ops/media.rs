@@ -2,11 +2,9 @@ use models::{
     entities::{Media, MediaFile, MediaVariant},
     types::{MediaFileId, MediaId},
 };
+use result::Result;
 
-use crate::core::{
-    Result,
-    result::{DeleteResult, InsertResult},
-};
+use crate::core::result::{DeleteResult, InsertResult};
 
 pub trait MediaOps {
     /// Inserts a [`Media`] into the database

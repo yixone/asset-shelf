@@ -1,6 +1,7 @@
+use result::Result;
 use tokio::io::AsyncRead;
 
-use crate::core::{path::StoragePath, result::Result};
+use crate::core::path::StoragePath;
 
 #[async_trait::async_trait]
 pub trait AbstractStorageBackend {
