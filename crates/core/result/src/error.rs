@@ -63,12 +63,17 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl<E> From<E> for Error
+pub trait ResultExt<T> {
+    #[track_caller]
+    fn to_app_error(self) -> Result<T, Error>;
+}
+
+impl<T, E> ResultExt<T> for Result<T, E>
 where
     E: std::error::Error + Send + Sync + 'static,
 {
     #[track_caller]
-    fn from(e: E) -> Self {
-        Error::internal(e)
+    fn to_app_error(self) -> Result<T, Error> {
+        self.map_err(Error::internal)
     }
 }
