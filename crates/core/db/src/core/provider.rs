@@ -1,20 +1,18 @@
+use result::Result;
+
 pub trait DatabaseProvider {
     type Transaction<'a>: TransactionUnit;
     type Connection: ConnectionUnit;
 }
 
 pub trait DatabaseConnector: DatabaseProvider {
-    type Error;
-
-    async fn begin(&self) -> Result<Self::Transaction<'_>, Self::Error>;
-    async fn acquire(&self) -> Result<Self::Connection, Self::Error>;
+    async fn begin(&self) -> Result<Self::Transaction<'_>>;
+    async fn acquire(&self) -> Result<Self::Connection>;
 }
 
 pub trait TransactionUnit {
-    type Error;
-
-    async fn commit(self) -> Result<(), Self::Error>;
-    async fn rollback(self) -> Result<(), Self::Error>;
+    async fn commit(self) -> Result<()>;
+    async fn rollback(self) -> Result<()>;
 }
 
 pub trait ConnectionUnit {

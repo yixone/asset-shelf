@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use result::{Result, error::ResultExt};
 use sqlx::{
     Sqlite, SqliteConnection, SqlitePool, SqliteTransaction,
     migrate::Migrator,
@@ -23,10 +24,10 @@ pub struct SqliteDb {
 }
 
 impl SqliteDb {
-    pub async fn open(p: impl AsRef<Path>) -> sqlx::Result<Self> {
+    pub async fn open(p: impl AsRef<Path>) -> Result<Self> {
         let path = p.as_ref();
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+            std::fs::create_dir_all(parent).to_app_err()?;
         }
 
         let options = SqliteConnectOptions::new()
@@ -36,12 +37,15 @@ impl SqliteDb {
             .journal_mode(SqliteJournalMode::Wal)
             .foreign_keys(true);
 
-        let pool = SqlitePoolOptions::new().connect_with(options).await?;
+        let pool = SqlitePoolOptions::new()
+            .connect_with(options)
+            .await
+            .to_app_err()?;
         Ok(SqliteDb { pool })
     }
 
-    pub async fn migrate(&self) -> sqlx::Result<()> {
-        SQLITE_MIGRATOR.run(&self.pool).await?;
+    pub async fn migrate(&self) -> Result<()> {
+        SQLITE_MIGRATOR.run(&self.pool).await.to_app_err()?;
         Ok(())
     }
 }
@@ -60,14 +64,12 @@ impl DatabaseProvider for SqliteDb {
 }
 
 impl DatabaseConnector for SqliteDb {
-    type Error = sqlx::Error;
-
-    async fn acquire(&self) -> Result<Self::Connection, Self::Error> {
-        let conn = self.pool.acquire().await?;
+    async fn acquire(&self) -> Result<Self::Connection> {
+        let conn = self.pool.acquire().await.to_app_err()?;
         Ok(SqliteConn { conn })
     }
-    async fn begin(&self) -> Result<Self::Transaction<'_>, Self::Error> {
-        let tx = self.pool.begin().await?;
+    async fn begin(&self) -> Result<Self::Transaction<'_>> {
+        let tx = self.pool.begin().await.to_app_err()?;
         Ok(SqliteTx { tx })
     }
 }
@@ -93,13 +95,11 @@ impl ConnectionUnit for SqliteConn {
 }
 
 impl TransactionUnit for SqliteTx<'_> {
-    type Error = sqlx::Error;
-
-    async fn commit(self) -> Result<(), Self::Error> {
-        self.tx.commit().await
+    async fn commit(self) -> Result<()> {
+        self.tx.commit().await.to_app_err()
     }
-    async fn rollback(self) -> Result<(), Self::Error> {
-        self.tx.rollback().await
+    async fn rollback(self) -> Result<()> {
+        self.tx.rollback().await.to_app_err()
     }
 }
 
