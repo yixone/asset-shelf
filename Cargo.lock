@@ -1753,6 +1753,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "result"
+version = "0.1.0"
+
+[[package]]
 name = "rgb"
 version = "0.8.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"

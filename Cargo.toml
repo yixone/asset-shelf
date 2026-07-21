@@ -5,6 +5,7 @@ members = [
     "crates/core/db",
     "crates/core/media",
     "crates/core/models",
+    "crates/core/result",
     "crates/core/storage",
     "crates/core/storage_backend",
 
