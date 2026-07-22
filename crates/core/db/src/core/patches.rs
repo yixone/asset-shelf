@@ -100,14 +100,9 @@ macro_rules! patch_model {
 patch_model! {
     AssetPatch {
         state: AssetState,
-
         title: Option<String>,
         caption: Option<String>,
         source_url: Option<String>,
-
-        width: Option<u32>,
-        height: Option<u32>,
-        accent_color: Option<Color>
     }
 }
 
@@ -115,6 +110,8 @@ patch_model! {
     AssetFeaturesPatch {
         p_hash: Option<i64>,
         a_hash: Option<i64>,
-        aspect_ratio: Option<f32>
+        width: Option<u32>,
+        height: Option<u32>,
+        accent_color: Option<Color>
     }
 }

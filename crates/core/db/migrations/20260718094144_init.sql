@@ -10,11 +10,6 @@ CREATE TABLE assets (
     caption         VARCHAR(512),
     source_url      VARCHAR(512),
 
-    width           INTEGER,
-    height          INTEGER,
-
-    accent_color    INTEGER,
-
     PRIMARY KEY (id),
     FOREIGN KEY (media_id) REFERENCES media(id)
 );
@@ -27,7 +22,10 @@ CREATE TABLE asset_features (
     p_hash          BIGINT,
     a_hash          BIGINT,
 
-    aspect_ratio    REAL,
+    width           INTEGER,
+    height          INTEGER,
+
+    accent_color    INTEGER,
 
     PRIMARY KEY (asset_id),
     FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE

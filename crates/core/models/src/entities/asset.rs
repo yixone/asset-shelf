@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::types::{AssetId, Color, MediaId};
+use crate::types::{AssetId, MediaId};
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
@@ -16,10 +16,6 @@ pub struct Asset {
     pub title: Option<String>,
     pub caption: Option<String>,
     pub source_url: Option<String>,
-
-    pub width: Option<u32>,
-    pub height: Option<u32>,
-    pub accent_color: Option<Color>,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]

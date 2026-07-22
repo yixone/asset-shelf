@@ -25,13 +25,11 @@ where
             INSERT INTO assets (
                 id, state, media_id,
                 created_at, deleted_at,
-                title, caption, source_url,
-                width, height, accent_color
+                title, caption, source_url
             )
             VALUES (
                 ?, ?, ?,
                 ?, ?,
-                ?, ?, ?,
                 ?, ?, ?
             )
             ",
@@ -44,9 +42,6 @@ where
         .bind(&asset.title)
         .bind(&asset.caption)
         .bind(&asset.source_url)
-        .bind(asset.width)
-        .bind(asset.height)
-        .bind(asset.accent_color)
         .execute(self.exec())
         .await
         .to_app_err()?;
@@ -202,21 +197,21 @@ where
         let res = sqlx::query(
             "
             INSERT INTO asset_features (
-                asset_id,
-                p_hash, a_hash,
-                aspect_ratio
+                asset_id, p_hash, a_hash,
+                width, height, accent_color
             )
             VALUES (
-                ?,
-                ?, ?,
-                ?
+                ?, ?, ?,
+                ?, ?, ?
             )
             ",
         )
         .bind(af.asset_id)
         .bind(af.p_hash)
         .bind(af.a_hash)
-        .bind(af.aspect_ratio)
+        .bind(af.width)
+        .bind(af.height)
+        .bind(af.accent_color)
         .execute(self.exec())
         .await
         .to_app_err()?;
