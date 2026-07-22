@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpServer, dev::ServerHandle, web};
 use db::sqlite::SqliteDb;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
@@ -11,8 +11,13 @@ use server::{
 };
 use storage::Storage;
 use storage_backend::StorageBackend;
+use tokio::signal;
 use tokio_util::sync::CancellationToken;
-use workers::{di::WorkerContext, supervisor::WorkersSupervisor, units::cleanup::CleanupWorker};
+use workers::{
+    di::WorkerContext,
+    supervisor::{SupervisorHandle, WorkersSupervisor},
+    units::cleanup::CleanupWorker,
+};
 
 const HOST_ADDR: &str = "0.0.0.0:8080";
 
@@ -36,21 +41,51 @@ async fn main() -> Result<()> {
     let cancel = CancellationToken::new();
     let (supervisor, events) = init_workers(&ctx);
 
-    supervisor.run(cancel.clone());
-
-    let ctx = Arc::new(ctx);
+    let workers_handle = supervisor.run(cancel.clone());
 
     tracing::info!("Server started on http://{HOST_ADDR}!");
     tracing::info!("API documentation is available at http://{HOST_ADDR}/docs/");
 
-    HttpServer::new(move || App::new().configure(routes::cfg))
-        .bind(HOST_ADDR)
-        .to_app_err()?
-        .run()
-        .await
-        .to_app_err()?;
+    let server = configure_server(ctx, events)?;
+    let handle = server.handle();
 
-    Ok(())
+    spawn_shutdown_handler(cancel, handle, workers_handle);
+
+    server.await.to_app_err()
+}
+
+fn configure_server(ctx: DataCtx, events: EventsContext) -> Result<actix_web::dev::Server> {
+    let ctx = web::Data::new(ctx);
+    let events = web::Data::new(events);
+
+    Ok(HttpServer::new(move || {
+        App::new()
+            .app_data(ctx.clone())
+            .app_data(events.clone())
+            .configure(routes::cfg)
+    })
+    .bind(HOST_ADDR)
+    .to_app_err()?
+    .run())
+}
+
+fn spawn_shutdown_handler(
+    cancel: CancellationToken,
+    server_handle: ServerHandle,
+    workers_handle: SupervisorHandle,
+) {
+    tokio::spawn(async move {
+        match signal::ctrl_c().await {
+            Ok(_) => tracing::info!("Starting graceful shutdown..."),
+            Err(e) => {
+                tracing::error!(err = ?e, "Failed to wait for ^C");
+                return;
+            }
+        }
+        server_handle.stop(true).await;
+        cancel.cancel();
+        workers_handle.stop().await;
+    });
 }
 
 fn print_header() {

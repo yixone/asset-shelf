@@ -1,3 +1,4 @@
+use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 use crate::traits::AbstractWorker;
@@ -22,10 +23,11 @@ impl WorkersSupervisor {
         self
     }
 
-    pub fn run(self, cancel: CancellationToken) {
+    pub fn run(self, cancel: CancellationToken) -> SupervisorHandle {
+        let mut handles = Vec::with_capacity(self.workers.len());
         for w in self.workers {
             let cancel = cancel.clone();
-            tokio::spawn(async move {
+            let handle = tokio::spawn(async move {
                 let mut worker = w;
 
                 let cfg = worker.cfg();
@@ -49,12 +51,29 @@ impl WorkersSupervisor {
 
                 tracing::info!("{name}: Runtime terminated!");
             });
+            handles.push(handle);
         }
+        SupervisorHandle { handles }
     }
 }
 
 impl Default for WorkersSupervisor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+pub struct SupervisorHandle {
+    handles: Vec<JoinHandle<()>>,
+}
+
+impl SupervisorHandle {
+    pub async fn stop(self) {
+        for h in self.handles {
+            if let Err(e) = h.await {
+                // TODO: ADD MESSAGE!
+                tracing::error!(err = ?e);
+            }
+        }
     }
 }
