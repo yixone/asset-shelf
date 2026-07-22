@@ -51,7 +51,12 @@ pub enum ErrorKind {
     /// File type not supported
     UnsupportedFileType,
     /// The received file's size exceeds the maximum limit
-    FileTooLarge { max_size: usize },
+    FileTooLarge { received: usize, max_size: usize },
+
+    /// Payload string is too long
+    StringTooLong { max_size: usize },
+    /// The received payload cannot be read correctly
+    MalformedPayload,
 
     /// The entity is marked as `deleted` and is `read-only` until restored
     EntityDeleted,

@@ -18,7 +18,10 @@ impl ResponseError for Error {
     fn status_code(&self) -> StatusCode {
         match self.kind() {
             ErrorKind::UnsupportedFileType => StatusCode::BAD_REQUEST,
-            ErrorKind::FileTooLarge { .. } => StatusCode::PAYLOAD_TOO_LARGE,
+            ErrorKind::FileTooLarge { .. } | ErrorKind::StringTooLong { .. } => {
+                StatusCode::PAYLOAD_TOO_LARGE
+            }
+            ErrorKind::MalformedPayload => StatusCode::BAD_REQUEST,
             ErrorKind::EntityDeleted => StatusCode::FORBIDDEN,
             ErrorKind::NotFound => StatusCode::NOT_FOUND,
             ErrorKind::AlreadyExists => StatusCode::CONFLICT,

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
 use db::sqlite::SqliteDb;
 use flake_id::FlakeIdGenerator;
@@ -60,6 +61,7 @@ fn configure_server(ctx: DataCtx, events: EventsContext) -> Result<actix_web::de
 
     Ok(HttpServer::new(move || {
         App::new()
+            .wrap(Cors::permissive())
             .app_data(ctx.clone())
             .app_data(events.clone())
             .configure(routes::cfg)

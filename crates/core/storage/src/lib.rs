@@ -62,6 +62,7 @@ impl Storage {
             if size_bytes > self.max_size {
                 blob_writer.abort().await?;
                 return Err(create_error!(FileTooLarge {
+                    received: size_bytes,
                     max_size: self.max_size
                 }));
             }

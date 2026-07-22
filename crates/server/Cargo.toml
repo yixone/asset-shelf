@@ -17,11 +17,12 @@ storage_backend = { workspace = true }
 workers = { workspace = true }
 
 # External
+actix-cors = { workspace = true }
+actix-multipart = { workspace = true }
 actix-web = { workspace = true }
-
+futures = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-util = { workspace = true, features = ["io"] }
-
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
