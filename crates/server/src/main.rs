@@ -1,16 +1,20 @@
 use std::sync::Arc;
 
+use actix_web::{App, HttpServer};
 use db::sqlite::SqliteDb;
 use flake_id::FlakeIdGenerator;
-use result::Result;
+use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
     di::{DataCtx, EventsContext},
+    routes,
 };
 use storage::Storage;
 use storage_backend::StorageBackend;
 use tokio_util::sync::CancellationToken;
 use workers::{di::WorkerContext, supervisor::WorkersSupervisor, units::cleanup::CleanupWorker};
+
+const HOST_ADDR: &str = "0.0.0.0:8080";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -33,6 +37,18 @@ async fn main() -> Result<()> {
     let (supervisor, events) = init_workers(&ctx);
 
     supervisor.run(cancel.clone());
+
+    let ctx = Arc::new(ctx);
+
+    tracing::info!("Server started on http://{HOST_ADDR}!");
+    tracing::info!("API documentation is available at http://{HOST_ADDR}/docs/");
+
+    HttpServer::new(move || App::new().configure(routes::cfg))
+        .bind(HOST_ADDR)
+        .to_app_err()?
+        .run()
+        .await
+        .to_app_err()?;
 
     Ok(())
 }
