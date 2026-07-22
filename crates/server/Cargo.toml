@@ -17,6 +17,8 @@ storage_backend = { workspace = true }
 workers = { workspace = true }
 
 # External
+actix-web = { workspace = true }
+
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tokio-util = { workspace = true, features = ["io"] }

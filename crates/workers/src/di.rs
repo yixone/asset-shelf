@@ -5,6 +5,6 @@ use storage::Storage;
 
 #[derive(Clone)]
 pub struct WorkerContext {
-    pub db: SqliteDb,
+    pub db: Arc<SqliteDb>,
     pub storage: Arc<Storage>,
 }
