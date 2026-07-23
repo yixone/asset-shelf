@@ -3,11 +3,12 @@ use actix_web::{HttpResponse, post, web};
 use chrono::Utc;
 use db::{
     core::provider::{DatabaseConnector, TransactionUnit},
-    ops::{AssetOps, MediaFilesOps, MediaOps},
+    ops::{AssetFeaturesOps, AssetOps, MediaFilesOps, MediaOps},
 };
 use futures::TryStreamExt;
-use models::entities::{Asset, AssetState, Media, MediaFile, MediaVariant};
+use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
+use storage::types::TempStorageFile;
 
 use crate::{
     di::DataCtx,
@@ -35,39 +36,12 @@ pub async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> Ap
 
         match field_name {
             "file" => {
-                if upload.media.is_some() {
+                if upload.temp_media.is_some() {
                     continue;
                 }
-
-                let now = Utc::now();
-                let media = Media {
-                    id: ctx.flake.generate_as(),
-                    created_at: now,
-                };
-
-                // TODO!: Fix storage to avoid accumulating junk caused by errors
-                // E.g use `TempStorageFile` as temp file identifier
-                let put_result = ctx
-                    .storage
-                    .upload(DEFAULT_VARIANT.as_str(), field.into_async_reader())
-                    .await?;
-
-                let media_file = MediaFile {
-                    id: ctx.flake.generate_as(),
-                    media_id: media.id.clone(),
-                    variant: DEFAULT_VARIANT,
-                    storage_path: put_result.path.to_string(),
-                    created_at: now,
-                    size_bytes: put_result.size_bytes as i64,
-                    mimetype: put_result.mimetype,
-                };
-
-                let mut tx = ctx.db.begin().await?;
-                tx.insert_media(&media).await?;
-                tx.insert_media_file(&media_file).await?;
-                tx.commit().await?;
-
-                upload.media = Some((media, media_file));
+                let stream = field.into_async_reader();
+                let temp_stored = ctx.storage.upload(stream).await?;
+                upload.temp_media = Some(temp_stored);
             }
             "title" => upload.title = Some(field.read_to_string().await?),
             "caption" => upload.caption = Some(field.read_to_string().await?),
@@ -76,33 +50,63 @@ pub async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> Ap
         }
     }
 
-    let Some((media, media_file)) = upload.media else {
+    let Some(temp) = upload.temp_media else {
         return Err(create_error!(MalformedPayload));
     };
 
+    let now = Utc::now();
+    let commit_path = temp.commit_path(DEFAULT_VARIANT.as_str());
+
+    let media = Media {
+        id: ctx.flake.generate_as(),
+        created_at: now,
+    };
+    let media_file = MediaFile {
+        id: ctx.flake.generate_as(),
+        media_id: media.id.clone(),
+        variant: DEFAULT_VARIANT,
+        storage_path: commit_path.to_string(),
+        created_at: now,
+        size_bytes: temp.file.size_bytes as i64,
+        mimetype: temp.file.mimetype,
+    };
     let asset = Asset {
         id: ctx.flake.generate_as(),
         state: AssetState::Pending,
         media_id: media.id.clone(),
-        created_at: Utc::now(),
+        created_at: now,
         deleted_at: None,
         title: upload.title,
         caption: upload.caption,
         source_url: upload.source_url,
     };
-    {
-        let mut conn = ctx.db.acquire().await?;
-        conn.insert_asset(&asset).await?;
-    }
+    let asset_features = AssetFeatures {
+        asset_id: asset.id,
+        p_hash: None,
+        a_hash: None,
+        width: None,
+        height: None,
+        accent_color: None,
+    };
 
-    let res = AssetDtoV1::from((asset, (media, vec![media_file])));
+    let mut tx = ctx.db.begin().await?;
+
+    tx.insert_media(&media).await?;
+    tx.insert_media_file(&media_file).await?;
+    tx.insert_asset(&asset).await?;
+    tx.insert_asset_features(&asset_features).await?;
+
+    ctx.storage.commit(temp, commit_path).await?;
+    tx.commit().await?;
+
+    let res = AssetDtoV1::from((asset, asset_features, (media, vec![media_file])));
     Ok(HttpResponse::Created().json(res))
 }
 
 /// Asset uploading context
 #[derive(Default)]
 struct UploadingContext {
-    media: Option<(Media, MediaFile)>,
+    temp_media: Option<TempStorageFile>,
 
     title: Option<String>,
     caption: Option<String>,

@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use models::{
-    entities::{Asset, AssetState},
+    entities::{Asset, AssetFeatures, AssetState},
     types::AssetId,
 };
 use serde::Serialize;
@@ -20,13 +20,18 @@ pub struct AssetDtoV1 {
     title: Option<String>,
     caption: Option<String>,
     source_url: Option<String>,
+
+    width: Option<u32>,
+    height: Option<u32>,
+
+    color: Option<String>,
 }
 
-impl<M> From<(Asset, M)> for AssetDtoV1
+impl<M> From<(Asset, AssetFeatures, M)> for AssetDtoV1
 where
     M: Into<MediaGroupDtoV1>,
 {
-    fn from((asset, media): (Asset, M)) -> Self {
+    fn from((asset, asset_features, media): (Asset, AssetFeatures, M)) -> Self {
         AssetDtoV1 {
             id: asset.id,
             state: asset.state,
@@ -36,6 +41,9 @@ where
             title: asset.title,
             caption: asset.caption,
             source_url: asset.source_url,
+            width: asset_features.width,
+            height: asset_features.height,
+            color: asset_features.accent_color.map(|c| c.hex()),
         }
     }
 }
