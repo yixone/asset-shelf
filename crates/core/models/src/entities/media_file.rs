@@ -18,7 +18,7 @@ pub struct MediaFile {
     pub mimetype: MimeType,
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
 #[cfg_attr(
     feature = "serde",
@@ -26,6 +26,7 @@ pub struct MediaFile {
     serde(rename_all = "lowercase")
 )]
 pub enum MediaVariant {
+    #[default]
     Original,
     Thumbnail,
 }
