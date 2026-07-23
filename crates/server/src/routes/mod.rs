@@ -1,8 +1,6 @@
 use actix_web::{HttpResponse, web};
 use result::Result;
 
-use crate::SERVER_VERSION;
-
 pub mod v1;
 
 type ApiResult = Result<HttpResponse>;

@@ -11,7 +11,7 @@ pub struct Asset {
     pub media_id: MediaId,
 
     pub created_at: DateTime<Utc>,
-    pub deleted_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
 
     pub title: Option<String>,
     pub caption: Option<String>,

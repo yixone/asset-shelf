@@ -9,7 +9,7 @@ db = { workspace = true }
 flake_id = { workspace = true }
 media = { workspace = true }
 mimetype = { workspace = true }
-models = { workspace = true }
+models = { workspace = true, features = ["serde"] }
 result = { workspace = true, features = ["actix"] }
 storage = { workspace = true }
 storage_backend = { workspace = true }
@@ -20,6 +20,7 @@ workers = { workspace = true }
 actix-cors = { workspace = true }
 actix-multipart = { workspace = true }
 actix-web = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
 futures = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
