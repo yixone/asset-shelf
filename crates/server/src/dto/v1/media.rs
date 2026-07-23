@@ -1,8 +1,7 @@
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, Utc};
 use mimetype::MimeType;
-use models::entities::{Media, MediaFile, MediaVariant};
+use models::entities::{MediaFile, MediaVariant};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]

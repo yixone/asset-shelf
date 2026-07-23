@@ -19,6 +19,16 @@ use crate::{
 
 const DEFAULT_VARIANT: MediaVariant = MediaVariant::Original;
 
+/// Asset uploading context
+#[derive(Default)]
+struct UploadingContext {
+    temp_media: Option<TempStorageFile>,
+
+    title: Option<String>,
+    caption: Option<String>,
+    source_url: Option<String>,
+}
+
 /// Uploads an asset with a media file
 #[post("/upload")]
 async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
@@ -56,13 +66,12 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
 
     let now = Utc::now();
     let commit_path = temp.commit_path(DEFAULT_VARIANT.as_str());
-
     let media = Media {
-        id: ctx.flake.generate_as(),
+        id: ctx.flake.generate_id_as(),
         created_at: now,
     };
     let media_file = MediaFile {
-        id: ctx.flake.generate_as(),
+        id: ctx.flake.generate_id_as(),
         media_id: media.id.clone(),
         variant: DEFAULT_VARIANT,
         storage_path: commit_path.to_string(),
@@ -71,7 +80,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         mimetype: temp.file.mimetype,
     };
     let asset = Asset {
-        id: ctx.flake.generate_as(),
+        id: ctx.flake.generate_id_as(),
         state: AssetState::Pending,
         media_id: media.id.clone(),
         created_at: now,
@@ -97,18 +106,9 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
     tx.insert_asset_features(&asset_features).await?;
 
     ctx.storage.commit(temp, commit_path).await?;
+
     tx.commit().await?;
 
     let res = AssetDtoV1::from((asset, asset_features, vec![media_file]));
     Ok(HttpResponse::Created().json(res))
-}
-
-/// Asset uploading context
-#[derive(Default)]
-struct UploadingContext {
-    temp_media: Option<TempStorageFile>,
-
-    title: Option<String>,
-    caption: Option<String>,
-    source_url: Option<String>,
 }

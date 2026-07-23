@@ -76,7 +76,7 @@ impl FlakeIdGenerator {
         }
     }
 
-    pub fn generate(&self) -> FlakeId {
+    pub fn generate_id(&self) -> FlakeId {
         let (ts, idx) = {
             let mut state = self
                 .state
@@ -97,11 +97,11 @@ impl FlakeIdGenerator {
         FlakeId((ts << 20 | ((self.node_id as i64) << 12) | (idx as i64)) & (i64::MAX - 1))
     }
 
-    pub fn generate_as<T>(&self) -> T
+    pub fn generate_id_as<T>(&self) -> T
     where
         T: From<FlakeId>,
     {
-        self.generate().into()
+        self.generate_id().into()
     }
 }
 
