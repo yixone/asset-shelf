@@ -14,7 +14,7 @@ pub trait AbstractStorageBackend {
 }
 
 #[async_trait::async_trait]
-pub trait AbstractStorageWriter {
+pub trait AbstractStorageWriter: Send {
     async fn write_chunk(&mut self, data: bytes::Bytes) -> Result<()>;
 
     async fn finalize(self: Box<Self>) -> Result<()>;

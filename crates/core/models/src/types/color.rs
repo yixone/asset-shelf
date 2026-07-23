@@ -21,6 +21,12 @@ impl Color {
     }
 }
 
+impl From<(u8, u8, u8)> for Color {
+    fn from((r, g, b): (u8, u8, u8)) -> Self {
+        Color::from_rgb(r, g, b)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::types::Color;

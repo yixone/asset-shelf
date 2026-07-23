@@ -46,7 +46,7 @@ impl Image {
     }
 
     // TODO: Optimize image endcoding pipeline
-    pub async fn to_reader(self, format: ImageFormat) -> Result<ImageReader> {
+    pub fn to_reader(self, format: ImageFormat) -> Result<ImageReader> {
         let mut buf = Vec::new();
         self.inner
             .write_to(Cursor::new(&mut buf), format)
