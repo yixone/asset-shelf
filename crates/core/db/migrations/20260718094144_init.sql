@@ -1,7 +1,9 @@
 CREATE TABLE assets (
     id              BIGINT          NOT NULL,
     state           VARCHAR(32)     NOT NULL,
+
     media_id        VARCHAR(32)     NOT NULL,
+    media_type      VARCHAR(16)     NOT NULL,
     
     created_at      TIMESTAMPTZ     NOT NULL,
     deleted_at      TIMESTAMPTZ,

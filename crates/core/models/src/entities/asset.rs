@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use mimetype::MimeKind;
 
 use crate::types::{AssetId, MediaId};
 
@@ -9,6 +10,7 @@ pub struct Asset {
     pub state: AssetState,
 
     pub media_id: MediaId,
+    pub media_type: MimeKind,
 
     pub created_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,

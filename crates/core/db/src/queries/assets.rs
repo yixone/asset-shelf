@@ -23,12 +23,14 @@ where
         let res = sqlx::query(
             "
             INSERT INTO assets (
-                id, state, media_id,
+                id, state, 
+                media_id, media_type,
                 created_at, deleted_at,
                 title, caption, source_url
             )
             VALUES (
-                ?, ?, ?,
+                ?, ?, 
+                ?, ?,
                 ?, ?,
                 ?, ?, ?
             )
@@ -37,6 +39,7 @@ where
         .bind(asset.id)
         .bind(asset.state)
         .bind(&asset.media_id)
+        .bind(asset.media_type)
         .bind(asset.created_at)
         .bind(asset.deleted_at)
         .bind(&asset.title)
