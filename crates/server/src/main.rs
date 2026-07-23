@@ -37,7 +37,8 @@ async fn main() -> Result<()> {
         8 * 1024 * 1024 * 1024,
     ));
 
-    let ctx = DataCtx { db, storage };
+    let flake = Arc::new(FlakeIdGenerator::new(2));
+    let ctx = DataCtx { db, storage, flake };
 
     let cancel = CancellationToken::new();
     let (supervisor, events) = init_workers(&ctx);

@@ -20,17 +20,27 @@ pub struct MediaFile {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "lowercase")
+)]
 pub enum MediaVariant {
     Original,
     Thumbnail,
 }
 
-impl std::fmt::Display for MediaVariant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
+impl MediaVariant {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
             MediaVariant::Original => "original",
             MediaVariant::Thumbnail => "thumbnail",
-        })
+        }
+    }
+}
+
+impl std::fmt::Display for MediaVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
     }
 }

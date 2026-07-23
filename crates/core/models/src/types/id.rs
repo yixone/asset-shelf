@@ -41,3 +41,15 @@ id_type!(
     #[derive(Copy)]
     CollectionItemId as FlakeId
 );
+
+impl From<FlakeId> for MediaId {
+    fn from(id: FlakeId) -> Self {
+        MediaId(id.into())
+    }
+}
+
+impl From<FlakeId> for MediaFileId {
+    fn from(id: FlakeId) -> Self {
+        MediaFileId(id.into())
+    }
+}

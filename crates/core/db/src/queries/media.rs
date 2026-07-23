@@ -87,10 +87,10 @@ where
                 id, storage_path, media_id,
                 variant, created_at, size_bytes, mimetype
             )
-            VALUES 
             ",
         );
-        qb.push_tuples(mf, |mut qb, mf| {
+
+        qb.push_values(mf, |mut qb, mf| {
             qb.push_bind(&mf.id);
             qb.push_bind(&mf.storage_path);
             qb.push_bind(&mf.media_id);
