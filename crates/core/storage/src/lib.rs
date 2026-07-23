@@ -4,13 +4,15 @@ use flake_id::{FlakeIdGenerator, FlakeIdHex};
 use futures::TryStreamExt;
 use mimetype::MimeType;
 use result::{Result, create_error, error::ResultExt};
-use storage_backend::{StorageBackend, core::path::StoragePath};
+use storage_backend::StorageBackend;
 use tokio::io::AsyncRead;
 use tokio_util::io::ReaderStream;
 
 use crate::types::{StorageUploadResult, TempStorageFile, UploadedFile};
 
 pub mod types;
+
+pub use storage_backend::core::path::StoragePath;
 
 const TEMP_NAMESPACE: &str = "temp";
 

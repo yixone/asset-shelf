@@ -27,6 +27,8 @@ pub trait AssetOps {
     async fn random_assets(&mut self, limit: u32) -> Result<Vec<Asset>>;
     async fn count_assets(&mut self) -> Result<u64>;
 
+    async fn get_unprocessed_assets(&mut self, limit: u32) -> Result<Vec<Asset>>;
+
     async fn get_deleted_assets(&mut self, p: Pagination) -> Result<Vec<Asset>>;
 }
 

@@ -1,5 +1,5 @@
 use models::{
-    entities::{Asset, AssetFeatures},
+    entities::{Asset, AssetFeatures, AssetState},
     types::{AssetId, AssetsOrdering},
 };
 use result::{Result, error::ResultExt};
@@ -23,12 +23,14 @@ where
         let res = sqlx::query(
             "
             INSERT INTO assets (
-                id, state, media_id,
+                id, state, 
+                media_id, media_type,
                 created_at, deleted_at,
                 title, caption, source_url
             )
             VALUES (
-                ?, ?, ?,
+                ?, ?, 
+                ?, ?,
                 ?, ?,
                 ?, ?, ?
             )
@@ -37,6 +39,7 @@ where
         .bind(asset.id)
         .bind(asset.state)
         .bind(&asset.media_id)
+        .bind(asset.media_type)
         .bind(asset.created_at)
         .bind(asset.deleted_at)
         .bind(&asset.title)
@@ -164,6 +167,33 @@ where
         .to_app_err()?;
 
         Ok(count)
+    }
+    async fn get_unprocessed_assets(&mut self, limit: u32) -> Result<Vec<Asset>> {
+        let unprocessed = sqlx::query_as(
+            "
+            SELECT a.* 
+            FROM assets AS a
+            INNER JOIN asset_features 
+                AS af
+                ON af.asset_id = a.id
+            WHERE 
+                a.state = ? OR
+                af.accent_color IS null OR
+                af.a_hash       IS null OR
+                af.p_hash       IS null OR
+                af.height       IS null OR
+                af.width        IS null
+            ORDER BY a.created_at ASC
+            LIMIT ?
+            ",
+        )
+        .bind(AssetState::Pending)
+        .bind(limit)
+        .fetch_all(self.exec())
+        .await
+        .to_app_err()?;
+
+        Ok(unprocessed)
     }
 
     async fn get_deleted_assets(&mut self, p: Pagination) -> Result<Vec<Asset>> {
