@@ -17,7 +17,7 @@ use tokio_util::sync::CancellationToken;
 use workers::{
     di::WorkerContext,
     supervisor::{SupervisorHandle, WorkersSupervisor},
-    units::cleanup::CleanupWorker,
+    units::{cleanup::CleanupWorker, media::MediaWorker},
 };
 
 const HOST_ADDR: &str = "0.0.0.0:8080";
@@ -113,14 +113,19 @@ fn init_workers(ctx: &DataCtx) -> (WorkersSupervisor, EventsContext) {
     let workers_context = WorkerContext {
         db: ctx.db.clone(),
         storage: ctx.storage.clone(),
+        flake: ctx.flake.clone(),
     };
 
     let (cleanup_events, cleanup_worker) = CleanupWorker::new(workers_context.clone());
+    let (media_events, media_worker) = MediaWorker::new(workers_context.clone());
 
     (
-        WorkersSupervisor::new().with_worker(cleanup_worker),
+        WorkersSupervisor::new()
+            .with_worker(cleanup_worker)
+            .with_worker(media_worker),
         EventsContext {
             cleanup: cleanup_events,
+            media: media_events,
         },
     )
 }

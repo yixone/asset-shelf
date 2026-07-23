@@ -11,7 +11,6 @@ use db::{
     },
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
 };
-use flake_id::FlakeIdHex;
 use media::image::{Image, ImageFormat};
 use models::{
     entities::{Asset, AssetState, MediaFile, MediaVariant},
@@ -199,17 +198,18 @@ impl MediaWorkerService {
 
         // Generates and saves a thumbnail
         let thumbnail = img.thumbnail(400).to_reader(ImageFormat::WebP)?;
-        let namespace = MediaVariant::Thumbnail.to_string();
-        let put_res = self.ctx.storage.upload(&namespace, thumbnail).await?;
+
+        let thumbnail_file = self.ctx.storage.upload(thumbnail).await?;
+        let thumbnail_path = thumbnail_file.commit_path(MediaVariant::Thumbnail.as_str());
 
         let thumbnail_media_file = MediaFile {
-            id: self.ctx.flake.generate_as::<FlakeIdHex>().into(),
+            id: self.ctx.flake.generate_id_as(),
             media_id: asset.media_id.clone(),
             variant: MediaVariant::Thumbnail,
-            storage_path: put_res.path.to_string(),
+            storage_path: thumbnail_path.to_string(),
             created_at: Utc::now(),
-            size_bytes: put_res.size_bytes as i64,
-            mimetype: put_res.mimetype,
+            size_bytes: thumbnail_file.file.size_bytes as i64,
+            mimetype: thumbnail_file.file.mimetype,
         };
 
         // Retrieves the basic image parameters and features
@@ -233,6 +233,11 @@ impl MediaWorkerService {
 
         tx.insert_media_file(&thumbnail_media_file).await?;
         tx.update_asset_features(&asset.id, patch).await?;
+
+        self.ctx
+            .storage
+            .commit(thumbnail_file, thumbnail_path)
+            .await?;
 
         tx.commit().await?;
 

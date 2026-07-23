@@ -9,9 +9,10 @@ use futures::TryStreamExt;
 use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
 use storage::types::TempStorageFile;
+use workers::units::media::MediaWorkerTask;
 
 use crate::{
-    di::DataCtx,
+    di::{DataCtx, EventsContext},
     dto::v1::assets::AssetDtoV1,
     routes::ApiResult,
     utils::multipart::{FieldExt, MultipartParseError},
@@ -31,7 +32,11 @@ struct UploadingContext {
 
 /// Uploads an asset with a media file
 #[post("/upload")]
-async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
+async fn upload_asset(
+    mut payload: Multipart,
+    ctx: web::Data<DataCtx>,
+    events: web::Data<EventsContext>,
+) -> ApiResult {
     let mut upload = UploadingContext::default();
 
     while let Some(mut field) = payload
@@ -83,6 +88,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         id: ctx.flake.generate_id_as(),
         state: AssetState::Pending,
         media_id: media.id.clone(),
+        media_type: media_file.mimetype.kind(),
         created_at: now,
         deleted_at: None,
         title: upload.title,
@@ -108,6 +114,11 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
     ctx.storage.commit(temp, commit_path).await?;
 
     tx.commit().await?;
+
+    events
+        .media
+        .send(MediaWorkerTask::ProcessAsset(asset.id))
+        .await;
 
     let res = AssetDtoV1::from((asset, asset_features, vec![media_file]));
     Ok(HttpResponse::Created().json(res))
