@@ -1,17 +1,15 @@
 use chrono::{DateTime, Utc};
-use models::{
-    entities::{Asset, AssetFeatures, AssetState},
-    types::AssetId,
-};
+use models::entities::{Asset, AssetFeatures, AssetState};
 use serde::Serialize;
 
 use crate::dto::v1::media::MediaGroupDtoV1;
 
 #[derive(Debug, Serialize)]
 pub struct AssetDtoV1 {
-    id: AssetId,
+    id: String,
     state: AssetState,
 
+    #[serde(flatten)]
     media: MediaGroupDtoV1,
 
     created_at: DateTime<Utc>,
@@ -33,7 +31,7 @@ where
 {
     fn from((asset, asset_features, media): (Asset, AssetFeatures, M)) -> Self {
         AssetDtoV1 {
-            id: asset.id,
+            id: asset.id.to_string(),
             state: asset.state,
             media: media.into(),
             created_at: asset.created_at,

@@ -7,8 +7,7 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct MediaGroupDtoV1 {
-    files: BTreeMap<MediaVariant, MediaFileDtoV1>,
-    group_created_at: DateTime<Utc>,
+    media: BTreeMap<MediaVariant, MediaFileDtoV1>,
 }
 
 #[derive(Debug, Serialize)]
@@ -18,17 +17,14 @@ pub struct MediaFileDtoV1 {
     mimetype: MimeType,
 }
 
-impl From<(Media, Vec<MediaFile>)> for MediaGroupDtoV1 {
-    fn from((group, files): (Media, Vec<MediaFile>)) -> Self {
+impl From<Vec<MediaFile>> for MediaGroupDtoV1 {
+    fn from(files: Vec<MediaFile>) -> Self {
         let files = files
             .into_iter()
             .map(|f| (f.variant, f.into()))
             .collect::<BTreeMap<_, _>>();
 
-        MediaGroupDtoV1 {
-            files,
-            group_created_at: group.created_at,
-        }
+        MediaGroupDtoV1 { media: files }
     }
 }
 

@@ -21,7 +21,7 @@ const DEFAULT_VARIANT: MediaVariant = MediaVariant::Original;
 
 /// Uploads an asset with a media file
 #[post("/upload")]
-pub async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
+async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
     let mut upload = UploadingContext::default();
 
     while let Some(mut field) = payload
@@ -99,7 +99,7 @@ pub async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> Ap
     ctx.storage.commit(temp, commit_path).await?;
     tx.commit().await?;
 
-    let res = AssetDtoV1::from((asset, asset_features, (media, vec![media_file])));
+    let res = AssetDtoV1::from((asset, asset_features, vec![media_file]));
     Ok(HttpResponse::Created().json(res))
 }
 

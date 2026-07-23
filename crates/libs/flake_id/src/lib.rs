@@ -24,8 +24,8 @@ pub const DEFAULT_EPOCH: i64 = 1735678800000;
 /// ```
 /// use flake_id::{FlakeIdGenerator};
 ///
-/// // Initializing the generator with a specific base epoch and node_id
-/// let generator = FlakeIdGenerator::new(1735678800000, 1);
+/// // Initializing the generator with a specific node_id
+/// let generator = FlakeIdGenerator::new(1);
 ///
 /// // Flake ID Generation
 /// let id = generator.generate();
@@ -94,7 +94,7 @@ impl FlakeIdGenerator {
 
             (now - self.base_epoch, state.idx)
         };
-        FlakeId(ts << 20 | ((self.node_id as i64) << 12) | (idx as i64))
+        FlakeId((ts << 20 | ((self.node_id as i64) << 12) | (idx as i64)) & (i64::MAX - 1))
     }
 
     pub fn generate_as<T>(&self) -> T
