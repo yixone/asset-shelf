@@ -27,9 +27,11 @@ async fn main() -> Result<()> {
     init_tracing();
     print_header();
 
+    tracing::info!("Opening database...");
     let db = Arc::new(SqliteDb::open("storage/data.db").await?);
     db.migrate().await?;
 
+    tracing::info!("Opening storage...");
     let storage_backend = StorageBackend::open_fs("storage/data").await?;
     let storage = Arc::new(Storage::new(
         storage_backend,
@@ -46,14 +48,16 @@ async fn main() -> Result<()> {
     let workers_handle = supervisor.run(cancel.clone());
 
     tracing::info!("Server started on http://{HOST_ADDR}!");
-    tracing::info!("API documentation is available at http://{HOST_ADDR}/docs/");
 
     let server = configure_server(ctx, events)?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);
 
-    server.await.to_app_err()
+    server.await.to_app_err()?;
+
+    tracing::info!("Server closed!");
+    Ok(())
 }
 
 fn configure_server(ctx: DataCtx, events: EventsContext) -> Result<actix_web::dev::Server> {
@@ -79,7 +83,10 @@ fn spawn_shutdown_handler(
 ) {
     tokio::spawn(async move {
         match signal::ctrl_c().await {
-            Ok(_) => tracing::info!("Starting graceful shutdown..."),
+            Ok(_) => {
+                println!();
+                tracing::info!("Starting graceful shutdown...")
+            }
             Err(e) => {
                 tracing::error!(err = ?e, "Failed to wait for ^C");
                 return;
@@ -92,7 +99,7 @@ fn spawn_shutdown_handler(
 }
 
 fn print_header() {
-    tracing::info!("Asset shelf server - {SERVER_VERSION} :3");
+    tracing::info!("Asset shelf server - {SERVER_VERSION}");
 }
 
 fn init_tracing() {
