@@ -21,6 +21,7 @@ impl ResponseError for Error {
             ErrorKind::FileTooLarge { .. } | ErrorKind::StringTooLong { .. } => {
                 StatusCode::PAYLOAD_TOO_LARGE
             }
+            ErrorKind::PaginationTooLarge => StatusCode::BAD_REQUEST,
             ErrorKind::MalformedPayload => StatusCode::BAD_REQUEST,
             ErrorKind::EntityDeleted => StatusCode::FORBIDDEN,
             ErrorKind::NotFound => StatusCode::NOT_FOUND,

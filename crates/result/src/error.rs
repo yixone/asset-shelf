@@ -58,6 +58,9 @@ pub enum ErrorKind {
     /// The received payload cannot be read correctly
     MalformedPayload,
 
+    /// Pagination values ​​are too large
+    PaginationTooLarge,
+
     /// The entity is marked as `deleted` and is `read-only` until restored
     EntityDeleted,
     /// Entity not found

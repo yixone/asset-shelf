@@ -1,3 +1,4 @@
+use result::{Result, create_error};
 use sqlx::QueryBuilder;
 
 #[derive(Debug, Clone, Copy)]
@@ -10,6 +11,14 @@ impl Pagination {
     /// Creates a new [`Pagination`]
     pub fn new(limit: u32, offset: u32) -> Self {
         Self { limit, offset }
+    }
+
+    pub fn try_new(limit: u32, offset: u32) -> Result<Self> {
+        if limit > 200 {
+            return Err(create_error!(PaginationTooLarge));
+        };
+
+        Ok(Pagination::new(limit, offset))
     }
 
     /// Returns the [`Pagination`] limit

@@ -176,6 +176,10 @@ define_joinable!(
     MediaFile => Media,
     media_id == id as MediaId
 );
+define_joinable!(
+    MediaFile => Asset,
+    media_id == media_id as MediaId
+);
 
 define_joinable!(
     CollectionItem => Collection,
