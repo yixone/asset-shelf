@@ -6,11 +6,9 @@ use std::{
 
 use chrono::Utc;
 use db::{
-    core::{
-        patches::{AssetFeaturesPatch, AssetPatch},
-        provider::{DatabaseConnector, TransactionUnit},
-    },
+    database::{DatabaseProvider, DatabaseTransaction},
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
+    types::patches::{AssetFeaturesPatch, AssetPatch},
 };
 use media::image::{Image, ImageFormat};
 use models::{

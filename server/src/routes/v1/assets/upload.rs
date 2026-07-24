@@ -2,7 +2,7 @@ use actix_multipart::Multipart;
 use actix_web::{HttpResponse, post, web};
 use chrono::Utc;
 use db::{
-    core::provider::{DatabaseConnector, TransactionUnit},
+    database::{DatabaseProvider, DatabaseTransaction},
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps, MediaOps},
 };
 use futures::TryStreamExt;

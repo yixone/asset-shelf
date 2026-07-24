@@ -1,6 +1,6 @@
 use actix_web::{HttpResponse, get, web};
 use db::{
-    core::provider::DatabaseConnector,
+    database::DatabaseProvider,
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
 };
 use models::types::AssetId;

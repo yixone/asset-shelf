@@ -17,10 +17,9 @@ pub trait DatabaseProvider: Database {
     async fn acquire(&self) -> Result<Self::Session>;
 
     /// Opens a new session and passes it to the closure
-    async fn with_session<F, Fut, T>(&self, f: F) -> Result<T>
+    async fn with_session<F, T>(&self, f: F) -> Result<T>
     where
-        F: Fn(&mut Self::Session) -> Fut,
-        Fut: Future<Output = Result<T>>,
+        F: AsyncFn(&mut Self::Session) -> Result<T>,
     {
         let mut session = self.acquire().await?;
         f(&mut session).await

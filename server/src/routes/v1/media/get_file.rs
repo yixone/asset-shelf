@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
 use actix_web::{HttpResponse, get, http::header::ContentLength, web};
-use db::{core::provider::DatabaseConnector, ops::MediaFilesOps};
+
+use db::{database::DatabaseProvider, ops::MediaFilesOps};
 use models::{entities::MediaVariant, types::MediaId};
 use result::{create_error, error::ResultExt};
 use serde::Deserialize;
@@ -24,12 +25,11 @@ async fn get_media_file(
 ) -> ApiResult {
     let query = query.into_inner();
 
-    let media_file = {
-        let mut conn = ctx.db.acquire().await?;
-        conn.get_media_variant(&id, query.format)
-            .await?
-            .ok_or(create_error!(NotFound))?
-    };
+    let media_file = ctx
+        .db
+        .with_session(async |db| db.get_media_variant(&id, query.format).await)
+        .await?
+        .ok_or(create_error!(NotFound))?;
 
     let mimetype = media_file.mimetype.as_str();
     let content_len = media_file.size_bytes;
