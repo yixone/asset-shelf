@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     str::FromStr,
     time::{Duration, Instant},
 };
@@ -14,10 +15,11 @@ use db::{
 use media::image::{Image, ImageFormat};
 use models::{
     entities::{Asset, AssetState, MediaFile, MediaVariant},
-    types::{AssetId, Color},
+    types::{AssetId, Color, MediaId},
 };
 use result::{Result, create_error, error::ResultExt};
 use storage::StoragePath;
+use tokio::io::AsyncRead;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -170,6 +172,10 @@ impl MediaWorkerService {
             conn.update_asset(&asset.id, patch).await?;
 
             return Err(e);
+        } else {
+            let mut conn = self.ctx.db.acquire().await?;
+            let patch = AssetPatch::new().state(AssetState::Ready);
+            conn.update_asset(&asset.id, patch).await?;
         };
 
         tracing::info!(
@@ -196,21 +202,8 @@ impl MediaWorkerService {
         // Decodes the image from the original file
         let img = Image::from_reader(file).await?;
 
-        // Generates and saves a thumbnail
-        let thumbnail = img.thumbnail(400).to_reader(ImageFormat::WebP)?;
-
-        let thumbnail_file = self.ctx.storage.upload(thumbnail).await?;
-        let thumbnail_path = thumbnail_file.commit_path(MediaVariant::Thumbnail.as_str());
-
-        let thumbnail_media_file = MediaFile {
-            id: self.ctx.flake.generate_id_as(),
-            media_id: asset.media_id.clone(),
-            variant: MediaVariant::Thumbnail,
-            storage_path: thumbnail_path.to_string(),
-            created_at: Utc::now(),
-            size_bytes: thumbnail_file.file.size_bytes as i64,
-            mimetype: thumbnail_file.file.mimetype,
-        };
+        // Generates different variants for an image
+        self.generate_image_variants(asset, &img).await?;
 
         // Retrieves the basic image parameters and features
         let (width, height) = img.dimension();
@@ -229,18 +222,65 @@ impl MediaWorkerService {
             .accent_color(Some(color));
 
         // Writes features to the database
-        let mut tx = self.ctx.db.begin().await?;
+        let mut conn = self.ctx.db.acquire().await?;
+        conn.update_asset_features(&asset.id, patch).await?;
 
-        tx.insert_media_file(&thumbnail_media_file).await?;
-        tx.update_asset_features(&asset.id, patch).await?;
+        Ok(())
+    }
 
-        self.ctx
-            .storage
-            .commit(thumbnail_file, thumbnail_path)
-            .await?;
+    async fn generate_image_variants(&self, asset: &Asset, img: &Image) -> Result<()> {
+        // Checks which variants already exist for the specified asset
+        let variants = {
+            let mut conn = self.ctx.db.acquire().await?;
+            let stored_variants = conn.get_media_files(&asset.media_id).await?;
+            let mut variants = HashSet::with_capacity(stored_variants.len());
 
-        tx.commit().await?;
+            for v in stored_variants {
+                variants.insert(v.variant);
+            }
+            variants
+        };
 
+        // Generates and saves a thumbnail
+        if !variants.contains(&MediaVariant::Thumbnail) {
+            let thumbnail = img.thumbnail(400).to_reader(ImageFormat::WebP)?;
+            self.store_variant(&asset.media_id, MediaVariant::Thumbnail, thumbnail)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn store_variant<R>(
+        &self,
+        media: &MediaId,
+        variant: MediaVariant,
+        variant_bytes: R,
+    ) -> Result<()>
+    where
+        R: AsyncRead + Send + Unpin,
+    {
+        let temp = self.ctx.storage.upload(variant_bytes).await?;
+        let variant_path = temp.commit_path(variant.as_str());
+
+        let variant_media_file = MediaFile {
+            id: self.ctx.flake.generate_id_as(),
+            media_id: media.clone(),
+            variant: MediaVariant::Thumbnail,
+            storage_path: variant_path.to_string(),
+            created_at: Utc::now(),
+            size_bytes: temp.file.size_bytes as i64,
+            mimetype: temp.file.mimetype,
+        };
+
+        {
+            let mut tx = self.ctx.db.begin().await?;
+            tx.insert_media_file(&variant_media_file).await?;
+            self.ctx.storage.commit(temp, variant_path).await?;
+            tx.commit().await?;
+        }
+
+        tracing::info!("MediaWorker: {variant} generated and saved for media:{media}");
         Ok(())
     }
 }
