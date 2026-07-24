@@ -1,5 +1,5 @@
 [package]
-name = "mimetype"
+name = "flake_id"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,6 +8,9 @@ serde = ["dep:serde"]
 sqlx = ["dep:sqlx"]
 
 [dependencies]
-# External (opts)
+# External
+chrono = { workspace = true }
+rand = { workspace = true }
+
 serde = { workspace = true, features = ["derive"], optional = true }
 sqlx = { workspace = true, optional = true }
