@@ -1,3 +1,5 @@
+use sqlx::sqlite::SqliteQueryResult;
+
 /// Result of insertion into the database
 pub enum InsertResult {
     Inserted,
@@ -37,5 +39,33 @@ impl DeleteResult {
     /// otherwise, returns `false`.
     pub fn no_changes(&self) -> bool {
         matches!(self, Self::NoChanges)
+    }
+}
+
+impl From<SqliteQueryResult> for InsertResult {
+    fn from(res: SqliteQueryResult) -> Self {
+        if res.rows_affected() == 0 {
+            InsertResult::NoChanges
+        } else {
+            InsertResult::Inserted
+        }
+    }
+}
+impl From<SqliteQueryResult> for UpdateResult {
+    fn from(res: SqliteQueryResult) -> Self {
+        if res.rows_affected() == 0 {
+            UpdateResult::NoChanges
+        } else {
+            UpdateResult::Updated(res.rows_affected())
+        }
+    }
+}
+impl From<SqliteQueryResult> for DeleteResult {
+    fn from(res: SqliteQueryResult) -> Self {
+        if res.rows_affected() == 0 {
+            DeleteResult::NoChanges
+        } else {
+            DeleteResult::Deleted(res.rows_affected())
+        }
     }
 }

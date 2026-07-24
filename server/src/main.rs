@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
-use db::sqlite::SqliteDb;
+use db::sqlite::SqliteDatabase;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
 use server::{
@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
     print_header();
 
     tracing::info!("Opening database...");
-    let db = Arc::new(SqliteDb::open("storage/data.db").await?);
+    let db = Arc::new(SqliteDatabase::open("storage/data.db").await?);
     db.migrate().await?;
 
     tracing::info!("Opening storage...");

@@ -50,7 +50,7 @@ macro_rules! patch_model {
         pub struct $model_name {
             $(
                 $( #[$f_meta] )*
-                pub $f_id: crate::core::patches::PatchField<$f_ty>
+                pub $f_id: crate::types::PatchField<$f_ty>
             ),+
         }
 
@@ -61,7 +61,7 @@ macro_rules! patch_model {
 
             $(
                 pub fn $f_id(mut self, $f_id: $f_ty) -> Self {
-                    self.$f_id = crate::core::patches::PatchField::Set($f_id);
+                    self.$f_id = crate::types::PatchField::Set($f_id);
                     self
                 }
             )*
@@ -70,7 +70,7 @@ macro_rules! patch_model {
             pub fn changes(&self) -> usize {
                 let mut changes = 0;
                 $(
-                    if let crate::core::patches::PatchField::Set(_) = &self.$f_id {
+                    if let crate::types::PatchField::Set(_) = &self.$f_id {
                         changes += 1;
                     }
                 )*
@@ -87,7 +87,7 @@ macro_rules! patch_model {
             {
                 let mut sep = qb.separated(",");
                 $(
-                    if let crate::core::patches::PatchField::Set(v) = &self.$f_id {
+                    if let crate::types::PatchField::Set(v) = &self.$f_id {
                         sep.push(concat!(stringify!($f_id), " = "));
                         sep.push_bind_unseparated(v);
                     }

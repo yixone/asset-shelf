@@ -8,14 +8,14 @@ members = [
     "crates/result",
     "crates/storage",
     "crates/storage_backend",
-    "crates/workers",
+    # "crates/workers",
 
     # Common crates
     "packages/flake_id",
     "packages/mimetype",
 
     # Binary crates
-    "server",
+    # "server",
 ]
 
 [workspace.dependencies]
@@ -26,7 +26,7 @@ models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
 storage_backend = { path = "crates/storage_backend" }
-workers = { path = "crates/workers" }
+# workers = { path = "crates/workers" }
 
 flake_id = { path = "packages/flake_id" }
 mimetype = { path = "packages/mimetype" }

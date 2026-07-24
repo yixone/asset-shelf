@@ -4,7 +4,7 @@ use models::{
 };
 use result::Result;
 
-use crate::core::result::{DeleteResult, InsertResult};
+use crate::types::{DeleteResult, InsertResult};
 
 pub trait MediaOps {
     /// Inserts a [`Media`] into the database

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use db::sqlite::SqliteDb;
+use db::sqlite::SqliteDatabase;
 use flake_id::FlakeIdGenerator;
 use storage::Storage;
 use workers::{
@@ -9,7 +9,7 @@ use workers::{
 };
 
 pub struct DataCtx {
-    pub db: Arc<SqliteDb>,
+    pub db: Arc<SqliteDatabase>,
     pub storage: Arc<Storage>,
     pub flake: Arc<FlakeIdGenerator>,
 }

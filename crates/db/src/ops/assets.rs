@@ -4,10 +4,9 @@ use models::{
 };
 use result::Result;
 
-use crate::core::{
-    pagination::Pagination,
+use crate::types::{
+    DeleteResult, InsertResult, Pagination, UpdateResult,
     patches::{AssetFeaturesPatch, AssetPatch},
-    result::{DeleteResult, InsertResult, UpdateResult},
 };
 
 pub trait AssetOps {
