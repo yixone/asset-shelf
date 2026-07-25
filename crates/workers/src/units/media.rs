@@ -265,7 +265,7 @@ impl MediaWorkerService {
             .await?;
 
         let variant_media_file = MediaFile {
-            id: self.ctx.flake.generate_id_as(),
+            id: self.ctx.flake.get_id_as(),
             media_id: media.clone(),
             variant: MediaVariant::Thumbnail,
             storage_path: variant_file.target.path.to_string(),
@@ -274,10 +274,10 @@ impl MediaWorkerService {
             mimetype: variant_file.target.mimetype,
         };
 
-        let mut tx = self.ctx.db.begin().await?;
-        tx.insert_media_file(&variant_media_file).await?;
+        let mut conn = self.ctx.db.acquire().await?;
+        conn.insert_media_file(&variant_media_file).await?;
+
         self.ctx.storage.commit(variant_file).await?;
-        tx.commit().await?;
 
         tracing::info!("MediaWorker: {variant} generated and saved for media:{media}");
         Ok(())

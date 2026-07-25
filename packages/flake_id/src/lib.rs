@@ -9,16 +9,21 @@ use chrono::Utc;
 /// The starting epoch for generating timestamps
 pub const DEFAULT_EPOCH: i64 = 1735678800000;
 
+const TIMESTAMP_SHIFT: usize = 22;
+const NODE_ID_SHIFT: usize = 14;
+
+const SEQUENCE_MASK: u16 = u16::MAX >> 2;
+
 /// Runtime generator for FlakeId
 ///
 /// ### Id parts
 /// FlakeID consists of several parts:
-/// `timestamp (44) | node_id (8) | idx (aka. sequence) (12)`
+/// `timestamp (42) | node_id (8) | sequence (14)`
 ///
 /// ### Collision and IDX
 /// To prevent collisions within a single millisecond,
 /// `idx` is used, enabling the generation of up
-/// to 4096 IDS/ms for a given `node_id`
+/// to 16383 IDS/ms for a given `node_id`
 ///
 /// ### Usage
 /// ```
@@ -50,11 +55,6 @@ struct GeneratorState {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FlakeId(pub i64);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "sqlx", derive(sqlx::Type), sqlx(transparent))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct FlakeIdHex(String);
-
 impl FlakeIdGenerator {
     pub fn new(node_id: u8) -> Self {
         FlakeIdGenerator::new_with_epoch(DEFAULT_EPOCH, node_id)
@@ -76,38 +76,38 @@ impl FlakeIdGenerator {
         }
     }
 
-    pub fn generate_id(&self) -> FlakeId {
-        let (ts, idx) = {
-            let mut state = self
-                .state
-                .lock()
-                .expect("Failed to acquire the mutex for ID generation");
+    pub fn get_id(&self) -> FlakeId {
+        let mut state = self
+            .state
+            .lock()
+            .expect("Failed to acquire the mutex for ID generation");
 
-            let now = Utc::now().timestamp_millis();
+        let mut now = get_time_now(self.base_epoch);
 
-            if state.last_time == now {
-                state.idx += 1;
-            } else {
+        if now == state.last_time {
+            state.idx = (state.idx + 1) & SEQUENCE_MASK;
+            if state.idx == 0 {
+                now = til_next_ms(self.base_epoch, state.last_time);
                 state.last_time = now;
-                state.idx = 0
             }
+        } else {
+            state.last_time = now;
+            state.idx = 0
+        }
 
-            (now - self.base_epoch, state.idx)
-        };
-        FlakeId((ts << 20 | ((self.node_id as i64) << 12) | (idx as i64)) & (i64::MAX - 1))
+        let time = state.last_time;
+        let node = self.node_id as i64;
+        let sequence = state.idx as i64;
+
+        // [ TIMESTAMP (41) ] | [ NODE_ID (8) ] | [ SEQUENCE (14) ]
+        FlakeId((time << TIMESTAMP_SHIFT | (node << NODE_ID_SHIFT) | sequence) & i64::MAX)
     }
 
-    pub fn generate_id_as<T>(&self) -> T
+    pub fn get_id_as<T>(&self) -> T
     where
         T: From<FlakeId>,
     {
-        self.generate_id().into()
-    }
-}
-
-impl From<FlakeId> for FlakeIdHex {
-    fn from(id: FlakeId) -> Self {
-        FlakeIdHex(format!("{:x}", id.0))
+        self.get_id().into()
     }
 }
 
@@ -117,8 +117,17 @@ impl std::fmt::Display for FlakeId {
     }
 }
 
-impl std::fmt::Display for FlakeIdHex {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+fn get_time_now(base_epoch: i64) -> i64 {
+    let now = Utc::now().timestamp_millis();
+    now - base_epoch
+}
+
+fn til_next_ms(base_epoch: i64, last_time: i64) -> i64 {
+    loop {
+        let ts = get_time_now(base_epoch);
+        if ts > last_time {
+            return ts;
+        }
+        std::hint::spin_loop();
     }
 }

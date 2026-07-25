@@ -74,11 +74,11 @@ async fn upload_asset(
 
     let now = Utc::now();
     let media = Media {
-        id: ctx.flake.generate_id_as(),
+        id: ctx.flake.get_id_as(),
         created_at: now,
     };
     let media_file = MediaFile {
-        id: ctx.flake.generate_id_as(),
+        id: ctx.flake.get_id_as(),
         media_id: media.id.clone(),
         variant: DEFAULT_VARIANT,
         storage_path: file.target.path.to_string(),
@@ -87,7 +87,7 @@ async fn upload_asset(
         mimetype: file.target.mimetype,
     };
     let asset = Asset {
-        id: ctx.flake.generate_id_as(),
+        id: ctx.flake.get_id_as(),
         state: AssetState::Pending,
         media_id: media.id.clone(),
         media_type: media_file.mimetype.kind(),
