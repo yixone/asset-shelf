@@ -23,7 +23,6 @@ pub struct AssetPatchRequest {
 ///
 /// ### Returns:
 /// - `200` - the asset was updated
-/// - `204` - empty patch
 /// - `404` - asset not found
 #[patch("/{id}")]
 async fn patch_asset(
@@ -39,10 +38,6 @@ async fn patch_asset(
         source_url: data.source_url.into(),
         ..Default::default()
     };
-
-    if patch.changes() == 0 {
-        return Ok(HttpResponse::NoContent().finish());
-    }
 
     let mut conn = ctx.db.acquire().await?;
     match conn.update_asset(&id, patch).await? {
