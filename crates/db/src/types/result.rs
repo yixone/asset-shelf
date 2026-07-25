@@ -7,9 +7,9 @@ pub enum InsertResult {
 }
 
 /// Result of updating records in the database
-pub enum UpdateResult {
-    Updated(u64),
-    NoChanges,
+pub enum UpdateResult<T> {
+    Updated(T),
+    NotFound,
 }
 
 /// Result of deleting records from the database
@@ -26,11 +26,11 @@ impl InsertResult {
     }
 }
 
-impl UpdateResult {
+impl<T> UpdateResult<T> {
     /// Returns `true` if database records were updated;
     /// otherwise, returns `false`
     pub fn no_changes(&self) -> bool {
-        matches!(self, Self::NoChanges)
+        matches!(self, Self::NotFound)
     }
 }
 
@@ -39,6 +39,15 @@ impl DeleteResult {
     /// otherwise, returns `false`.
     pub fn no_changes(&self) -> bool {
         matches!(self, Self::NoChanges)
+    }
+}
+
+impl<T> From<Option<T>> for UpdateResult<T> {
+    fn from(t: Option<T>) -> Self {
+        match t {
+            Some(t) => UpdateResult::Updated(t),
+            None => UpdateResult::NotFound,
+        }
     }
 }
 
@@ -51,15 +60,7 @@ impl From<SqliteQueryResult> for InsertResult {
         }
     }
 }
-impl From<SqliteQueryResult> for UpdateResult {
-    fn from(res: SqliteQueryResult) -> Self {
-        if res.rows_affected() == 0 {
-            UpdateResult::NoChanges
-        } else {
-            UpdateResult::Updated(res.rows_affected())
-        }
-    }
-}
+
 impl From<SqliteQueryResult> for DeleteResult {
     fn from(res: SqliteQueryResult) -> Self {
         if res.rows_affected() == 0 {

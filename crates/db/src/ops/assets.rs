@@ -12,7 +12,11 @@ use crate::types::{
 pub trait AssetOps {
     async fn insert_asset(&mut self, a: &Asset) -> Result<InsertResult>;
 
-    async fn update_asset(&mut self, id: &AssetId, patch: AssetPatch) -> Result<UpdateResult>;
+    async fn update_asset(
+        &mut self,
+        id: &AssetId,
+        patch: AssetPatch,
+    ) -> Result<UpdateResult<Asset>>;
     async fn delete_asset(&mut self, id: &AssetId) -> Result<DeleteResult>;
 
     async fn get_asset(&mut self, id: &AssetId) -> Result<Option<Asset>> {
@@ -39,7 +43,7 @@ pub trait AssetFeaturesOps {
         &mut self,
         id: &AssetId,
         patch: AssetFeaturesPatch,
-    ) -> Result<UpdateResult>;
+    ) -> Result<UpdateResult<AssetFeatures>>;
 
     async fn get_asset_features(&mut self, id: &AssetId) -> Result<Option<AssetFeatures>> {
         self.get_assets_features_bulk(std::slice::from_ref(id))

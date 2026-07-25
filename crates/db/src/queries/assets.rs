@@ -50,7 +50,11 @@ where
         Ok(res.into())
     }
 
-    async fn update_asset(&mut self, id: &AssetId, patch: AssetPatch) -> Result<UpdateResult> {
+    async fn update_asset(
+        &mut self,
+        id: &AssetId,
+        patch: AssetPatch,
+    ) -> Result<UpdateResult<Asset>> {
         let mut qb = QueryBuilder::new(
             "
             UPDATE assets
@@ -58,17 +62,19 @@ where
             ",
         );
 
-        let changes = patch.changes();
-        if changes == 0 {
-            return Ok(UpdateResult::NoChanges);
-        }
-
         patch.apply_sql(&mut qb);
 
         qb.push(" WHERE id = ");
         qb.push_bind(id);
 
-        let res = qb.build().execute(self.executor()).await.to_app_err()?;
+        qb.push(" RETURNING * ");
+
+        let res = qb
+            .build_query_as()
+            .fetch_optional(self.executor())
+            .await
+            .to_app_err()?;
+
         Ok(res.into())
     }
     async fn delete_asset(&mut self, id: &AssetId) -> Result<DeleteResult> {
@@ -251,24 +257,26 @@ where
         &mut self,
         id: &AssetId,
         patch: AssetFeaturesPatch,
-    ) -> Result<UpdateResult> {
+    ) -> Result<UpdateResult<AssetFeatures>> {
         let mut qb = QueryBuilder::new(
             "
             UPDATE asset_features
             SET
             ",
         );
-        let changes = patch.changes();
-        if changes == 0 {
-            return Ok(UpdateResult::NoChanges);
-        }
 
         patch.apply_sql(&mut qb);
 
         qb.push(" WHERE asset_id = ");
         qb.push_bind(id);
 
-        let res = qb.build().execute(self.executor()).await.to_app_err()?;
+        qb.push(" RETURNING * ");
+
+        let res = qb
+            .build_query_as()
+            .fetch_optional(self.executor())
+            .await
+            .to_app_err()?;
         Ok(res.into())
     }
 
