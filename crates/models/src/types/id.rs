@@ -31,7 +31,7 @@ id_type!(
 );
 
 id_type!(MediaId as FlakeIdStr);
-id_type!(MediaFileId as FlakeIdStr);
+id_type!(MediaFileId as FlakeId);
 
 id_type!(
     #[derive(Copy)]
@@ -45,11 +45,5 @@ id_type!(
 impl From<FlakeId> for MediaId {
     fn from(id: FlakeId) -> Self {
         MediaId(id.into())
-    }
-}
-
-impl From<FlakeId> for MediaFileId {
-    fn from(id: FlakeId) -> Self {
-        MediaFileId(id.into())
     }
 }

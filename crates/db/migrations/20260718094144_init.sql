@@ -41,7 +41,7 @@ CREATE TABLE media (
 );
 
 CREATE TABLE media_files (
-    id              VARCHAR(32)     NOT NULL,
+    id              BIGINT          NOT NULL,
     storage_path    VARCHAR(512)    NOT NULL,
 
     media_id        VARCHAR(32)     NOT NULL,
