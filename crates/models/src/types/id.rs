@@ -1,4 +1,4 @@
-use flake_id::{FlakeId, FlakeIdHex};
+use flake_id::{FlakeId, str::FlakeIdStr};
 
 macro_rules! id_type {
     (
@@ -30,8 +30,8 @@ id_type!(
     AssetId as FlakeId
 );
 
-id_type!(MediaId as FlakeIdHex);
-id_type!(MediaFileId as FlakeIdHex);
+id_type!(MediaId as FlakeIdStr);
+id_type!(MediaFileId as FlakeIdStr);
 
 id_type!(
     #[derive(Copy)]

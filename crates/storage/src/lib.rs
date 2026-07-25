@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use flake_id::{FlakeIdGenerator, FlakeIdHex};
+use flake_id::{FlakeIdGenerator, str::FlakeIdStr};
 use futures::TryStreamExt;
 use mimetype::MimeType;
 use result::{Result, create_error, error::ResultExt};
@@ -33,7 +33,7 @@ impl Storage {
     }
 
     fn generate_key(&self) -> String {
-        self.id_gen.get_id_as::<FlakeIdHex>().to_string()
+        self.id_gen.get_id_as::<FlakeIdStr>().to_string()
     }
 
     async fn remove_safely(&self, path: &StoragePath) {
