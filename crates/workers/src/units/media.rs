@@ -258,25 +258,26 @@ impl MediaWorkerService {
     where
         R: AsyncRead + Send + Unpin,
     {
-        let temp = self.ctx.storage.upload(variant_bytes).await?;
-        let variant_path = temp.commit_path(variant.as_str());
+        let variant_file = self
+            .ctx
+            .storage
+            .upload(variant.as_str(), variant_bytes)
+            .await?;
 
         let variant_media_file = MediaFile {
             id: self.ctx.flake.generate_id_as(),
             media_id: media.clone(),
             variant: MediaVariant::Thumbnail,
-            storage_path: variant_path.to_string(),
+            storage_path: variant_file.target.path.to_string(),
             created_at: Utc::now(),
-            size_bytes: temp.file.size_bytes as i64,
-            mimetype: temp.file.mimetype,
+            size_bytes: variant_file.target.size_bytes as i64,
+            mimetype: variant_file.target.mimetype,
         };
 
-        {
-            let mut tx = self.ctx.db.begin().await?;
-            tx.insert_media_file(&variant_media_file).await?;
-            self.ctx.storage.commit(temp, variant_path).await?;
-            tx.commit().await?;
-        }
+        let mut tx = self.ctx.db.begin().await?;
+        tx.insert_media_file(&variant_media_file).await?;
+        self.ctx.storage.commit(variant_file).await?;
+        tx.commit().await?;
 
         tracing::info!("MediaWorker: {variant} generated and saved for media:{media}");
         Ok(())

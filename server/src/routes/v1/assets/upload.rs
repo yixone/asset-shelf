@@ -8,7 +8,7 @@ use db::{
 use futures::TryStreamExt;
 use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
-use storage::types::TempStorageFile;
+use storage::types::UncommittedFile;
 use workers::units::media::MediaWorkerTask;
 
 use crate::{
@@ -23,7 +23,7 @@ const DEFAULT_VARIANT: MediaVariant = MediaVariant::Original;
 /// Asset uploading context
 #[derive(Default)]
 struct UploadingContext {
-    temp_media: Option<TempStorageFile>,
+    file: Option<UncommittedFile>,
 
     title: Option<String>,
     caption: Option<String>,
@@ -51,12 +51,15 @@ async fn upload_asset(
 
         match field_name {
             "file" => {
-                if upload.temp_media.is_some() {
+                if upload.file.is_some() {
                     continue;
                 }
                 let stream = field.into_async_reader();
-                let temp_stored = ctx.storage.upload(stream).await?;
-                upload.temp_media = Some(temp_stored);
+                let temp_stored = ctx
+                    .storage
+                    .upload(MediaVariant::Original.as_str(), stream)
+                    .await?;
+                upload.file = Some(temp_stored);
             }
             "title" => upload.title = Some(field.read_to_string().await?),
             "caption" => upload.caption = Some(field.read_to_string().await?),
@@ -65,12 +68,11 @@ async fn upload_asset(
         }
     }
 
-    let Some(temp) = upload.temp_media else {
+    let Some(file) = upload.file else {
         return Err(create_error!(MalformedPayload));
     };
 
     let now = Utc::now();
-    let commit_path = temp.commit_path(DEFAULT_VARIANT.as_str());
     let media = Media {
         id: ctx.flake.generate_id_as(),
         created_at: now,
@@ -79,10 +81,10 @@ async fn upload_asset(
         id: ctx.flake.generate_id_as(),
         media_id: media.id.clone(),
         variant: DEFAULT_VARIANT,
-        storage_path: commit_path.to_string(),
+        storage_path: file.target.path.to_string(),
         created_at: now,
-        size_bytes: temp.file.size_bytes as i64,
-        mimetype: temp.file.mimetype,
+        size_bytes: file.target.size_bytes as i64,
+        mimetype: file.target.mimetype,
     };
     let asset = Asset {
         id: ctx.flake.generate_id_as(),
@@ -107,11 +109,11 @@ async fn upload_asset(
     let mut tx = ctx.db.begin().await?;
 
     tx.insert_media(&media).await?;
-    tx.insert_media_file(&media_file).await?;
     tx.insert_asset(&asset).await?;
     tx.insert_asset_features(&asset_features).await?;
 
-    ctx.storage.commit(temp, commit_path).await?;
+    tx.insert_media_file(&media_file).await?;
+    ctx.storage.commit(file).await?;
 
     tx.commit().await?;
 

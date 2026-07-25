@@ -19,12 +19,12 @@ async fn upload_file_to_storage() {
     let storage = prepare().await;
 
     {
-        let temp = storage.upload(TEST_BLOB).await.unwrap();
-        let path = temp.commit_path(TEST_NAMEPSACE);
-        let res = storage.commit(temp, path).await.unwrap();
+        let file = storage.upload(TEST_NAMEPSACE, TEST_BLOB).await.unwrap();
 
-        assert_eq!(res.file.size_bytes, TEST_BLOB.len());
-        assert_eq!(res.file.mimetype, MimeType::Jpeg);
+        let res = storage.commit(file).await.unwrap();
+
+        assert_eq!(res.size_bytes, TEST_BLOB.len());
+        assert_eq!(res.mimetype, MimeType::Jpeg);
         assert_eq!(res.path.namespace, TEST_NAMEPSACE);
     }
 }

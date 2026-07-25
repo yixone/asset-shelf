@@ -8,7 +8,7 @@ use storage_backend::StorageBackend;
 use tokio::io::AsyncRead;
 use tokio_util::io::ReaderStream;
 
-use crate::types::{StorageUploadResult, TempStorageFile, UploadedFile};
+use crate::types::{StorageFile, UncommittedFile};
 
 pub mod types;
 
@@ -41,7 +41,7 @@ impl Storage {
         let _ = self.backend.remove(path).await;
     }
 
-    pub async fn upload<D>(&self, data: D) -> Result<TempStorageFile>
+    pub async fn upload<D>(&self, namespace: &str, data: D) -> Result<UncommittedFile>
     where
         D: AsyncRead + Unpin,
     {
@@ -86,9 +86,13 @@ impl Storage {
 
         blob_writer.finalize().await?;
 
-        Ok(TempStorageFile {
-            key,
-            file: UploadedFile {
+        let file_key = shard_key(&key, 2);
+        let file_path = StoragePath::new(namespace.to_string(), file_key);
+
+        Ok(UncommittedFile {
+            temp_path,
+            target: StorageFile {
+                path: file_path,
                 mimetype,
                 size_bytes,
                 elapsed_ms: start_time.elapsed().as_millis() as u64,
@@ -96,26 +100,16 @@ impl Storage {
         })
     }
 
-    pub async fn commit(
-        &self,
-        temp: TempStorageFile,
-        dest: StoragePath,
-    ) -> Result<StorageUploadResult> {
-        let from = StoragePath {
-            namespace: TEMP_NAMESPACE.to_string(),
-            key: temp.key,
-        };
+    pub async fn commit(&self, file: UncommittedFile) -> Result<StorageFile> {
+        let from = file.temp_path;
+        let dest = file.target.path.clone();
 
         if !self.backend.rename(&from, &dest).await? {
             self.remove_safely(&from).await;
             return Err(create_error!(AlreadyExists));
         }
 
-        let res = StorageUploadResult {
-            path: dest,
-            file: temp.file,
-        };
-        Ok(res)
+        Ok(file.target)
     }
 
     pub async fn get(&self, path: &StoragePath) -> Result<Box<dyn AsyncRead + Send + Unpin>> {
