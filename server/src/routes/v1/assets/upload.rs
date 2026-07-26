@@ -8,7 +8,7 @@ use db::{
 use futures::TryStreamExt;
 use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
-use storage::types::UncommittedFile;
+use storage::file::UnreleasedFile;
 use workers::units::media::MediaWorkerTask;
 
 use crate::{
@@ -22,8 +22,8 @@ const DEFAULT_VARIANT: MediaVariant = MediaVariant::Original;
 
 /// Asset uploading context
 #[derive(Default)]
-struct UploadingContext {
-    file: Option<UncommittedFile>,
+struct UploadingContext<'a> {
+    file: Option<UnreleasedFile<'a>>,
 
     title: Option<String>,
     caption: Option<String>,
@@ -111,11 +111,13 @@ async fn upload_asset(
     tx.insert_media(&media).await?;
     tx.insert_asset(&asset).await?;
     tx.insert_asset_features(&asset_features).await?;
-
     tx.insert_media_file(&media_file).await?;
-    ctx.storage.commit(file).await?;
 
-    tx.commit().await?;
+    let file = file.release().await?;
+    if let Err(e) = tx.commit().await {
+        ctx.storage.remove_safely(&file.path).await;
+        return Err(e);
+    }
 
     events
         .media

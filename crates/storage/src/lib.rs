@@ -8,9 +8,9 @@ use storage_backend::StorageBackend;
 use tokio::io::AsyncRead;
 use tokio_util::io::ReaderStream;
 
-use crate::types::{StorageFile, UncommittedFile};
+use crate::file::{StorageFile, UnreleasedFile};
 
-pub mod types;
+pub mod file;
 
 pub use storage_backend::core::path::StoragePath;
 
@@ -32,16 +32,11 @@ impl Storage {
         }
     }
 
-    fn generate_key(&self) -> String {
+    pub(crate) fn generate_key(&self) -> String {
         self.id_gen.get_id_as::<FlakeIdStr>().to_string()
     }
 
-    async fn remove_safely(&self, path: &StoragePath) {
-        // TODO: ADD ERROR TRACING!
-        let _ = self.backend.remove(path).await;
-    }
-
-    pub async fn upload<D>(&self, namespace: &str, data: D) -> Result<UncommittedFile>
+    pub async fn upload<D>(&self, namespace: &str, data: D) -> Result<UnreleasedFile>
     where
         D: AsyncRead + Unpin,
     {
@@ -89,8 +84,9 @@ impl Storage {
         let file_key = shard_key(&key, 2);
         let file_path = StoragePath::new(namespace.to_string(), file_key);
 
-        Ok(UncommittedFile {
+        Ok(UnreleasedFile {
             temp_path,
+            owner: self,
             target: StorageFile {
                 path: file_path,
                 mimetype,
@@ -100,26 +96,27 @@ impl Storage {
         })
     }
 
-    pub async fn commit(&self, file: UncommittedFile) -> Result<StorageFile> {
-        let from = file.temp_path;
-        let dest = file.target.path.clone();
+    pub async fn remove_safely(&self, path: &StoragePath) -> bool {
+        if let Err(e) = self.backend.remove(path).await {
+            tracing::error!(err = ?e, path = ?path, "Failed to remove file safely");
+            return false;
+        }
+        true
+    }
 
-        if !self.backend.rename(&from, &dest).await? {
-            self.remove_safely(&from).await;
+    pub async fn remove(&self, path: &StoragePath) -> Result<bool> {
+        self.backend.remove(path).await
+    }
+
+    pub async fn rename(&self, from: &StoragePath, to: &StoragePath) -> Result<()> {
+        if !self.backend.rename(from, to).await? {
             return Err(create_error!(AlreadyExists));
         }
-
-        Ok(file.target)
+        Ok(())
     }
 
     pub async fn get(&self, path: &StoragePath) -> Result<Box<dyn AsyncRead + Send + Unpin>> {
-        let reader = self.backend.get_reader(path).await?;
-        Ok(reader)
-    }
-
-    pub async fn remove(&self, path: &StoragePath) -> Result<()> {
-        self.remove_safely(path).await;
-        Ok(())
+        self.backend.get_reader(path).await
     }
 }
 

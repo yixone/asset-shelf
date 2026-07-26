@@ -21,7 +21,7 @@ async fn upload_file_to_storage() {
     {
         let file = storage.upload(TEST_NAMEPSACE, TEST_BLOB).await.unwrap();
 
-        let res = storage.commit(file).await.unwrap();
+        let res = file.release().await.unwrap();
 
         assert_eq!(res.size_bytes, TEST_BLOB.len());
         assert_eq!(res.mimetype, MimeType::Jpeg);

@@ -277,7 +277,7 @@ impl MediaWorkerService {
         let mut conn = self.ctx.db.acquire().await?;
         conn.insert_media_file(&variant_media_file).await?;
 
-        self.ctx.storage.commit(variant_file).await?;
+        variant_file.release().await?;
 
         tracing::info!("MediaWorker: {variant} generated and saved for media:{media}");
         Ok(())
