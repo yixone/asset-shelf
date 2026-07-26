@@ -7,7 +7,7 @@ use crate::Storage;
 pub struct UnreleasedFile<'a> {
     /// The path where the unreleased file is stored
     pub(crate) temp_path: StoragePath,
-    /// A storage area that holds this file
+    /// A storage that holds this file
     pub(crate) owner: &'a Storage,
 
     /// The file to be released

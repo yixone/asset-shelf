@@ -10,4 +10,5 @@ result = { workspace = true }
 
 # External
 async-trait = { workspace = true }
+chrono = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }

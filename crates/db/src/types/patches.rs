@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use models::{entities::AssetState, types::Color};
 
 /// Data field for the patch
@@ -100,6 +101,7 @@ macro_rules! patch_model {
 patch_model! {
     AssetPatch {
         state: AssetState,
+        deleted_at: Option<DateTime<Utc>>,
         title: Option<String>,
         caption: Option<String>,
         source_url: Option<String>,
