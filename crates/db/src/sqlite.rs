@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use result::{Result, create_error, error::ResultExt};
+use result::{Result, error::ResultExt};
 use sqlx::{
     SqlitePool,
     migrate::Migrator,

@@ -36,7 +36,7 @@ impl Storage {
         self.id_gen.get_id_as::<FlakeIdStr>().to_string()
     }
 
-    pub async fn upload<D>(&self, namespace: &str, data: D) -> Result<UnreleasedFile>
+    pub async fn upload<D>(&self, namespace: &str, data: D) -> Result<UnreleasedFile<'_>>
     where
         D: AsyncRead + Unpin,
     {

@@ -13,6 +13,9 @@ pub trait MediaOps {
     /// Removes [`Media`] from the database
     async fn delete_media(&mut self, id: &MediaId) -> Result<DeleteResult>;
 
+    /// Returns a list of [`Media`] that are not referenced by anyone
+    async fn get_orphans_media(&mut self, limit: u32) -> Result<Vec<Media>>;
+
     /// Returns the [`Media`] with the specified ID
     async fn get_media(&mut self, id: &MediaId) -> Result<Option<Media>> {
         self.get_media_bulk(std::slice::from_ref(id))
@@ -33,7 +36,11 @@ pub trait MediaFilesOps {
     async fn insert_media_file_bulk(&mut self, mf: &[MediaFile]) -> Result<InsertResult>;
 
     /// Removes the [`MediaFile`] from the database.
-    async fn delete_media_file(&mut self, id: &MediaFileId) -> Result<DeleteResult>;
+    async fn delete_media_file(&mut self, id: &MediaFileId) -> Result<DeleteResult> {
+        self.delete_media_file_bulk(std::slice::from_ref(id)).await
+    }
+    /// Removes the [`MediaFile`] from the database based on a set of IDs
+    async fn delete_media_file_bulk(&mut self, ids: &[MediaFileId]) -> Result<DeleteResult>;
 
     /// Returns a [`MediaFile`] by its ID
     async fn get_media_file(&mut self, id: &MediaFileId) -> Result<Option<MediaFile>> {

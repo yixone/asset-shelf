@@ -201,7 +201,7 @@ where
         Ok(unprocessed)
     }
 
-    async fn get_deleted_assets(&mut self, p: Pagination) -> Result<Vec<Asset>> {
+    async fn get_deleted_assets(&mut self, p: Pagination, o: AssetsOrdering) -> Result<Vec<Asset>> {
         if p.limit() == 0 {
             return Ok(Vec::new());
         }
@@ -210,9 +210,13 @@ where
             "
             SELECT a.* FROM assets AS a
             WHERE a.deleted_at IS NOT null
-            ORDER BY a.deleted_at DESC
             ",
         );
+
+        match o {
+            AssetsOrdering::Newest => qb.push("ORDER BY a.created_at DESC"),
+            AssetsOrdering::Oldest => qb.push("ORDER BY a.created_at ASC"),
+        };
         p.apply_sql(&mut qb);
 
         let assets = qb

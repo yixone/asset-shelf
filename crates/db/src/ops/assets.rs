@@ -32,7 +32,7 @@ pub trait AssetOps {
 
     async fn get_unprocessed_assets(&mut self, limit: u32) -> Result<Vec<Asset>>;
 
-    async fn get_deleted_assets(&mut self, p: Pagination) -> Result<Vec<Asset>>;
+    async fn get_deleted_assets(&mut self, p: Pagination, o: AssetsOrdering) -> Result<Vec<Asset>>;
 }
 
 // TODO: add `get similarity search candidates` or something like this

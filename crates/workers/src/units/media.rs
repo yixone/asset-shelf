@@ -6,7 +6,7 @@ use std::{
 
 use chrono::Utc;
 use db::{
-    database::{DatabaseProvider, DatabaseTransaction},
+    database::DatabaseProvider,
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
     types::patches::{AssetFeaturesPatch, AssetPatch},
 };

@@ -1,6 +1,6 @@
 use models::{
     entities::{Asset, AssetFeatures, Media, MediaFile},
-    types::{AssetId, MediaId},
+    types::{AssetId, MediaFileId, MediaId},
 };
 
 pub trait CollectIds<T> {
@@ -27,6 +27,11 @@ impl CollectIds<MediaId> for Vec<Media> {
 impl CollectIds<MediaId> for Vec<MediaFile> {
     fn ids(&self) -> Vec<MediaId> {
         self.iter().map(|m| m.media_id.clone()).collect()
+    }
+}
+impl CollectIds<MediaFileId> for Vec<MediaFile> {
+    fn ids(&self) -> Vec<MediaFileId> {
+        self.iter().map(|m| m.id.clone()).collect()
     }
 }
 

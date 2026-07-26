@@ -1,7 +1,18 @@
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
-use models::types::MediaId;
-use result::Result;
+use chrono::Utc;
+use db::{
+    database::{DatabaseProvider, DatabaseTransaction},
+    ops::{AssetOps, MediaFilesOps, MediaOps},
+    types::Pagination,
+    utils::{bulk::CollectIds, join::JoinBuilder},
+};
+use models::{
+    entities::{Asset, Media, MediaFile},
+    types::{AssetsOrdering, MediaId},
+};
+use result::{Result, error::ResultExt};
+use storage::StoragePath;
 use tokio::time::interval;
 use tokio_util::sync::CancellationToken;
 
@@ -18,13 +29,19 @@ pub enum CleanupWorkerTask {
 
 pub struct CleanupWorker {
     events: EventsQueue<CleanupWorkerTask>,
-    ctx: WorkerContext,
+    service: CleanupWorkerService,
 }
 
 impl CleanupWorker {
     pub fn new(ctx: WorkerContext) -> (TasksSender<CleanupWorkerTask>, Self) {
         let queue = EventsQueue::new(1024);
-        (queue.tx.clone(), CleanupWorker { events: queue, ctx })
+        (
+            queue.tx.clone(),
+            CleanupWorker {
+                events: queue,
+                service: CleanupWorkerService { ctx },
+            },
+        )
     }
 }
 
@@ -46,12 +63,18 @@ impl AbstractWorker for CleanupWorker {
         loop {
             tokio::select! {
                 Some(r) = self.events.recv() => {
-                    todo!()
+                    match r {
+                        CleanupWorkerTask::RemoveMedia(id) => self.service.remove_media_by_id(&id).await?,
+                    }
                 }
                 _ = cleanup_interval.tick() => {
                     tracing::info!("CleanupWorker: Starting interval auto-cleaning");
 
-                    // TODO
+                    let orphaned = self.service.cleanup_orphaned().await?;
+                    tracing::info!("CleanupWorker: {orphaned} orphaned Media removed");
+
+                    let del_assets = self.service.cleanup_deleted_assets().await?;
+                    tracing::info!("CleanupWorker: {del_assets} assets marked as deleted have been deleted");
                 }
                 _ = cancel.cancelled() => {
                     self.events.close();
@@ -60,6 +83,109 @@ impl AbstractWorker for CleanupWorker {
             }
         }
 
+        Ok(())
+    }
+}
+
+/// Service for a [`CleanupWorker`]
+struct CleanupWorkerService {
+    ctx: WorkerContext,
+}
+
+impl CleanupWorkerService {
+    async fn remove_media_by_id(&self, id: &MediaId) -> Result<()> {
+        let mut conn = self.ctx.db.acquire().await?;
+        let Some(media) = conn.get_media(id).await? else {
+            return Ok(());
+        };
+        let files = conn.get_media_files(&media.id).await?;
+
+        self.delete_media(&media, files).await
+    }
+
+    async fn cleanup_orphaned(&self) -> Result<usize> {
+        let mut deleted = 0;
+
+        let mut conn = self.ctx.db.acquire().await?;
+        loop {
+            let media = conn.get_orphans_media(50).await?;
+            let files = conn.get_media_files_bulk(&media.ids()).await?;
+
+            let count = media.len();
+
+            for (m, f) in JoinBuilder::new(media).with_group(files, |m| m).build() {
+                self.delete_media(&m, f).await?;
+                deleted += 1;
+            }
+
+            if count < 50 {
+                break;
+            }
+        }
+        Ok(deleted)
+    }
+
+    async fn cleanup_deleted_assets(&self) -> Result<usize> {
+        let mut deleted = 0;
+        let now = Utc::now();
+        let retention_time = chrono::Duration::days(30);
+
+        let mut conn = self.ctx.db.acquire().await?;
+        loop {
+            let marked = conn
+                .get_deleted_assets(Pagination::new(50, 0), AssetsOrdering::Oldest)
+                .await?;
+
+            let mut processed = 0;
+
+            for a in &marked {
+                let deleted = a
+                    .deleted_at
+                    .expect("asset_repo.get_deleted_list(..) returned asset without deleted_at");
+
+                if (now - deleted) >= retention_time {
+                    self.delete_asset(a).await?;
+                    processed += 1;
+                } else {
+                    tracing::info!("Reached an asset that was deleted less than 30 days ago");
+                    break;
+                }
+            }
+
+            deleted += processed;
+            if processed != marked.len() || marked.len() < 50 {
+                break;
+            }
+        }
+        Ok(deleted)
+    }
+
+    async fn delete_asset(&self, asset: &Asset) -> Result<()> {
+        let mut conn = self.ctx.db.acquire().await?;
+        conn.delete_asset(&asset.id).await?;
+        Ok(())
+    }
+
+    async fn delete_media(&self, media: &Media, files: Vec<MediaFile>) -> Result<()> {
+        for f in &files {
+            self.delete_media_file(f).await?;
+        }
+
+        let mut tx = self.ctx.db.begin().await?;
+
+        tx.delete_media_file_bulk(&files.ids()).await?;
+        tx.delete_media(&media.id).await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
+    async fn delete_media_file(&self, file: &MediaFile) -> Result<()> {
+        let path = StoragePath::from_str(&file.storage_path).to_app_err()?;
+        if self.ctx.storage.remove_safely(&path).await {
+            tracing::info!(path = ?file.storage_path, "CleanupWorker: Removed storage media file");
+        }
         Ok(())
     }
 }

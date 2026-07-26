@@ -48,6 +48,25 @@ where
         Ok(res.into())
     }
 
+    async fn get_orphans_media(&mut self, limit: u32) -> Result<Vec<Media>> {
+        let orphans = sqlx::query_as(
+            "
+            SELECT m.* 
+            FROM media AS m
+            LEFT JOIN assets AS a ON a.media_id = m.id
+            GROUP BY m.id
+            HAVING COUNT(a.id) = 0
+            LIMIT ?
+            ",
+        )
+        .bind(limit)
+        .fetch_all(self.executor())
+        .await
+        .to_app_err()?;
+
+        Ok(orphans)
+    }
+
     async fn get_media_bulk(&mut self, ids: &[MediaId]) -> Result<Vec<Media>> {
         if ids.is_empty() {
             return Ok(Vec::new());
@@ -104,17 +123,22 @@ where
         Ok(res.into())
     }
 
-    async fn delete_media_file(&mut self, id: &MediaFileId) -> Result<DeleteResult> {
-        let res = sqlx::query(
+    async fn delete_media_file_bulk(&mut self, ids: &[MediaFileId]) -> Result<DeleteResult> {
+        if ids.is_empty() {
+            return Ok(DeleteResult::NoChanges);
+        }
+
+        let mut qb = QueryBuilder::new(
             "
             DELETE FROM media_files
-            WHERE id = ?
+            WHERE id IN 
             ",
-        )
-        .bind(id)
-        .execute(self.executor())
-        .await
-        .to_app_err()?;
+        );
+        qb.push_tuples(ids, |mut qb, id| {
+            qb.push_bind(id);
+        });
+
+        let res = qb.build().execute(self.executor()).await.to_app_err()?;
         Ok(res.into())
     }
 
