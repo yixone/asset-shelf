@@ -9,10 +9,10 @@ use futures::TryStreamExt;
 use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
 use storage::file::UnreleasedFile;
-use workers::units::media::MediaWorkerTask;
+use workers::events::event::AssetCreatedEvent;
 
 use crate::{
-    di::{DataCtx, EventsContext},
+    di::DataCtx,
     dto::v1::assets::AssetDtoV1,
     routes::ApiResult,
     utils::multipart::{FieldExt, MultipartParseError},
@@ -32,11 +32,7 @@ struct UploadingContext<'a> {
 
 /// Uploads an asset with a media file
 #[post("/upload")]
-async fn upload_asset(
-    mut payload: Multipart,
-    ctx: web::Data<DataCtx>,
-    events: web::Data<EventsContext>,
-) -> ApiResult {
+async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
     let mut upload = UploadingContext::default();
 
     while let Some(mut field) = payload
@@ -119,10 +115,7 @@ async fn upload_asset(
         return Err(e);
     }
 
-    events
-        .media
-        .send(MediaWorkerTask::ProcessAsset(asset.id))
-        .await;
+    ctx.events.publish(AssetCreatedEvent { asset: asset.id });
 
     let res = AssetDtoV1::from((asset, asset_features, vec![media_file]));
     Ok(HttpResponse::Created().json(res))

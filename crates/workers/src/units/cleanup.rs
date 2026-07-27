@@ -18,30 +18,21 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     di::WorkerContext,
-    queue::{EventsQueue, TasksSender},
+    events::event::{AssetDeletedEvent, EventStream},
     traits::{AbstractWorker, WorkerConfig},
 };
 
-#[derive(Clone)]
-pub enum CleanupWorkerTask {
-    RemoveMedia(MediaId),
-}
-
 pub struct CleanupWorker {
-    events: EventsQueue<CleanupWorkerTask>,
+    delete_event: EventStream<AssetDeletedEvent>,
     service: CleanupWorkerService,
 }
 
 impl CleanupWorker {
-    pub fn new(ctx: WorkerContext) -> (TasksSender<CleanupWorkerTask>, Self) {
-        let queue = EventsQueue::new(1024);
-        (
-            queue.tx.clone(),
-            CleanupWorker {
-                events: queue,
-                service: CleanupWorkerService { ctx },
-            },
-        )
+    pub fn new(ctx: WorkerContext) -> Self {
+        CleanupWorker {
+            delete_event: ctx.events.subscribe(),
+            service: CleanupWorkerService { ctx },
+        }
     }
 }
 
@@ -62,10 +53,8 @@ impl AbstractWorker for CleanupWorker {
 
         loop {
             tokio::select! {
-                Some(r) = self.events.recv() => {
-                    match r {
-                        CleanupWorkerTask::RemoveMedia(id) => self.service.remove_media_by_id(&id).await?,
-                    }
+                Ok(e) = self.delete_event.recv() => {
+                    self.service.remove_media_by_id(&e.media).await?
                 }
                 _ = cleanup_interval.tick() => {
                     tracing::info!("CleanupWorker: Starting interval auto-cleaning");
@@ -77,7 +66,6 @@ impl AbstractWorker for CleanupWorker {
                     tracing::info!("CleanupWorker: {del_assets} assets marked as deleted have been deleted");
                 }
                 _ = cancel.cancelled() => {
-                    self.events.close();
                     break;
                 }
             }

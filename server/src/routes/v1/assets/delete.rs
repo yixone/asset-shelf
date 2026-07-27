@@ -4,12 +4,9 @@ use db::{database::DatabaseProvider, ops::AssetOps, types::patches::AssetPatch};
 use models::types::AssetId;
 use result::create_error;
 use serde::Serialize;
-use workers::units::cleanup::CleanupWorkerTask;
+use workers::events::event::AssetDeletedEvent;
 
-use crate::{
-    di::{DataCtx, EventsContext},
-    routes::ApiResult,
-};
+use crate::{di::DataCtx, routes::ApiResult};
 
 /// Asset removal status
 #[derive(Serialize)]
@@ -29,11 +26,7 @@ struct DeleteAssetResponse {
 }
 
 #[delete("/{id}")]
-async fn delete_asset(
-    id: web::Path<AssetId>,
-    ctx: web::Data<DataCtx>,
-    events: web::Data<EventsContext>,
-) -> ApiResult {
+async fn delete_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiResult {
     let mut conn = ctx.db.acquire().await?;
 
     let asset = conn.get_asset(&id).await?.ok_or(create_error!(NotFound))?;
@@ -44,8 +37,10 @@ async fn delete_asset(
 
             conn.delete_asset(&asset.id).await?;
 
-            let task = CleanupWorkerTask::RemoveMedia(asset.media_id);
-            events.cleanup.send(task).await;
+            ctx.events.publish(AssetDeletedEvent {
+                asset: asset.id,
+                media: asset.media_id,
+            });
 
             RemovalStateResponse::Deleted
         }

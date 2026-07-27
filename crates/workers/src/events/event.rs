@@ -1,12 +1,16 @@
 use std::marker::PhantomData;
 
+use models::types::{AssetId, MediaId};
 use result::error::ResultExt;
 use tokio::sync::broadcast::{Receiver, Sender};
 
 use crate::events::AbstractEvent;
 
-app_event!(AssetCreatedEvent);
-app_event!(AssetDeletedEvent);
+app_event!(AssetCreatedEvent { asset: AssetId });
+app_event!(AssetDeletedEvent {
+    asset: AssetId,
+    media: MediaId
+});
 
 events! {
     AssetCreated => AssetCreatedEvent,
