@@ -1,0 +1,42 @@
+use std::collections::BTreeMap;
+
+use mimetype::MimeType;
+use models::entities::{MediaFile, MediaVariant};
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct MediaGroupDtoV1 {
+    media: BTreeMap<MediaVariant, MediaFileDtoV1>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MediaFileDtoV1 {
+    url: String,
+    size_bytes: i64,
+    mimetype: MimeType,
+}
+
+impl From<Vec<MediaFile>> for MediaGroupDtoV1 {
+    fn from(files: Vec<MediaFile>) -> Self {
+        let files = files
+            .into_iter()
+            .map(|f| (f.variant, f.into()))
+            .collect::<BTreeMap<_, _>>();
+
+        MediaGroupDtoV1 { media: files }
+    }
+}
+
+impl From<MediaFile> for MediaFileDtoV1 {
+    fn from(file: MediaFile) -> Self {
+        MediaFileDtoV1 {
+            url: build_media_file_url(&file),
+            size_bytes: file.size_bytes,
+            mimetype: file.mimetype,
+        }
+    }
+}
+
+pub fn build_media_file_url(f: &MediaFile) -> String {
+    format!("/v1/media/{}?format={}", f.media_id, f.variant)
+}

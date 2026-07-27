@@ -1,36 +1,36 @@
 [workspace]
 resolver = "2"
 members = [
-    # Application core crates
-    "crates/core/db",
-    "crates/core/media",
-    "crates/core/models",
-    "crates/core/result",
-    "crates/core/storage",
-    "crates/core/storage_backend",
+    # Application crates
+    "crates/db",
+    "crates/media",
+    "crates/models",
+    "crates/result",
+    "crates/storage",
+    "crates/storage_backend",
+    "crates/workers",
 
     # Common crates
-    "crates/libs/flake_id",
-    "crates/libs/mimetype",
+    "packages/flake_id",
+    "packages/mimetype",
 
     # Binary crates
-    "crates/server",
-    "crates/workers",
+    "server",
 ]
 
 [workspace.dependencies]
 # Workspace crates
-db = { path = "crates/core/db" }
-media = { path = "crates/core/media" }
-models = { path = "crates/core/models" }
-result = { path = "crates/core/result" }
-storage = { path = "crates/core/storage" }
-storage_backend = { path = "crates/core/storage_backend" }
-
-flake_id = { path = "crates/libs/flake_id" }
-mimetype = { path = "crates/libs/mimetype" }
-
+db = { path = "crates/db" }
+media = { path = "crates/media" }
+models = { path = "crates/models" }
+result = { path = "crates/result" }
+storage = { path = "crates/storage" }
+storage_backend = { path = "crates/storage_backend" }
 workers = { path = "crates/workers" }
+
+flake_id = { path = "packages/flake_id" }
+mimetype = { path = "packages/mimetype" }
+
 
 # External crates
 actix-cors = "0.7.1"

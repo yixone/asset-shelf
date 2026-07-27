@@ -3,19 +3,11 @@ use std::sync::Arc;
 use db::sqlite::SqliteDatabase;
 use flake_id::FlakeIdGenerator;
 use storage::Storage;
+use workers::events::EventBus;
 
-use crate::events::bus::EventBus;
-
-pub mod supervisor;
-pub mod worker;
-
-pub mod events;
-pub mod units;
-
-#[derive(Clone)]
-pub struct WorkerContext {
+pub struct DataCtx {
     pub db: Arc<SqliteDatabase>,
-    pub flake: Arc<FlakeIdGenerator>,
     pub storage: Arc<Storage>,
+    pub flake: Arc<FlakeIdGenerator>,
     pub events: Arc<EventBus>,
 }

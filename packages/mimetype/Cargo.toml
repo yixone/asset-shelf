@@ -1,0 +1,13 @@
+[package]
+name = "mimetype"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+serde = ["dep:serde"]
+sqlx = ["dep:sqlx"]
+
+[dependencies]
+# External
+serde = { workspace = true, features = ["derive"], optional = true }
+sqlx = { workspace = true, optional = true }
