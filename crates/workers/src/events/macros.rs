@@ -44,12 +44,30 @@ macro_rules! events {
 }
 
 macro_rules! app_event {
-    { $event_name: ident} => {
+    {
+        $( #[$meta: meta] )*
+        $event_name: ident
+    } => {
+        $(#[$meta])*
         #[derive(Debug, Clone)]
         pub struct $event_name;
     };
-    { $event_name: ident { $( $f: ident: $ft: ty ),* } } => {
+    {
+        $( #[$meta: meta] )*
+        $event_name: ident {
+            $(
+                $( #[$fmeta: meta] )*
+                $f: ident: $ft: ty
+            ),*
+        }
+    } => {
+        $(#[$meta])*
         #[derive(Debug, Clone)]
-        pub struct $event_name { $(pub $f: $ft),* }
+        pub struct $event_name {
+            $(
+                $( #[$fmeta] )*
+                pub $f: $ft
+            ),*
+        }
     };
 }

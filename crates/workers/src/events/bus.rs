@@ -3,8 +3,8 @@ use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
 use tokio::sync::broadcast::channel;
 
 use crate::events::{
-    AbstractEvent,
-    event::{Event, EventKind, EventSender, EventStream},
+    AbstractEvent, EventSender, EventStream,
+    event::{Event, EventKind},
 };
 
 /// Event bus for working and managing events
