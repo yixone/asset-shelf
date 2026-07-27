@@ -7,7 +7,7 @@ use storage::Storage;
 use crate::events::bus::EventBus;
 
 pub mod supervisor;
-pub mod traits;
+pub mod worker;
 
 pub mod events;
 pub mod units;

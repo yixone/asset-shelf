@@ -22,8 +22,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     WorkerContext,
-    events::event::{AssetCreatedEvent, EventStream},
-    traits::{AbstractWorker, WorkerConfig},
+    events::{EventStream, event::AssetCreatedEvent},
+    worker::{AbstractWorker, WorkerConfig},
 };
 
 /// Background media worker
@@ -66,11 +66,9 @@ impl AbstractWorker for MediaWorker {
         loop {
             tokio::select! {
                 Ok(new_asset) = self.events.asset_created.recv() => {
-                   self.service.process_asset_by_id(&new_asset.asset).await?
-                }
-                _ = cancel.cancelled() => {
-                    break;
-                }
+                    self.service.process_asset_by_id(&new_asset.asset).await?
+                },
+                _ = cancel.cancelled() => break
             }
         }
 

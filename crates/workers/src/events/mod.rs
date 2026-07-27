@@ -3,9 +3,11 @@ use std::fmt::Debug;
 #[macro_use]
 pub mod macros;
 pub mod bus;
+pub mod channel;
 pub mod event;
 
 pub use bus::EventBus;
+pub use channel::{EventSender, EventStream};
 pub use event::{Event, EventKind};
 
 /// Abstract application event

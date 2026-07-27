@@ -18,8 +18,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     WorkerContext,
-    events::event::{AssetDeletedEvent, EventStream},
-    traits::{AbstractWorker, WorkerConfig},
+    events::{EventStream, event::AssetDeletedEvent},
+    worker::{AbstractWorker, WorkerConfig},
 };
 
 pub struct CleanupWorker {
