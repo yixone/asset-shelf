@@ -5,17 +5,14 @@ use actix_web::{App, HttpServer, dev::ServerHandle, web};
 use db::sqlite::SqliteDatabase;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
-use server::{
-    SERVER_VERSION,
-    di::{DataCtx, EventsContext},
-    routes,
-};
+use server::{SERVER_VERSION, di::DataCtx, routes};
 use storage::Storage;
 use storage_backend::StorageBackend;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
-    di::WorkerContext,
+    WorkerContext,
+    events::EventBus,
     supervisor::{SupervisorHandle, WorkersSupervisor},
     units::{cleanup::CleanupWorker, media::MediaWorker},
 };
@@ -39,17 +36,23 @@ async fn main() -> Result<()> {
         8 * 1024 * 1024 * 1024,
     ));
 
+    let events = Arc::new(EventBus::new(1024));
     let flake = Arc::new(FlakeIdGenerator::new(2));
-    let ctx = DataCtx { db, storage, flake };
+    let ctx = DataCtx {
+        db,
+        storage,
+        flake,
+        events,
+    };
 
     let cancel = CancellationToken::new();
-    let (supervisor, events) = init_workers(&ctx);
+    let supervisor = init_workers(&ctx);
 
     let workers_handle = supervisor.run(cancel.clone());
 
     tracing::info!("Server started on http://{HOST_ADDR}!");
 
-    let server = configure_server(ctx, events)?;
+    let server = configure_server(ctx)?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);
@@ -60,15 +63,13 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn configure_server(ctx: DataCtx, events: EventsContext) -> Result<actix_web::dev::Server> {
+fn configure_server(ctx: DataCtx) -> Result<actix_web::dev::Server> {
     let ctx = web::Data::new(ctx);
-    let events = web::Data::new(events);
 
     Ok(HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
             .app_data(ctx.clone())
-            .app_data(events.clone())
             .configure(routes::cfg)
     })
     .bind(HOST_ADDR)
@@ -109,23 +110,18 @@ fn init_tracing() {
         .init();
 }
 
-fn init_workers(ctx: &DataCtx) -> (WorkersSupervisor, EventsContext) {
+fn init_workers(ctx: &DataCtx) -> WorkersSupervisor {
     let workers_context = WorkerContext {
         db: ctx.db.clone(),
         storage: ctx.storage.clone(),
         flake: ctx.flake.clone(),
+        events: ctx.events.clone(),
     };
 
-    let (cleanup_events, cleanup_worker) = CleanupWorker::new(workers_context.clone());
-    let (media_events, media_worker) = MediaWorker::new(workers_context.clone());
+    let cleanup_worker = CleanupWorker::new(workers_context.clone());
+    let media_worker = MediaWorker::new(workers_context.clone());
 
-    (
-        WorkersSupervisor::new()
-            .with_worker(cleanup_worker)
-            .with_worker(media_worker),
-        EventsContext {
-            cleanup: cleanup_events,
-            media: media_events,
-        },
-    )
+    WorkersSupervisor::new()
+        .with_worker(cleanup_worker)
+        .with_worker(media_worker)
 }

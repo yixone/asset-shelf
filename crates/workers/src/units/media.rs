@@ -21,37 +21,30 @@ use tokio::io::AsyncRead;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    di::WorkerContext,
-    queue::{EventsQueue, TasksSender},
+    WorkerContext,
+    events::event::{AssetCreatedEvent, EventStream},
     traits::{AbstractWorker, WorkerConfig},
 };
 
-/// Task for the media processing background worker
-#[derive(Clone)]
-pub enum MediaWorkerTask {
-    /// Task to process asset media by [`AssetId`]:
-    /// - Calculates media key parameters
-    /// - Generates media variants
-    ProcessAsset(AssetId),
-}
-
 /// Background media worker
 pub struct MediaWorker {
-    events: EventsQueue<MediaWorkerTask>,
     service: MediaWorkerService,
+    events: MediaWorkerEvents,
+}
+
+struct MediaWorkerEvents {
+    asset_created: EventStream<AssetCreatedEvent>,
 }
 
 impl MediaWorker {
     /// Creates a new [`MediaWorker`] and returns it with [`TasksSender`] for worker's tasks
-    pub fn new(ctx: WorkerContext) -> (TasksSender<MediaWorkerTask>, Self) {
-        let queue = EventsQueue::new(1024);
-        (
-            queue.tx.clone(),
-            Self {
-                events: queue,
-                service: MediaWorkerService { ctx },
+    pub fn new(ctx: WorkerContext) -> Self {
+        Self {
+            events: MediaWorkerEvents {
+                asset_created: ctx.events.subscribe::<AssetCreatedEvent>(),
             },
-        )
+            service: MediaWorkerService { ctx },
+        }
     }
 }
 
@@ -72,13 +65,10 @@ impl AbstractWorker for MediaWorker {
 
         loop {
             tokio::select! {
-                Some(task) = self.events.recv() => {
-                    match task {
-                        MediaWorkerTask::ProcessAsset(id) => self.service.process_asset_by_id(&id).await?,
-                    }
+                Ok(new_asset) = self.events.asset_created.recv() => {
+                   self.service.process_asset_by_id(&new_asset.asset).await?
                 }
                 _ = cancel.cancelled() => {
-                    self.events.close();
                     break;
                 }
             }

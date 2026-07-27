@@ -17,31 +17,28 @@ use tokio::time::interval;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    di::WorkerContext,
-    queue::{EventsQueue, TasksSender},
+    WorkerContext,
+    events::event::{AssetDeletedEvent, EventStream},
     traits::{AbstractWorker, WorkerConfig},
 };
 
-#[derive(Clone)]
-pub enum CleanupWorkerTask {
-    RemoveMedia(MediaId),
+pub struct CleanupWorker {
+    service: CleanupWorkerService,
+    events: CleanupWorkerEvents,
 }
 
-pub struct CleanupWorker {
-    events: EventsQueue<CleanupWorkerTask>,
-    service: CleanupWorkerService,
+struct CleanupWorkerEvents {
+    asset_deleted: EventStream<AssetDeletedEvent>,
 }
 
 impl CleanupWorker {
-    pub fn new(ctx: WorkerContext) -> (TasksSender<CleanupWorkerTask>, Self) {
-        let queue = EventsQueue::new(1024);
-        (
-            queue.tx.clone(),
-            CleanupWorker {
-                events: queue,
-                service: CleanupWorkerService { ctx },
+    pub fn new(ctx: WorkerContext) -> Self {
+        CleanupWorker {
+            events: CleanupWorkerEvents {
+                asset_deleted: ctx.events.subscribe::<AssetDeletedEvent>(),
             },
-        )
+            service: CleanupWorkerService { ctx },
+        }
     }
 }
 
@@ -62,10 +59,8 @@ impl AbstractWorker for CleanupWorker {
 
         loop {
             tokio::select! {
-                Some(r) = self.events.recv() => {
-                    match r {
-                        CleanupWorkerTask::RemoveMedia(id) => self.service.remove_media_by_id(&id).await?,
-                    }
+                Ok(e) = self.events.asset_deleted.recv() => {
+                    self.service.remove_media_by_id(&e.media).await?
                 }
                 _ = cleanup_interval.tick() => {
                     tracing::info!("CleanupWorker: Starting interval auto-cleaning");
@@ -77,7 +72,6 @@ impl AbstractWorker for CleanupWorker {
                     tracing::info!("CleanupWorker: {del_assets} assets marked as deleted have been deleted");
                 }
                 _ = cancel.cancelled() => {
-                    self.events.close();
                     break;
                 }
             }
