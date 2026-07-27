@@ -21,22 +21,28 @@ use tokio::io::AsyncRead;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    di::WorkerContext,
+    WorkerContext,
     events::event::{AssetCreatedEvent, EventStream},
     traits::{AbstractWorker, WorkerConfig},
 };
 
 /// Background media worker
 pub struct MediaWorker {
-    new_asset_event: EventStream<AssetCreatedEvent>,
     service: MediaWorkerService,
+    events: MediaWorkerEvents,
+}
+
+struct MediaWorkerEvents {
+    asset_created: EventStream<AssetCreatedEvent>,
 }
 
 impl MediaWorker {
     /// Creates a new [`MediaWorker`] and returns it with [`TasksSender`] for worker's tasks
     pub fn new(ctx: WorkerContext) -> Self {
         Self {
-            new_asset_event: ctx.events.subscribe(),
+            events: MediaWorkerEvents {
+                asset_created: ctx.events.subscribe::<AssetCreatedEvent>(),
+            },
             service: MediaWorkerService { ctx },
         }
     }
@@ -59,7 +65,7 @@ impl AbstractWorker for MediaWorker {
 
         loop {
             tokio::select! {
-                Ok(new_asset) = self.new_asset_event.recv() => {
+                Ok(new_asset) = self.events.asset_created.recv() => {
                    self.service.process_asset_by_id(&new_asset.asset).await?
                 }
                 _ = cancel.cancelled() => {

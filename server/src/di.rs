@@ -3,7 +3,7 @@ use std::sync::Arc;
 use db::sqlite::SqliteDatabase;
 use flake_id::FlakeIdGenerator;
 use storage::Storage;
-use workers::events::bus::EventBus;
+use workers::events::EventBus;
 
 pub struct DataCtx {
     pub db: Arc<SqliteDatabase>,

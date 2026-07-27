@@ -17,20 +17,26 @@ use tokio::time::interval;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    di::WorkerContext,
+    WorkerContext,
     events::event::{AssetDeletedEvent, EventStream},
     traits::{AbstractWorker, WorkerConfig},
 };
 
 pub struct CleanupWorker {
-    delete_event: EventStream<AssetDeletedEvent>,
     service: CleanupWorkerService,
+    events: CleanupWorkerEvents,
+}
+
+struct CleanupWorkerEvents {
+    asset_deleted: EventStream<AssetDeletedEvent>,
 }
 
 impl CleanupWorker {
     pub fn new(ctx: WorkerContext) -> Self {
         CleanupWorker {
-            delete_event: ctx.events.subscribe(),
+            events: CleanupWorkerEvents {
+                asset_deleted: ctx.events.subscribe::<AssetDeletedEvent>(),
+            },
             service: CleanupWorkerService { ctx },
         }
     }
@@ -53,7 +59,7 @@ impl AbstractWorker for CleanupWorker {
 
         loop {
             tokio::select! {
-                Ok(e) = self.delete_event.recv() => {
+                Ok(e) = self.events.asset_deleted.recv() => {
                     self.service.remove_media_by_id(&e.media).await?
                 }
                 _ = cleanup_interval.tick() => {

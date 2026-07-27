@@ -5,6 +5,7 @@ pub mod macros;
 pub mod bus;
 pub mod event;
 
+pub use bus::EventBus;
 pub use event::{Event, EventKind};
 
 /// Abstract application event

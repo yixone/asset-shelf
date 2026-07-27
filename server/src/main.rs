@@ -11,8 +11,8 @@ use storage_backend::StorageBackend;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
-    di::WorkerContext,
-    events::bus::EventBus,
+    WorkerContext,
+    events::EventBus,
     supervisor::{SupervisorHandle, WorkersSupervisor},
     units::{cleanup::CleanupWorker, media::MediaWorker},
 };
