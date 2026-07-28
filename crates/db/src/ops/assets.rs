@@ -1,6 +1,6 @@
 use models::{
     entities::{Asset, AssetFeatures},
-    types::{AssetId, AssetsOrdering},
+    types::{AssetId, AssetsOrdering, Color},
 };
 use result::Result;
 
@@ -51,4 +51,11 @@ pub trait AssetFeaturesOps {
             .map(|a| a.into_iter().next())
     }
     async fn get_assets_features_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<AssetFeatures>>;
+
+    async fn get_similarity_candidates(
+        &mut self,
+        color: Color,
+        aspect_ratio: f32,
+        p: Pagination,
+    ) -> Result<Vec<AssetFeatures>>;
 }
