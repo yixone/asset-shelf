@@ -25,13 +25,9 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
     let Some(color) = reference.accent_color else {
         return Ok(HttpResponse::NoContent().finish());
     };
-    let Some(width) = reference.width else {
+    let (Some(width), Some(height)) = (reference.width, reference.height) else {
         return Ok(HttpResponse::NoContent().finish());
     };
-    let Some(height) = reference.height else {
-        return Ok(HttpResponse::NoContent().finish());
-    };
-
     let aspect_ratio = width as f32 / height as f32;
 
     let candidates = ctx
@@ -63,7 +59,7 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
 }
 
 mod searcher {
-    use models::entities::AssetFeatures;
+    use models::{entities::AssetFeatures, types::Color};
 
     pub struct SimilarSearcher {
         reference: AssetFeatures,
@@ -76,13 +72,13 @@ mod searcher {
     }
 
     const PHASH_WEIGHT: f32 = 0.50;
-    const PHASH_DISTANCE: u32 = 25;
+    const PHASH_MAX_DISTANCE: u32 = 25;
 
-    const AHASH_WEIGHT: f32 = 0.75;
-    const AHASH_DISTANCE: u32 = 15;
+    const AHASH_WEIGHT: f32 = 0.60;
+    const AHASH_MAX_DISTANCE: u32 = 15;
 
-    const COLOR_WEIGHT: f32 = 0.5;
-    const COLOR_DISTANCE: u32 = 16;
+    const COLOR_WEIGHT: f32 = 0.55;
+    const COLOR_MAX_DISTANCE: u32 = 16;
 
     impl SimilarSearcher {
         /// Creates a new [`SimilarSearcher`]
@@ -102,26 +98,26 @@ mod searcher {
                 let init_score = f.score;
 
                 // Adds a pHash score
-                let phash = calc_weighed_score(
+                let phash = calc_hash_score(
                     f.feature.p_hash,
                     self.reference.p_hash,
-                    PHASH_DISTANCE,
+                    PHASH_MAX_DISTANCE,
                     PHASH_WEIGHT,
                 );
 
                 // Adds a aHash score
-                let ahash = calc_weighed_score(
+                let ahash = calc_hash_score(
                     f.feature.a_hash,
                     self.reference.a_hash,
-                    AHASH_DISTANCE,
+                    AHASH_MAX_DISTANCE,
                     AHASH_WEIGHT,
                 );
 
                 // Adds a color score
-                let color = calc_weighed_score(
-                    f.feature.accent_color.map(|c| c.0),
-                    self.reference.accent_color.map(|c| c.0),
-                    COLOR_DISTANCE,
+                let color = calc_color_score(
+                    f.feature.accent_color,
+                    self.reference.accent_color,
+                    COLOR_MAX_DISTANCE,
                     COLOR_WEIGHT,
                 );
 
@@ -129,24 +125,13 @@ mod searcher {
                 f.score += ahash;
                 f.score += color;
 
-                // Adds a dimension score
-                // TODO!
-
                 let stage_score = f.score - init_score;
-                tracing::info!(
-                    phash,
-                    ahash,
-                    color,
-                    stage_score,
-                    score = f.score,
-                    "Similar filtered"
-                );
                 stage_score >= score_threshold
             });
         }
 
         pub fn sort_by_score(&mut self) {
-            self.features.sort_by_key(|f| f.score);
+            self.features.sort_by(|a, b| b.score.cmp(&a.score));
         }
 
         pub fn finalize(self) -> Vec<AssetFeatures> {
@@ -162,18 +147,20 @@ mod searcher {
         }
     }
 
-    fn calc_weighed_score<T>(a: Option<T>, b: Option<T>, distance: u32, weight: f32) -> u32
-    where
-        T: Into<i64>,
-    {
-        let (Some(a), Some(b)) = (a, b) else {
-            return 0;
-        };
+    fn calc_hash_score(a: Option<i64>, b: Option<i64>, max_distance: u32, weight: f32) -> u32 {
+        let (Some(a), Some(b)) = (a, b) else { return 0 };
+        let dist = (a ^ b).count_ones();
+        calc_weighed_score(dist, max_distance, weight)
+    }
 
-        let dist = (a.into() ^ b.into()).count_ones();
+    fn calc_color_score(a: Option<Color>, b: Option<Color>, max_distance: u32, weight: f32) -> u32 {
+        let (Some(a), Some(b)) = (a, b) else { return 0 };
+        let dist = (a.0 ^ b.0).count_ones();
+        calc_weighed_score(dist, max_distance, weight)
+    }
 
-        let similarity = 1.0 - (dist.min(distance) as f32 / distance as f32);
-
+    fn calc_weighed_score(distance: u32, max_distance: u32, weight: f32) -> u32 {
+        let similarity = 1.0 - (distance.min(max_distance) as f32 / max_distance as f32);
         (similarity * weight * 100.0).round() as u32
     }
 }
