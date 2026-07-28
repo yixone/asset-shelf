@@ -71,14 +71,14 @@ mod searcher {
         score: u32,
     }
 
-    const PHASH_WEIGHT: f32 = 0.50;
+    const PHASH_WEIGHT: f32 = 0.80;
     const PHASH_MAX_DISTANCE: u32 = 25;
 
     const AHASH_WEIGHT: f32 = 0.60;
     const AHASH_MAX_DISTANCE: u32 = 15;
 
-    const COLOR_WEIGHT: f32 = 0.55;
-    const COLOR_MAX_DISTANCE: u32 = 16;
+    const COLOR_WEIGHT: f32 = 0.40;
+    const COLOR_MAX_DISTANCE: u32 = 15;
 
     impl SimilarSearcher {
         /// Creates a new [`SimilarSearcher`]
@@ -126,6 +126,7 @@ mod searcher {
                 f.score += color;
 
                 let stage_score = f.score - init_score;
+                // tracing::info!(phash, ahash, color, stage_score, feat = ?f.feature.asset_id);
                 stage_score >= score_threshold
             });
         }
