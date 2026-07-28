@@ -4,22 +4,20 @@ use crate::features::dct::apply_dct2;
 pub fn p_hash(matrix: [[u8; 32]; 32]) -> i64 {
     // Apply DCT to matrix
     let dct = apply_dct2(&matrix);
+    dbg!(dct[0][0]);
 
-    // Crop the matrix to 8x8 and calculate the average value
-    let mut summ = 0.0;
-    let mut count = 0;
-
-    for j in 0..8 {
-        let y = dct[j];
-        for i in 0..8 {
-            if i == 0 && j == 0 {
+    // Crop the matrix to 8x8 and calculate the median value
+    let mut vals = Vec::with_capacity(63);
+    for row in 0..8 {
+        for col in 0..8 {
+            if col == 0 && row == 0 {
                 continue;
             }
-            count += 1;
-            summ += y[i];
+            vals.push(dct[row][col]);
         }
     }
-    let avg = summ / count as f32;
+    vals.sort_by(|a, b| a.partial_cmp(b).expect("Cannot sort pHash values"));
+    let median = vals[vals.len() / 2];
 
     // Calculating the hash
     let mut hash = 0_i64;
@@ -29,7 +27,7 @@ pub fn p_hash(matrix: [[u8; 32]; 32]) -> i64 {
                 continue;
             }
             hash <<= 1;
-            if dct[col][row] > avg {
+            if dct[row][col] > median {
                 hash |= 1;
             }
         }

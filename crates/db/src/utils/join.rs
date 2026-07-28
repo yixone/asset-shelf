@@ -194,6 +194,10 @@ define_joinable!(
     AssetFeatures => Asset,
     asset_id == id as AssetId
 );
+define_joinable!(
+    Asset => AssetFeatures,
+    id == asset_id as AssetId
+);
 
 #[cfg(test)]
 mod tests {

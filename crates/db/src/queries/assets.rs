@@ -1,6 +1,6 @@
 use models::{
     entities::{Asset, AssetFeatures, AssetState},
-    types::{AssetId, AssetsOrdering},
+    types::{AssetId, AssetsOrdering, Color},
 };
 use result::{Result, error::ResultExt};
 use sqlx::QueryBuilder;
@@ -305,5 +305,49 @@ where
             .await
             .to_app_err()?;
         Ok(assets)
+    }
+
+    async fn get_similarity_candidates(
+        &mut self,
+        color: Color,
+        aspect_ratio: f32,
+        p: Pagination,
+    ) -> Result<Vec<AssetFeatures>> {
+        let (red, green, blue) = color.rgb();
+
+        let candidates = sqlx::query_as(
+            "
+            SELECT af.*
+            FROM asset_features AS af
+            INNER JOIN assets AS a ON a.id = af.asset_id
+            WHERE (
+                -- RED
+                ((af.accent_color >> 16) BETWEEN ? AND ?) OR
+                -- GREEN
+                ((af.accent_color >> 8 & 0xFF) BETWEEN ? AND ?) OR
+                -- BLUE
+                ((af.accent_color & 0xFF) BETWEEN ? AND ?) OR
+                -- ASPECT RATIO
+                ((af.width / af.height) BETWEEN ? AND ?)
+            )
+            LIMIT ?
+            OFFSET ?
+            ",
+        )
+        .bind(red.saturating_sub(100))
+        .bind(red.saturating_add(100))
+        .bind(green.saturating_sub(100))
+        .bind(green.saturating_add(100))
+        .bind(blue.saturating_sub(100))
+        .bind(blue.saturating_add(100))
+        .bind(aspect_ratio - 0.75)
+        .bind(aspect_ratio + 0.75)
+        .bind(p.limit())
+        .bind(p.offset())
+        .fetch_all(self.executor())
+        .await
+        .to_app_err()?;
+
+        Ok(candidates)
     }
 }
