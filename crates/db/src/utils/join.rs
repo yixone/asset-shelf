@@ -1,7 +1,7 @@
 use std::{collections::HashMap, hash::Hash};
 
 use models::{
-    entities::{Asset, AssetFeatures, Collection, CollectionItem, Media, MediaFile},
+    entities::{Asset, AssetFeatures, Collection, CollectionAsset, Media, MediaFile},
     types::{AssetId, CollectionId, MediaId},
 };
 
@@ -182,11 +182,11 @@ define_joinable!(
 );
 
 define_joinable!(
-    CollectionItem => Collection,
+    CollectionAsset => Collection,
     collection_id == id as CollectionId
 );
 define_joinable!(
-    Asset => CollectionItem,
+    Asset => CollectionAsset,
     id == asset_id as AssetId
 );
 

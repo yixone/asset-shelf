@@ -1,6 +1,6 @@
 use models::{
-    entities::{Asset, AssetFeatures, Media, MediaFile},
-    types::{AssetId, MediaFileId, MediaId},
+    entities::{Asset, AssetFeatures, Collection, Media, MediaFile},
+    types::{AssetId, CollectionId, MediaFileId, MediaId},
 };
 
 pub trait CollectIds<T> {
@@ -38,5 +38,11 @@ impl CollectIds<MediaFileId> for Vec<MediaFile> {
 impl CollectIds<AssetId> for Vec<AssetFeatures> {
     fn ids(&self) -> Vec<AssetId> {
         self.iter().map(|a| a.asset_id).collect()
+    }
+}
+
+impl CollectIds<CollectionId> for Vec<Collection> {
+    fn ids(&self) -> Vec<CollectionId> {
+        self.iter().map(|c| c.id).collect()
     }
 }

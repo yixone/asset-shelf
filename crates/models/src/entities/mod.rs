@@ -7,11 +7,11 @@ pub mod media;
 pub mod media_file;
 
 pub mod collection;
-pub mod collection_item;
+pub mod collection_asset;
 
 pub use asset::*;
 pub use asset_features::*;
 pub use collection::*;
-pub use collection_item::*;
+pub use collection_asset::*;
 pub use media::*;
 pub use media_file::*;

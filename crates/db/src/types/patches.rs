@@ -117,3 +117,10 @@ patch_model! {
         accent_color: Option<Color>
     }
 }
+
+patch_model! {
+    CollectionPatch {
+        name: String,
+        description: Option<String>
+    }
+}

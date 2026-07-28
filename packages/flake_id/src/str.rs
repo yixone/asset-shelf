@@ -20,7 +20,8 @@ impl From<FlakeId> for FlakeIdStr {
 }
 
 mod base62 {
-    const CHARSET: [u8; 62] = *b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    pub const CHARSET: [u8; 62] =
+        *b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
     pub fn encode(mut i: u64) -> String {
         if i == 0 {
