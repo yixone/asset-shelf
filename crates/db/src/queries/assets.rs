@@ -314,6 +314,7 @@ where
         p: Pagination,
     ) -> Result<Vec<AssetFeatures>> {
         let (red, green, blue) = color.rgb();
+        const COLOR_SHIFT: u8 = 75;
 
         let candidates = sqlx::query_as(
             "
@@ -330,18 +331,19 @@ where
                 -- ASPECT RATIO
                 ((af.width / af.height) BETWEEN ? AND ?)
             )
+            ORDER BY a.created_at DESC
             LIMIT ?
             OFFSET ?
             ",
         )
-        .bind(red.saturating_sub(100))
-        .bind(red.saturating_add(100))
-        .bind(green.saturating_sub(100))
-        .bind(green.saturating_add(100))
-        .bind(blue.saturating_sub(100))
-        .bind(blue.saturating_add(100))
-        .bind(aspect_ratio - 0.75)
-        .bind(aspect_ratio + 0.75)
+        .bind(red.saturating_sub(COLOR_SHIFT))
+        .bind(red.saturating_add(COLOR_SHIFT))
+        .bind(green.saturating_sub(COLOR_SHIFT))
+        .bind(green.saturating_add(COLOR_SHIFT))
+        .bind(blue.saturating_sub(COLOR_SHIFT))
+        .bind(blue.saturating_add(COLOR_SHIFT))
+        .bind(aspect_ratio - 0.65)
+        .bind(aspect_ratio + 0.65)
         .bind(p.limit())
         .bind(p.offset())
         .fetch_all(self.executor())

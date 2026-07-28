@@ -72,13 +72,12 @@ mod searcher {
     }
 
     const PHASH_WEIGHT: f32 = 0.80;
-    const PHASH_MAX_DISTANCE: u32 = 25;
+    const PHASH_MAX_DISTANCE: f32 = 25.0;
 
     const AHASH_WEIGHT: f32 = 0.60;
-    const AHASH_MAX_DISTANCE: u32 = 15;
+    const AHASH_MAX_DISTANCE: f32 = 15.0;
 
     const COLOR_WEIGHT: f32 = 0.40;
-    const COLOR_MAX_DISTANCE: u32 = 15;
 
     impl SimilarSearcher {
         /// Creates a new [`SimilarSearcher`]
@@ -117,7 +116,6 @@ mod searcher {
                 let color = calc_color_score(
                     f.feature.accent_color,
                     self.reference.accent_color,
-                    COLOR_MAX_DISTANCE,
                     COLOR_WEIGHT,
                 );
 
@@ -126,7 +124,6 @@ mod searcher {
                 f.score += color;
 
                 let stage_score = f.score - init_score;
-                // tracing::info!(phash, ahash, color, stage_score, feat = ?f.feature.asset_id);
                 stage_score >= score_threshold
             });
         }
@@ -148,20 +145,27 @@ mod searcher {
         }
     }
 
-    fn calc_hash_score(a: Option<i64>, b: Option<i64>, max_distance: u32, weight: f32) -> u32 {
+    fn calc_hash_score(a: Option<i64>, b: Option<i64>, max_distance: f32, weight: f32) -> u32 {
         let (Some(a), Some(b)) = (a, b) else { return 0 };
         let dist = (a ^ b).count_ones();
-        calc_weighed_score(dist, max_distance, weight)
+        calc_weighed_score(dist as f32, max_distance, weight)
     }
 
-    fn calc_color_score(a: Option<Color>, b: Option<Color>, max_distance: u32, weight: f32) -> u32 {
+    fn calc_color_score(a: Option<Color>, b: Option<Color>, weight: f32) -> u32 {
         let (Some(a), Some(b)) = (a, b) else { return 0 };
-        let dist = (a.0 ^ b.0).count_ones();
-        calc_weighed_score(dist, max_distance, weight)
+
+        let (a_r, a_g, a_b) = a.rgb();
+        let (b_r, b_g, b_b) = b.rgb();
+
+        let dist = ((a_r as u16).abs_diff(b_r as u16))
+            + ((a_g as u16).abs_diff(b_g as u16))
+            + ((a_b as u16).abs_diff(b_b as u16));
+
+        calc_weighed_score(dist as f32, 765.0, weight)
     }
 
-    fn calc_weighed_score(distance: u32, max_distance: u32, weight: f32) -> u32 {
-        let similarity = 1.0 - (distance.min(max_distance) as f32 / max_distance as f32);
-        (similarity * weight * 100.0).round() as u32
+    fn calc_weighed_score(distance: f32, max_distance: f32, weight: f32) -> u32 {
+        let similarity = 1.0 - (distance / max_distance);
+        (similarity.max(0.0) * weight * 100.0).round() as u32
     }
 }
