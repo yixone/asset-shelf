@@ -2,7 +2,7 @@ CREATE TABLE collections (
     id              BIGINT          NOT NULL,
 
     name            VARCHAR(255)    NOT NULL,
-    description     VARCHAR(2048)   NOT NULL,
+    description     VARCHAR(2048),
 
     created_at      TIMESTAMPTZ     NOT NULL,
 

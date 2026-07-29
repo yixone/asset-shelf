@@ -4,6 +4,8 @@ use mimetype::MimeType;
 use models::entities::{MediaFile, MediaVariant};
 use serde::Serialize;
 
+use crate::utils::url::build_media_url;
+
 #[derive(Debug, Serialize)]
 pub struct MediaGroupDtoV1 {
     media: BTreeMap<MediaVariant, MediaFileDtoV1>,
@@ -30,13 +32,9 @@ impl From<Vec<MediaFile>> for MediaGroupDtoV1 {
 impl From<MediaFile> for MediaFileDtoV1 {
     fn from(file: MediaFile) -> Self {
         MediaFileDtoV1 {
-            url: build_media_file_url(&file),
+            url: build_media_url(&file.media_id, file.variant),
             size_bytes: file.size_bytes,
             mimetype: file.mimetype,
         }
     }
-}
-
-pub fn build_media_file_url(f: &MediaFile) -> String {
-    format!("/v1/media/{}?format={}", f.media_id, f.variant)
 }

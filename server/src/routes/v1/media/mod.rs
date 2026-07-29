@@ -1,6 +1,6 @@
 use actix_web::web;
 
-pub mod get_file;
+mod get_file;
 
 /// Configures endpoints for API `/media`
 pub fn cfg(cfg: &mut web::ServiceConfig) {
