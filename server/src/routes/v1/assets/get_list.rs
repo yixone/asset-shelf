@@ -6,9 +6,9 @@ use db::{
     database::DatabaseProvider,
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
     types::Pagination,
-    utils::{bulk::CollectIds, join::JoinBuilder},
+    utils::join::JoinBuilder,
 };
-use models::types::AssetsOrdering;
+use models::{types::AssetsOrdering, utils::bulk::BulkIds};
 use serde::Deserialize;
 
 use crate::{di::DataCtx, dto::v1::assets::AssetDtoV1, routes::ApiResult};
