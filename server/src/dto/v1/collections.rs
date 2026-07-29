@@ -10,7 +10,7 @@ pub struct CollectionDtoV1 {
     name: String,
     description: Option<String>,
     assets_count: u32,
-    preview: Vec<String>,
+    thumbnails: Vec<String>,
     created_at: DateTime<Utc>,
 }
 
@@ -21,7 +21,7 @@ impl From<(Collection, CollectionAdditions)> for CollectionDtoV1 {
             name: c.name,
             description: c.description,
             assets_count: ca.assets_count,
-            preview: ca
+            thumbnails: ca
                 .thumbnails
                 .into_iter()
                 .map(|t| build_media_url(&t, MediaVariant::Thumbnail))
