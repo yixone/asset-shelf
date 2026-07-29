@@ -1,7 +1,9 @@
 use flake_id::str::FlakeIdStr;
 use models::{
     entities::{Collection, CollectionAdditions, CollectionAsset},
-    types::{CollectionAssetId, CollectionAssetsOrdering, CollectionId, MediaId},
+    types::{
+        CollectionAssetId, CollectionAssetsOrdering, CollectionId, CollectionsOrdering, MediaId,
+    },
 };
 use result::{Result, error::ResultExt};
 use sqlx::{QueryBuilder, prelude::FromRow};
@@ -82,16 +84,33 @@ where
         Ok(res.into())
     }
 
-    async fn list_collections(&mut self, p: Pagination) -> Result<Vec<Collection>> {
+    async fn list_collections(
+        &mut self,
+        p: Pagination,
+        o: CollectionsOrdering,
+    ) -> Result<Vec<Collection>> {
         if p.limit() == 0 {
             return Ok(Vec::new());
         }
 
         let mut qb = QueryBuilder::new(
             "
-            SELECT c.* FROM collections AS c
+            SELECT c.*, ca.added_at FROM collections AS c
+            JOIN collection_assets AS ca 
+            ON ca.collection_id = c.id
+            AND ca.added_at = (
+                SELECT MAX(added_at)
+                FROM collection_assets AS ca
+                WHERE ca.collection_id = c.id
+            )
             ",
         );
+        let mut query = qb.separated(" ");
+
+        match o {
+            CollectionsOrdering::Latest => query.push("ORDER BY ca.added_at DESC"),
+            CollectionsOrdering::Oldest => query.push("ORDER BY ca.added_at ASC"),
+        };
         p.apply_sql(&mut qb);
 
         qb.build_query_as()

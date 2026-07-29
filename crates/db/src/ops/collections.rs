@@ -1,6 +1,6 @@
 use models::{
     entities::{Collection, CollectionAdditions, CollectionAsset},
-    types::{CollectionAssetId, CollectionAssetsOrdering, CollectionId},
+    types::{CollectionAssetId, CollectionAssetsOrdering, CollectionId, CollectionsOrdering},
 };
 use result::Result;
 
@@ -30,7 +30,11 @@ pub trait CollectionsOps {
     async fn delete_collection(&mut self, id: CollectionId) -> Result<DeleteResult>;
 
     /// Returns a paginated list of collections
-    async fn list_collections(&mut self, p: Pagination) -> Result<Vec<Collection>>;
+    async fn list_collections(
+        &mut self,
+        p: Pagination,
+        o: CollectionsOrdering,
+    ) -> Result<Vec<Collection>>;
 
     /// Returns the [`Collection`] by [`CollectionId`],
     /// or returns [`None`] if the collection is not in the database

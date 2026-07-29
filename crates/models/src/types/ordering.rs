@@ -18,6 +18,20 @@ pub enum AssetsOrdering {
     derive(serde::Deserialize),
     serde(rename_all = "lowercase")
 )]
+pub enum CollectionsOrdering {
+    /// Show recently updated collections
+    #[default]
+    Latest,
+    /// Show old collections first
+    Oldest,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize),
+    serde(rename_all = "lowercase")
+)]
 pub enum CollectionAssetsOrdering {
     /// Show assets most recently added to the collection first
     #[default]

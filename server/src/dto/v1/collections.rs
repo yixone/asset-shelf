@@ -1,8 +1,5 @@
 use chrono::{DateTime, Utc};
-use models::{
-    entities::{Collection, CollectionAdditions, CollectionAsset, MediaVariant},
-    types::CollectionAssetId,
-};
+use models::entities::{Collection, CollectionAdditions, CollectionAsset, MediaVariant};
 use serde::Serialize;
 
 use crate::{dto::v1::assets::AssetDtoV1, utils::url::build_media_url};

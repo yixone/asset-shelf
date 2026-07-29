@@ -17,6 +17,7 @@ pub fn cfg(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("collections")
             .service(create::create_collection)
+            .service(get_list::get_collections_list)
             .service(get_assets::get_collection_assets)
             .service(add_asset::add_collection_asset)
             .service(get_by_id::get_collection_by_id)
