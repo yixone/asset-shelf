@@ -1556,6 +1556,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "joiner"
+version = "0.1.0"
+
+[[package]]
 name = "js-sys"
 version = "0.3.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1763,6 +1767,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "flake_id",
+ "joiner",
  "mimetype",
  "serde",
  "sqlx",
@@ -2517,6 +2522,7 @@ dependencies = [
  "db",
  "flake_id",
  "futures",
+ "joiner",
  "media",
  "mimetype",
  "models",
@@ -3565,6 +3571,7 @@ dependencies = [
  "chrono",
  "db",
  "flake_id",
+ "joiner",
  "media",
  "mimetype",
  "models",

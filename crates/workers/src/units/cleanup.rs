@@ -5,12 +5,12 @@ use db::{
     database::{DatabaseProvider, DatabaseTransaction},
     ops::{AssetOps, MediaFilesOps, MediaOps},
     types::Pagination,
-    utils::join::JoinBuilder,
 };
+use joiner::JoinBuilder;
 use models::{
+    bulk::BulkIds,
     entities::{Asset, Media, MediaFile},
     types::{AssetsOrdering, MediaId},
-    utils::bulk::BulkIds,
 };
 use result::{Result, error::ResultExt};
 use storage::StoragePath;

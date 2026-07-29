@@ -12,6 +12,7 @@ mimetype = { workspace = true }
 models = { workspace = true }
 result = { workspace = true, features = ["actix"] }
 storage = { workspace = true }
+joiner = { workspace = true }
 
 # External
 async-trait = { workspace = true }

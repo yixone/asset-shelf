@@ -12,6 +12,7 @@ members = [
 
     # Common crates
     "packages/flake_id",
+    "packages/joiner",
     "packages/mimetype",
 
     # Binary crates
@@ -29,6 +30,7 @@ storage_backend = { path = "crates/storage_backend" }
 workers = { path = "crates/workers" }
 
 flake_id = { path = "packages/flake_id" }
+joiner = { path = "packages/joiner" }
 mimetype = { path = "packages/mimetype" }
 
 

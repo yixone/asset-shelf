@@ -1,9 +1,6 @@
-use std::{collections::HashMap, hash::Hash};
+//! `Joiner` - is a package for combining related types
 
-use models::{
-    entities::{Asset, AssetFeatures, Collection, CollectionAsset, Media, MediaFile},
-    types::{AssetId, CollectionId, MediaId},
-};
+use std::{collections::HashMap, hash::Hash};
 
 /// Specifies conditions for joining `Self` with `<R>`
 pub trait Joinable<R>
@@ -12,8 +9,8 @@ where
 {
     type Key: Clone + Hash + Eq + PartialEq;
 
-    fn join_on(&self) -> &Self::Key;
-    fn reference(t: &R) -> &Self::Key;
+    fn key(&self) -> &Self::Key;
+    fn foreign_key(t: &R) -> &Self::Key;
 }
 
 /// Joiner for assembling linked models
@@ -62,13 +59,13 @@ impl<T> JoinBuilder<T> {
         J: Joinable<W>,
         W: Clone,
     {
-        let hash_idx = Self::build_idx(with, J::reference);
+        let hash_idx = Self::build_idx(with, J::foreign_key);
         JoinBuilder {
             join: self
                 .join
                 .into_iter()
                 .filter_map(|j| {
-                    let key = on(&j).join_on();
+                    let key = on(&j).key();
                     let r = hash_idx.get(key)?.clone();
                     Some((j, r))
                 })
@@ -85,13 +82,13 @@ impl<T> JoinBuilder<T> {
         J: Joinable<W>,
         W: Clone,
     {
-        let hash_idx = Self::build_group_idx(with, J::reference);
+        let hash_idx = Self::build_group_idx(with, J::foreign_key);
         JoinBuilder {
             join: self
                 .join
                 .into_iter()
                 .filter_map(|j| {
-                    let key = on(&j).join_on();
+                    let key = on(&j).key();
                     let r = hash_idx.get(key)?.clone();
                     Some((j, r))
                 })
@@ -108,13 +105,13 @@ impl<T> JoinBuilder<T> {
         J: Joinable<W>,
         W: Clone,
     {
-        let hash_idx = Self::build_idx(with, J::reference);
+        let hash_idx = Self::build_idx(with, J::foreign_key);
         JoinBuilder {
             join: self
                 .join
                 .into_iter()
                 .map(|j| {
-                    let key = on(&j).join_on();
+                    let key = on(&j).key();
                     let r = hash_idx.get(key).cloned();
                     (j, r)
                 })
@@ -154,118 +151,46 @@ impl<T> JoinBuilder<T> {
     }
 }
 
-macro_rules! define_joinable {
-    ($right:path => $left:path, $lk:ident == $rk:ident as $keyt:ty) => {
+/// Automatically implements the [`Joinable`] trait for the specified pair of types
+///
+/// ### Example
+/// ```
+/// use joiner::{impl_joinable, Joinable};
+///
+/// #[derive(Clone)]
+/// struct A {
+///    id: u8,
+/// }
+///
+/// #[derive(Clone)]
+/// struct B {
+///    id: u8,
+///    a: u8,
+/// }
+///
+/// impl_joinable!(A[id] with B[a] as u8);
+/// ```
+#[macro_export]
+macro_rules! impl_joinable {
+    ($right:path[$rk:ident] with $left:ty[$lk:ident] as $keyt:ty) => {
         impl Joinable<$right> for $left {
             type Key = $keyt;
-            fn join_on(&self) -> &Self::Key {
+            fn key(&self) -> &Self::Key {
+                &self.$lk
+            }
+            fn foreign_key(t: &$right) -> &Self::Key {
+                &t.$rk
+            }
+        }
+
+        impl Joinable<$left> for $right {
+            type Key = $keyt;
+            fn key(&self) -> &Self::Key {
                 &self.$rk
             }
-            fn reference(t: &$right) -> &Self::Key {
+            fn foreign_key(t: &$left) -> &Self::Key {
                 &t.$lk
             }
         }
     };
-}
-
-define_joinable!(
-    Media => Asset,
-    id == media_id as MediaId
-);
-define_joinable!(
-    MediaFile => Media,
-    media_id == id as MediaId
-);
-define_joinable!(
-    MediaFile => Asset,
-    media_id == media_id as MediaId
-);
-
-define_joinable!(
-    CollectionAsset => Collection,
-    collection_id == id as CollectionId
-);
-define_joinable!(
-    Asset => CollectionAsset,
-    id == asset_id as AssetId
-);
-
-define_joinable!(
-    AssetFeatures => Asset,
-    asset_id == id as AssetId
-);
-
-#[cfg(test)]
-mod tests {
-    #![allow(dead_code)]
-
-    use crate::utils::join::{JoinBuilder, Joinable};
-
-    #[derive(Debug, Clone)]
-    struct User {
-        id: u32,
-    }
-
-    #[derive(Debug, Clone)]
-    struct Profile {
-        user_id: u32,
-        name: &'static str,
-    }
-
-    #[derive(Debug, Clone)]
-    struct Post {
-        id: u32,
-        author_id: u32,
-    }
-
-    define_joinable!(
-        Profile => User,
-        user_id == id as u32
-    );
-
-    define_joinable!(
-        Post => User,
-        author_id == id as u32
-    );
-
-    #[test]
-    fn test() {
-        let users = vec![User { id: 0 }, User { id: 1 }];
-        let profiles = vec![
-            Profile {
-                user_id: 0,
-                name: "John",
-            },
-            Profile {
-                user_id: 1,
-                name: "Doe",
-            },
-        ];
-        let posts = vec![
-            Post {
-                id: 42,
-                author_id: 1,
-            },
-            Post {
-                id: 1337,
-                author_id: 1,
-            },
-            Post {
-                id: 52,
-                author_id: 0,
-            },
-        ];
-
-        let joined = JoinBuilder::new(users)
-            .with(profiles, |user| user)
-            .with_group(posts, |(user, ..)| user)
-            .build();
-
-        {
-            let row = &joined[1];
-            let ((user, profile), posts) = row;
-            assert_eq!(user.id, profile.user_id);
-            assert_eq!(posts.len(), 2);
-        }
-    }
 }
