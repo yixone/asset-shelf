@@ -775,6 +775,7 @@ dependencies = [
  "models",
  "result",
  "sqlx",
+ "tracing",
 ]
 
 [[package]]

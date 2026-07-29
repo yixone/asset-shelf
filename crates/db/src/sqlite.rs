@@ -34,6 +34,11 @@ impl SqliteDatabase {
     /// Opens a [`SqliteDatabase`] from a file
     pub async fn open(p: impl AsRef<Path>) -> Result<Self> {
         let path = p.as_ref();
+
+        if !path.exists() {
+            tracing::info!("Database file not found. Creating a new one!");
+        }
+
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).to_app_err()?;
         }

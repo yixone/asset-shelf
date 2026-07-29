@@ -12,3 +12,4 @@ result = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }
+tracing = { workspace = true }
