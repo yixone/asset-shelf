@@ -190,7 +190,7 @@ where
         .bind(ca.id)
         .bind(ca.collection_id)
         .bind(ca.asset_id)
-        .bind(ca.asset_id)
+        .bind(ca.added_at)
         .execute(self.executor())
         .await
         .to_app_err()?;

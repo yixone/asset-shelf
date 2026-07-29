@@ -13,5 +13,5 @@ pub struct CollectionAsset {
     /// ID of the collection where the asset is saved
     pub collection_id: CollectionId,
     /// Date the asset was saved to the collection
-    pub created_at: DateTime<Utc>,
+    pub added_at: DateTime<Utc>,
 }
