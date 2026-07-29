@@ -1,7 +1,7 @@
 use flake_id::str::FlakeIdStr;
 use models::{
     entities::{Collection, CollectionAdditions, CollectionAsset},
-    types::{AssetsOrdering, CollectionAssetId, CollectionId, MediaId},
+    types::{CollectionAssetId, CollectionAssetsOrdering, CollectionId, MediaId},
 };
 use result::{Result, error::ResultExt};
 use sqlx::{QueryBuilder, prelude::FromRow};
@@ -215,7 +215,7 @@ where
         &mut self,
         id: &CollectionId,
         p: Pagination,
-        o: AssetsOrdering,
+        o: CollectionAssetsOrdering,
     ) -> Result<Vec<CollectionAsset>> {
         if p.limit() == 0 {
             return Ok(Vec::new());
@@ -238,8 +238,8 @@ where
         query.push_bind(id);
 
         match o {
-            AssetsOrdering::Newest => query.push("ORDER BY ca.added_at DESC"),
-            AssetsOrdering::Oldest => query.push("ORDER BY ca.added_at ASC"),
+            CollectionAssetsOrdering::Latest => query.push("ORDER BY ca.added_at DESC"),
+            CollectionAssetsOrdering::Oldest => query.push("ORDER BY ca.added_at ASC"),
         };
         p.apply_sql(&mut qb);
 

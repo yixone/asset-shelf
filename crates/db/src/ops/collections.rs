@@ -1,6 +1,6 @@
 use models::{
     entities::{Collection, CollectionAdditions, CollectionAsset},
-    types::{AssetsOrdering, CollectionAssetId, CollectionId},
+    types::{CollectionAssetId, CollectionAssetsOrdering, CollectionId},
 };
 use result::Result;
 
@@ -76,6 +76,6 @@ pub trait CollectionAssetsOps {
         &mut self,
         id: &CollectionId,
         p: Pagination,
-        o: AssetsOrdering,
+        o: CollectionAssetsOrdering,
     ) -> Result<Vec<CollectionAsset>>;
 }

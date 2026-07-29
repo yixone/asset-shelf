@@ -1,5 +1,5 @@
 use crate::{
-    entities::{Asset, AssetFeatures, Collection, Media, MediaFile},
+    entities::{Asset, AssetFeatures, Collection, CollectionAsset, Media, MediaFile},
     types::{AssetId, CollectionId, MediaFileId, MediaId},
 };
 
@@ -28,3 +28,6 @@ bulk_ids!(MediaFile => MediaFileId: |m: &MediaFile| m.id.clone());
 bulk_ids!(MediaFile => MediaId: |m: &MediaFile| m.media_id.clone());
 
 bulk_ids!(Collection => CollectionId: |c: &Collection| c.id);
+
+bulk_ids!(CollectionAsset => AssetId: |c: &CollectionAsset| c.asset_id);
+bulk_ids!(CollectionAsset => CollectionId: |c: &CollectionAsset| c.collection_id);
