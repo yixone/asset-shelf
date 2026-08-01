@@ -1,5 +1,5 @@
 use flake_id::FlakeIdGenerator;
-use storage_core::{Storage, backend::fs::NativeFsStorageBackend};
+use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use tempfile::TempDir;
 
 const DATA: &[u8] = &[0xFF, 0xD8, 0xFF, 0xDB, 0x67, 0x42, 0x52, 0x0, 0x0, 0x1, 0x1];

@@ -3,7 +3,7 @@
 // - MV w/ conflict
 
 use bytes::Bytes;
-use storage_core::backend::{StorageBackend, fs::NativeFsStorageBackend, path::StoragePath};
+use storage::backend::{StorageBackend, fs::NativeFsStorageBackend, path::StoragePath};
 use tempfile::TempDir;
 use tokio::io::AsyncReadExt;
 

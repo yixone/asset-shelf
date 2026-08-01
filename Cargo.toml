@@ -7,8 +7,6 @@ members = [
     "crates/models",
     "crates/result",
     "crates/storage",
-    "crates/storage-core",
-    "crates/storage_backend",
     "crates/workers",
 
     # Common crates
@@ -26,8 +24,6 @@ media = { path = "crates/media" }
 models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
-storage_backend = { path = "crates/storage_backend" }
-storage-core = { path = "crates/storage-core" }
 workers = { path = "crates/workers" }
 
 flake_id = { path = "packages/flake-id" }

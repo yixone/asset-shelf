@@ -12,7 +12,6 @@ mimetype = { workspace = true }
 models = { workspace = true, features = ["serde"] }
 result = { workspace = true, features = ["actix"] }
 storage = { workspace = true }
-storage_backend = { workspace = true }
 
 workers = { workspace = true }
 
