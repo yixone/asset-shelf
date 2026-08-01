@@ -2883,6 +2883,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "storage-core"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "flake_id",
+ "futures",
+ "mimetype",
+ "result",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "storage_backend"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,22 @@
+[package]
+name = "storage-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Workspace
+result = { workspace = true }
+mimetype = { workspace = true }
+flake_id = { workspace = true }
+
+# External
+async-trait = { workspace = true }
+bytes = { workspace = true }
+futures.workspace = true
+tokio = { workspace = true, features = ["io-util", "fs", "time"] }
+tokio-util = { workspace = true, features = ["io"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tempfile.workspace = true
