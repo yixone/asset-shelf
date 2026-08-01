@@ -26,6 +26,8 @@ use crate::{
     worker::{AbstractWorker, WorkerConfig},
 };
 
+const MEDIA_NAMESPACE: &str = "media";
+
 /// Background media worker
 pub struct MediaWorker {
     service: MediaWorkerService,
@@ -249,7 +251,12 @@ impl MediaWorkerService {
         let variant_file = self
             .ctx
             .storage
-            .upload(variant.as_str(), variant_bytes)
+            .upload(
+                MEDIA_NAMESPACE,
+                &media.to_string(),
+                variant.as_str(),
+                variant_bytes,
+            )
             .await?;
 
         let variant_media_file = MediaFile {

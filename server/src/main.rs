@@ -6,8 +6,7 @@ use db::sqlite::SqliteDatabase;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
 use server::{SERVER_VERSION, di::DataCtx, routes};
-use storage::Storage;
-use storage_backend::StorageBackend;
+use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
@@ -29,7 +28,7 @@ async fn main() -> Result<()> {
     db.migrate().await?;
 
     tracing::info!("Opening storage");
-    let storage_backend = StorageBackend::open_fs("storage/data").await?;
+    let storage_backend = NativeFsStorageBackend::new("storage/data").await?;
     let storage = Arc::new(Storage::new(
         storage_backend,
         FlakeIdGenerator::new(1),

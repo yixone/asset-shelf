@@ -6,7 +6,7 @@ use db::{database::DatabaseProvider, ops::MediaFilesOps};
 use models::{entities::MediaVariant, types::MediaId};
 use result::{create_error, error::ResultExt};
 use serde::Deserialize;
-use storage_backend::core::path::StoragePath;
+use storage::StoragePath;
 use tokio_util::io::ReaderStream;
 
 use crate::{di::DataCtx, routes::ApiResult};

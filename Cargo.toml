@@ -7,11 +7,10 @@ members = [
     "crates/models",
     "crates/result",
     "crates/storage",
-    "crates/storage_backend",
     "crates/workers",
 
     # Common crates
-    "packages/flake_id",
+    "packages/flake-id",
     "packages/mimetype",
 
     # Binary crates
@@ -25,10 +24,9 @@ media = { path = "crates/media" }
 models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
-storage_backend = { path = "crates/storage_backend" }
 workers = { path = "crates/workers" }
 
-flake_id = { path = "packages/flake_id" }
+flake_id = { path = "packages/flake-id" }
 mimetype = { path = "packages/mimetype" }
 
 
