@@ -95,8 +95,9 @@ where
 
         let mut qb = QueryBuilder::new(
             "
-            SELECT c.*, ca.added_at FROM collections AS c
-            JOIN collection_assets AS ca 
+            SELECT c.*
+            FROM collections AS c
+            LEFT JOIN collection_assets AS ca 
             ON ca.collection_id = c.id
             AND ca.added_at = (
                 SELECT MAX(added_at)
@@ -284,6 +285,7 @@ impl From<CollectionAdditionsRow> for CollectionAdditions {
         let ids = row
             .thumbnails
             .split(';')
+            .filter(|m| !m.trim().is_empty())
             .map(|v| MediaId(FlakeIdStr(v.to_string())))
             .collect::<Vec<_>>();
 
