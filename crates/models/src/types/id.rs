@@ -39,7 +39,7 @@ id_type!(
 );
 id_type!(
     #[derive(Copy)]
-    CollectionItemId as FlakeId
+    CollectionAssetId as FlakeId
 );
 
 impl From<FlakeId> for MediaId {

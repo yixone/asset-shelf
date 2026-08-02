@@ -8,6 +8,8 @@ edition = "2024"
 models = { workspace = true, features = ["sqlx"] }
 result = { workspace = true }
 
+flake-id = { workspace = true }
+
 # External
 async-trait = { workspace = true }
 chrono = { workspace = true }

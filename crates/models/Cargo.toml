@@ -11,10 +11,9 @@ sqlx = ["dep:sqlx", "flake-id/sqlx", "mimetype/sqlx"]
 # Workspace
 flake-id = { workspace = true }
 mimetype = { workspace = true }
+joiner = { workspace = true }
 
 # External
 chrono = { workspace = true }
-
-# External (opts)
 serde = { workspace = true, features = ["derive"], optional = true }
 sqlx = { workspace = true, features = ["chrono"], optional = true }

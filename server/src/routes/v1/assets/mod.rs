@@ -1,15 +1,15 @@
 use actix_web::web;
 
-pub mod upload;
+mod upload;
 
-pub mod get_by_id;
-pub mod get_deleted;
-pub mod get_list;
+mod get_by_id;
+mod get_deleted;
+mod get_list;
 
-pub mod patch;
+mod patch;
 
-pub mod delete;
-pub mod restore;
+mod delete;
+mod restore;
 
 pub mod similar;
 

@@ -1,9 +1,6 @@
-use std::{collections::HashMap, hash::Hash};
+//! `Joiner` - is a package for combining related types
 
-use models::{
-    entities::{Asset, AssetFeatures, Collection, CollectionItem, Media, MediaFile},
-    types::{AssetId, CollectionId, MediaId},
-};
+use std::{collections::HashMap, hash::Hash};
 
 /// Specifies conditions for joining `Self` with `<R>`
 pub trait Joinable<R>
@@ -12,8 +9,8 @@ where
 {
     type Key: Clone + Hash + Eq + PartialEq;
 
-    fn join_on(&self) -> &Self::Key;
-    fn reference(t: &R) -> &Self::Key;
+    fn key(&self) -> &Self::Key;
+    fn foreign_key(t: &R) -> &Self::Key;
 }
 
 /// Joiner for assembling linked models
@@ -62,13 +59,13 @@ impl<T> JoinBuilder<T> {
         J: Joinable<W>,
         W: Clone,
     {
-        let hash_idx = Self::build_idx(with, J::reference);
+        let hash_idx = Self::build_idx(with, J::foreign_key);
         JoinBuilder {
             join: self
                 .join
                 .into_iter()
                 .filter_map(|j| {
-                    let key = on(&j).join_on();
+                    let key = on(&j).key();
                     let r = hash_idx.get(key)?.clone();
                     Some((j, r))
                 })
@@ -85,13 +82,13 @@ impl<T> JoinBuilder<T> {
         J: Joinable<W>,
         W: Clone,
     {
-        let hash_idx = Self::build_group_idx(with, J::reference);
+        let hash_idx = Self::build_group_idx(with, J::foreign_key);
         JoinBuilder {
             join: self
                 .join
                 .into_iter()
                 .filter_map(|j| {
-                    let key = on(&j).join_on();
+                    let key = on(&j).key();
                     let r = hash_idx.get(key)?.clone();
                     Some((j, r))
                 })
@@ -108,13 +105,13 @@ impl<T> JoinBuilder<T> {
         J: Joinable<W>,
         W: Clone,
     {
-        let hash_idx = Self::build_idx(with, J::reference);
+        let hash_idx = Self::build_idx(with, J::foreign_key);
         JoinBuilder {
             join: self
                 .join
                 .into_iter()
                 .map(|j| {
-                    let key = on(&j).join_on();
+                    let key = on(&j).key();
                     let r = hash_idx.get(key).cloned();
                     (j, r)
                 })
@@ -154,14 +151,44 @@ impl<T> JoinBuilder<T> {
     }
 }
 
-macro_rules! define_joinable {
-    ($right:path => $left:path, $lk:ident == $rk:ident as $keyt:ty) => {
+/// Automatically implements the [`Joinable`] trait for the specified pair of types
+///
+/// ### Example
+/// ```
+/// use joiner::{impl_joinable, Joinable};
+///
+/// #[derive(Clone)]
+/// struct A {
+///    id: u8,
+/// }
+///
+/// #[derive(Clone)]
+/// struct B {
+///    id: u8,
+///    a: u8,
+/// }
+///
+/// impl_joinable!(A[id] with B[a] as u8);
+/// ```
+#[macro_export]
+macro_rules! impl_joinable {
+    ($right:path[$rk:ident] with $left:ty[$lk:ident] as $keyt:ty) => {
         impl Joinable<$right> for $left {
             type Key = $keyt;
-            fn join_on(&self) -> &Self::Key {
+            fn key(&self) -> &Self::Key {
+                &self.$lk
+            }
+            fn foreign_key(t: &$right) -> &Self::Key {
+                &t.$rk
+            }
+        }
+
+        impl Joinable<$left> for $right {
+            type Key = $keyt;
+            fn key(&self) -> &Self::Key {
                 &self.$rk
             }
-            fn reference(t: &$right) -> &Self::Key {
+            fn foreign_key(t: &$left) -> &Self::Key {
                 &t.$lk
             }
         }

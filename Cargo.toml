@@ -11,6 +11,7 @@ members = [
     "crates/workers",
 
     # Common crates
+    "packages/joiner",
     "packages/flake-id",
     "packages/mimetype",
 
@@ -27,7 +28,7 @@ models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
 workers = { path = "crates/workers" }
-
+joiner = { path = "packages/joiner" }
 flake-id = { path = "packages/flake-id" }
 mimetype = { path = "packages/mimetype" }
 

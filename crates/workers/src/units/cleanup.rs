@@ -5,10 +5,14 @@ use db::{
     database::{DatabaseProvider, DatabaseTransaction},
     ops::{AssetOps, MediaFilesOps, MediaOps},
     types::Pagination,
-    utils::{bulk::CollectIds, join::JoinBuilder},
 };
+<<<<<<< HEAD
+use joiner::JoinBuilder;
+=======
 use events::{AssetDeletedEvent, EventBus};
+>>>>>>> origin/master
 use models::{
+    bulk::BulkIds,
     entities::{Asset, Media, MediaFile},
     types::{AssetsOrdering, MediaId},
 };
