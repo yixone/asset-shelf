@@ -992,7 +992,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
-name = "flake_id"
+name = "flake-id"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -1762,7 +1762,7 @@ name = "models"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "flake_id",
+ "flake-id",
  "mimetype",
  "serde",
  "sqlx",
@@ -2515,7 +2515,7 @@ dependencies = [
  "actix-web",
  "chrono",
  "db",
- "flake_id",
+ "flake-id",
  "futures",
  "media",
  "mimetype",
@@ -2871,7 +2871,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
- "flake_id",
+ "flake-id",
  "futures",
  "mimetype",
  "result",
@@ -3552,7 +3552,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "db",
- "flake_id",
+ "flake-id",
  "media",
  "mimetype",
  "models",

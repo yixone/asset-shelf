@@ -7,7 +7,7 @@ edition = "2024"
 # Workspace
 result = { workspace = true }
 mimetype = { workspace = true }
-flake_id = { workspace = true }
+flake-id = { workspace = true }
 
 # External
 async-trait = { workspace = true }

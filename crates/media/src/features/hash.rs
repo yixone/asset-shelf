@@ -4,7 +4,6 @@ use crate::features::dct::apply_dct2;
 pub fn p_hash(matrix: [[u8; 32]; 32]) -> i64 {
     // Apply DCT to matrix
     let dct = apply_dct2(&matrix);
-    dbg!(dct[0][0]);
 
     // Crop the matrix to 8x8 and calculate the median value
     let mut vals = Vec::with_capacity(63);

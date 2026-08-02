@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 # Workspace
 db = { workspace = true }
-flake_id = { workspace = true }
+flake-id = { workspace = true }
 media = { workspace = true }
 mimetype = { workspace = true }
 models = { workspace = true, features = ["serde"] }
