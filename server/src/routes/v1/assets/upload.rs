@@ -5,11 +5,11 @@ use db::{
     database::{DatabaseProvider, DatabaseTransaction},
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps, MediaOps},
 };
+use events::AssetCreatedEvent;
 use futures::TryStreamExt;
 use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
 use storage::file::UnreleasedFile;
-use workers::events::event::AssetCreatedEvent;
 
 use crate::{
     di::DataCtx,

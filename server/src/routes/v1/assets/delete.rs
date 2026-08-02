@@ -1,10 +1,10 @@
 use actix_web::{HttpResponse, delete, web};
 use chrono::Utc;
 use db::{database::DatabaseProvider, ops::AssetOps, types::patches::AssetPatch};
+use events::AssetDeletedEvent;
 use models::types::AssetId;
 use result::create_error;
 use serde::Serialize;
-use workers::events::event::AssetDeletedEvent;
 
 use crate::{di::DataCtx, routes::ApiResult};
 

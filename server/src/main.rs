@@ -3,6 +3,7 @@ use std::sync::Arc;
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
 use db::sqlite::SqliteDatabase;
+use events::EventBus;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
 use server::{SERVER_VERSION, di::DataCtx, routes};
@@ -11,7 +12,6 @@ use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
     WorkerContext,
-    events::EventBus,
     supervisor::{SupervisorHandle, WorkersSupervisor},
     units::{cleanup::CleanupWorker, media::MediaWorker},
 };

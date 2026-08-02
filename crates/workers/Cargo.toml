@@ -6,11 +6,12 @@ edition = "2024"
 [dependencies]
 # Internal
 db = { workspace = true }
+events = { workspace = true }
 flake-id = { workspace = true }
 media = { workspace = true }
 mimetype = { workspace = true }
 models = { workspace = true }
-result = { workspace = true, features = ["actix"] }
+result = { workspace = true }
 storage = { workspace = true }
 
 # External

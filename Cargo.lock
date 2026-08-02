@@ -948,6 +948,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "events"
+version = "0.1.0"
+dependencies = [
+ "models",
+ "result",
+ "storage",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "exr"
 version = "1.74.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2515,6 +2526,7 @@ dependencies = [
  "actix-web",
  "chrono",
  "db",
+ "events",
  "flake-id",
  "futures",
  "media",
@@ -3552,6 +3564,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "db",
+ "events",
  "flake-id",
  "media",
  "mimetype",

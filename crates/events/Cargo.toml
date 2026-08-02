@@ -1,0 +1,15 @@
+[package]
+name = "events"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Workspace
+models = { workspace = true }
+storage = { workspace = true }
+result = { workspace = true }
+
+
+# External
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing = { workspace = true }

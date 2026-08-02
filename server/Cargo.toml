@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 # Workspace
 db = { workspace = true }
+events = { workspace = true }
 flake-id = { workspace = true }
 media = { workspace = true }
 mimetype = { workspace = true }

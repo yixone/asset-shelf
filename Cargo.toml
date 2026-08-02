@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     # Application crates
     "crates/db",
+    "crates/events",
     "crates/media",
     "crates/models",
     "crates/result",
@@ -20,6 +21,7 @@ members = [
 [workspace.dependencies]
 # Workspace crates
 db = { path = "crates/db" }
+events = { path = "crates/events" }
 media = { path = "crates/media" }
 models = { path = "crates/models" }
 result = { path = "crates/result" }

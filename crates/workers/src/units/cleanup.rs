@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use chrono::Utc;
 use db::{
@@ -7,6 +7,7 @@ use db::{
     types::Pagination,
     utils::{bulk::CollectIds, join::JoinBuilder},
 };
+use events::{AssetDeletedEvent, EventBus};
 use models::{
     entities::{Asset, Media, MediaFile},
     types::{AssetsOrdering, MediaId},
@@ -18,25 +19,18 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     WorkerContext,
-    events::{EventStream, event::AssetDeletedEvent},
     worker::{AbstractWorker, WorkerConfig},
 };
 
 pub struct CleanupWorker {
     service: CleanupWorkerService,
-    events: CleanupWorkerEvents,
-}
-
-struct CleanupWorkerEvents {
-    asset_deleted: EventStream<AssetDeletedEvent>,
+    events: Arc<EventBus>,
 }
 
 impl CleanupWorker {
     pub fn new(ctx: WorkerContext) -> Self {
         CleanupWorker {
-            events: CleanupWorkerEvents {
-                asset_deleted: ctx.events.subscribe::<AssetDeletedEvent>(),
-            },
+            events: ctx.events.clone(),
             service: CleanupWorkerService { ctx },
         }
     }
@@ -57,9 +51,11 @@ impl AbstractWorker for CleanupWorker {
     async fn runtime(&mut self, cancel: CancellationToken) -> Result<()> {
         let mut cleanup_interval = interval(Duration::from_mins(90));
 
+        let mut on_media_removed = self.events.subscribe::<AssetDeletedEvent>();
+
         loop {
             tokio::select! {
-                Ok(e) = self.events.asset_deleted.recv() => {
+                Ok(e) = on_media_removed.recv() => {
                     self.service.remove_media_by_id(&e.media).await?
                 }
                 _ = cleanup_interval.tick() => {

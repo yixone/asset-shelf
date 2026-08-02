@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use result::error::ResultExt;
 use tokio::sync::broadcast::{Receiver, Sender};
 
-use crate::events::{AbstractEvent, Event};
+use crate::{AbstractEvent, Event};
 
 /// Event Sender
 ///

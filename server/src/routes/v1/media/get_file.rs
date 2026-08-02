@@ -3,12 +3,12 @@ use std::str::FromStr;
 use actix_web::{HttpResponse, get, http::header::ContentLength, web};
 
 use db::{database::DatabaseProvider, ops::MediaFilesOps};
+use events::FileDetachedEvent;
 use models::{entities::MediaVariant, types::MediaId};
 use result::{ErrorKind, create_error, error::ResultExt};
 use serde::Deserialize;
 use storage::StoragePath;
 use tokio_util::io::ReaderStream;
-use workers::events::event::FileDetachedEvent;
 
 use crate::{di::DataCtx, routes::ApiResult};
 

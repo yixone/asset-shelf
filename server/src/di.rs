@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use db::sqlite::SqliteDatabase;
+use events::EventBus;
 use flake_id::FlakeIdGenerator;
 use storage::Storage;
-use workers::events::EventBus;
 
 pub struct DataCtx {
     pub db: Arc<SqliteDatabase>,
