@@ -6,11 +6,9 @@ use db::{
     ops::{AssetOps, MediaFilesOps, MediaOps},
     types::Pagination,
 };
-<<<<<<< HEAD
-use joiner::JoinBuilder;
-=======
+
 use events::{AssetDeletedEvent, EventBus};
->>>>>>> origin/master
+use joiner::JoinBuilder;
 use models::{
     bulk::BulkIds,
     entities::{Asset, Media, MediaFile},

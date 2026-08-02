@@ -55,8 +55,9 @@ impl NativeFsStorageBackend {
             if parent == self.root {
                 break;
             }
+            p = parent;
             match tokio::fs::remove_dir(parent).await {
-                Ok(_) => p = parent,
+                Ok(_) => (),
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
                 Err(e) if e.kind() == std::io::ErrorKind::DirectoryNotEmpty => break,
                 Err(e) => {

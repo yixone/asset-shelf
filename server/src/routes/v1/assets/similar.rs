@@ -3,9 +3,9 @@ use db::{
     database::DatabaseProvider,
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
     types::Pagination,
-    utils::{bulk::CollectIds, join::JoinBuilder},
 };
-use models::types::AssetId;
+use joiner::JoinBuilder;
+use models::{bulk::BulkIds, types::AssetId};
 use result::create_error;
 
 use crate::{
