@@ -22,6 +22,7 @@ pub fn cfg(cfg: &mut web::ServiceConfig) {
             .service(get_assets::get_collection_assets)
             .service(add_asset::add_collection_asset)
             .service(get_by_id::get_collection_by_id)
-            .service(delete::delete_collection),
+            .service(delete::delete_collection)
+            .service(remove_asset::remove_collection_asset),
     );
 }
