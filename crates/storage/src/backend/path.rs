@@ -4,19 +4,29 @@ use std::{
     str::FromStr,
 };
 
+/// The absolute path to the file in the storage
+/// Abstracts the path implementation for S3 and FS
 #[derive(Debug, Clone)]
 pub struct StoragePath {
-    pub namespace: String,
-    pub key: String,
+    /// The namespace in which the file is located
+    pub(crate) namespace: String,
+    /// Path to the file in the namespace
+    pub(crate) key: String,
 }
 
 impl StoragePath {
     /// Creates a new [`StoragePath`]
-    pub fn new(namespace: String, key: String) -> Self {
-        Self { namespace, key }
+    pub fn new<P>(namespace: P, path: P) -> Self
+    where
+        P: Into<String>,
+    {
+        Self {
+            namespace: namespace.into(),
+            key: path.into(),
+        }
     }
 
-    pub fn as_path(&self) -> PathBuf {
+    pub fn to_path(&self) -> PathBuf {
         Path::new(&self.namespace).join(&self.key)
     }
 }
@@ -30,13 +40,10 @@ impl Display for StoragePath {
 impl FromStr for StoragePath {
     type Err = InvalidStoragePathError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let Some((namespace, key)) = s.split_once('/') else {
+        let Some((namespace, path)) = s.split_once('/') else {
             return Err(InvalidStoragePathError);
         };
-        Ok(StoragePath {
-            namespace: namespace.to_string(),
-            key: key.to_string(),
-        })
+        Ok(StoragePath::new(namespace, path))
     }
 }
 

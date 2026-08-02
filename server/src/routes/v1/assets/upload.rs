@@ -5,11 +5,11 @@ use db::{
     database::{DatabaseProvider, DatabaseTransaction},
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps, MediaOps},
 };
+use events::AssetCreatedEvent;
 use futures::TryStreamExt;
 use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
 use storage::file::UnreleasedFile;
-use workers::events::event::AssetCreatedEvent;
 
 use crate::{
     di::DataCtx,
@@ -19,6 +19,8 @@ use crate::{
 };
 
 const DEFAULT_VARIANT: MediaVariant = MediaVariant::Original;
+// TODO: Move MEDIA_NAMESPACE to global const
+const MEDIA_NAMESPACE: &str = "media";
 
 /// Asset uploading context
 #[derive(Default)]
@@ -34,6 +36,12 @@ struct UploadingContext<'a> {
 #[post("/upload")]
 async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
     let mut upload = UploadingContext::default();
+
+    let now = Utc::now();
+    let media = Media {
+        id: ctx.flake.get_id_as(),
+        created_at: now,
+    };
 
     while let Some(mut field) = payload
         .try_next()
@@ -53,7 +61,12 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
                 let stream = field.into_async_reader();
                 let temp_stored = ctx
                     .storage
-                    .upload(MediaVariant::Original.as_str(), stream)
+                    .upload(
+                        MEDIA_NAMESPACE,
+                        &media.id.to_string(),
+                        DEFAULT_VARIANT.as_str(),
+                        stream,
+                    )
                     .await?;
                 upload.file = Some(temp_stored);
             }
@@ -68,11 +81,6 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         return Err(create_error!(MalformedPayload));
     };
 
-    let now = Utc::now();
-    let media = Media {
-        id: ctx.flake.get_id_as(),
-        created_at: now,
-    };
     let media_file = MediaFile {
         id: ctx.flake.get_id_as(),
         media_id: media.id.clone(),

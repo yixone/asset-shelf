@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-serde = ["dep:serde", "chrono/serde", "flake_id/serde", "mimetype/serde"]
-sqlx = ["dep:sqlx", "flake_id/sqlx", "mimetype/sqlx"]
+serde = ["dep:serde", "chrono/serde", "flake-id/serde", "mimetype/serde"]
+sqlx = ["dep:sqlx", "flake-id/sqlx", "mimetype/sqlx"]
 
 [dependencies]
 # Workspace
-flake_id = { workspace = true }
+flake-id = { workspace = true }
 mimetype = { workspace = true }
 joiner = { workspace = true }
 

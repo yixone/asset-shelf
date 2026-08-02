@@ -3,16 +3,15 @@ use std::sync::Arc;
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
 use db::sqlite::SqliteDatabase;
+use events::EventBus;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
 use server::{SERVER_VERSION, di::DataCtx, routes};
-use storage::Storage;
-use storage_backend::StorageBackend;
+use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
     WorkerContext,
-    events::EventBus,
     supervisor::{SupervisorHandle, WorkersSupervisor},
     units::{cleanup::CleanupWorker, media::MediaWorker},
 };
@@ -24,19 +23,22 @@ async fn main() -> Result<()> {
     init_tracing();
     print_header();
 
-    tracing::info!("Opening database...");
+    tracing::info!("Opening database");
     let db = Arc::new(SqliteDatabase::open("storage/data.db").await?);
     db.migrate().await?;
 
-    tracing::info!("Opening storage...");
-    let storage_backend = StorageBackend::open_fs("storage/data").await?;
+    tracing::info!("Opening storage");
+    let storage_backend = NativeFsStorageBackend::new("storage/data").await?;
     let storage = Arc::new(Storage::new(
         storage_backend,
         FlakeIdGenerator::new(1),
         8 * 1024 * 1024 * 1024,
     ));
 
+    tracing::info!("Initializing event bus");
     let events = Arc::new(EventBus::new(1024));
+    let cancel = CancellationToken::new();
+
     let flake = Arc::new(FlakeIdGenerator::new(2));
     let ctx = DataCtx {
         db,
@@ -45,18 +47,16 @@ async fn main() -> Result<()> {
         events,
     };
 
-    let cancel = CancellationToken::new();
+    tracing::info!("Initializing background worker supervisor");
     let supervisor = init_workers(&ctx);
-
     let workers_handle = supervisor.run(cancel.clone());
-
-    tracing::info!("Server started on http://{HOST_ADDR}!");
 
     let server = configure_server(ctx)?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);
 
+    tracing::info!("Server started on http://{HOST_ADDR}!");
     server.await.to_app_err()?;
 
     tracing::info!("Server closed!");
@@ -100,13 +100,17 @@ fn spawn_shutdown_handler(
 }
 
 fn print_header() {
-    tracing::info!("Asset shelf server - {SERVER_VERSION}");
+    tracing::info!("{}", "=".repeat(18));
+    tracing::info!("Asset shelf server");
+    tracing::info!("Version: {SERVER_VERSION}");
+    tracing::info!("{}", "=".repeat(18));
 }
 
 fn init_tracing() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .compact()
+        .with_target(false)
         .init();
 }
 

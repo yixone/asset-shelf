@@ -52,6 +52,8 @@ pub enum ErrorKind {
     UnsupportedFileType,
     /// The received file's size exceeds the maximum limit
     FileTooLarge { received: usize, max_size: usize },
+    /// The file exists in the database but is missing from the storage
+    FileDetached,
 
     /// Payload string is too long
     StringTooLong { max_size: usize },

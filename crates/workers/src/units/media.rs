@@ -1,6 +1,7 @@
 use std::{
     collections::HashSet,
     str::FromStr,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -10,6 +11,7 @@ use db::{
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
     types::patches::{AssetFeaturesPatch, AssetPatch},
 };
+use events::{AssetCreatedEvent, EventBus};
 use media::image::{Image, ImageFormat};
 use models::{
     entities::{Asset, AssetState, MediaFile, MediaVariant},
@@ -22,27 +24,22 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     WorkerContext,
-    events::{EventStream, event::AssetCreatedEvent},
     worker::{AbstractWorker, WorkerConfig},
 };
+
+const MEDIA_NAMESPACE: &str = "media";
 
 /// Background media worker
 pub struct MediaWorker {
     service: MediaWorkerService,
-    events: MediaWorkerEvents,
-}
-
-struct MediaWorkerEvents {
-    asset_created: EventStream<AssetCreatedEvent>,
+    events: Arc<EventBus>,
 }
 
 impl MediaWorker {
     /// Creates a new [`MediaWorker`] and returns it with [`TasksSender`] for worker's tasks
     pub fn new(ctx: WorkerContext) -> Self {
         Self {
-            events: MediaWorkerEvents {
-                asset_created: ctx.events.subscribe::<AssetCreatedEvent>(),
-            },
+            events: ctx.events.clone(),
             service: MediaWorkerService { ctx },
         }
     }
@@ -63,9 +60,11 @@ impl AbstractWorker for MediaWorker {
     async fn runtime(&mut self, cancel: CancellationToken) -> Result<()> {
         self.service.process_unprocessed_media().await?;
 
+        let mut on_asset_created = self.events.subscribe::<AssetCreatedEvent>();
+
         loop {
             tokio::select! {
-                Ok(new_asset) = self.events.asset_created.recv() => {
+                Ok(new_asset) = on_asset_created.recv() => {
                     self.service.process_asset_by_id(&new_asset.asset).await?
                 },
                 _ = cancel.cancelled() => break
@@ -249,7 +248,12 @@ impl MediaWorkerService {
         let variant_file = self
             .ctx
             .storage
-            .upload(variant.as_str(), variant_bytes)
+            .upload(
+                MEDIA_NAMESPACE,
+                &media.to_string(),
+                variant.as_str(),
+                variant_bytes,
+            )
             .await?;
 
         let variant_media_file = MediaFile {

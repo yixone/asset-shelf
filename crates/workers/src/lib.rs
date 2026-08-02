@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
 use db::sqlite::SqliteDatabase;
+use events::EventBus;
 use flake_id::FlakeIdGenerator;
 use storage::Storage;
-
-use crate::events::bus::EventBus;
 
 pub mod supervisor;
 pub mod worker;
 
-pub mod events;
 pub mod units;
 
 #[derive(Clone)]

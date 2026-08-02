@@ -2,10 +2,7 @@ use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
 
 use tokio::sync::broadcast::channel;
 
-use crate::events::{
-    AbstractEvent, EventSender, EventStream,
-    event::{Event, EventKind},
-};
+use crate::{AbstractEvent, Event, EventKind, EventSender, EventStream};
 
 /// Event bus for working and managing events
 pub struct EventBus {

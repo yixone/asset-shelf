@@ -6,17 +6,16 @@ edition = "2024"
 [dependencies]
 # Workspace
 result = { workspace = true }
-storage_backend = { workspace = true }
-
 mimetype = { workspace = true }
-flake_id = { workspace = true }
+flake-id = { workspace = true }
 
 # External
-bytes.workspace = true
+async-trait = { workspace = true }
+bytes = { workspace = true }
 futures.workspace = true
-tokio = { workspace = true, features = ["fs", "io-util"] }
+tokio = { workspace = true, features = ["io-util", "fs", "time"] }
 tokio-util = { workspace = true, features = ["io"] }
-tracing.workspace = true
+tracing = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

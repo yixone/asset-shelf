@@ -3,16 +3,16 @@ resolver = "2"
 members = [
     # Application crates
     "crates/db",
+    "crates/events",
     "crates/media",
     "crates/models",
     "crates/result",
     "crates/storage",
-    "crates/storage_backend",
     "crates/workers",
 
     # Common crates
-    "packages/flake_id",
     "packages/joiner",
+    "packages/flake-id",
     "packages/mimetype",
 
     # Binary crates
@@ -22,15 +22,14 @@ members = [
 [workspace.dependencies]
 # Workspace crates
 db = { path = "crates/db" }
+events = { path = "crates/events" }
 media = { path = "crates/media" }
 models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
-storage_backend = { path = "crates/storage_backend" }
 workers = { path = "crates/workers" }
-
-flake_id = { path = "packages/flake_id" }
 joiner = { path = "packages/joiner" }
+flake-id = { path = "packages/flake-id" }
 mimetype = { path = "packages/mimetype" }
 
 
