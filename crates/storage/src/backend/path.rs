@@ -6,7 +6,7 @@ use std::{
 
 /// The absolute path to the file in the storage
 /// Abstracts the path implementation for S3 and FS
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StoragePath {
     /// The namespace in which the file is located
     pub(crate) namespace: String,

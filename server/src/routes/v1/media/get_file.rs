@@ -4,10 +4,11 @@ use actix_web::{HttpResponse, get, http::header::ContentLength, web};
 
 use db::{database::DatabaseProvider, ops::MediaFilesOps};
 use models::{entities::MediaVariant, types::MediaId};
-use result::{create_error, error::ResultExt};
+use result::{ErrorKind, create_error, error::ResultExt};
 use serde::Deserialize;
 use storage::StoragePath;
 use tokio_util::io::ReaderStream;
+use workers::events::event::FileDetachedEvent;
 
 use crate::{di::DataCtx, routes::ApiResult};
 
@@ -36,11 +37,26 @@ async fn get_media_file(
 
     let path = StoragePath::from_str(&media_file.storage_path).to_app_err()?;
 
-    let reader = ctx.storage.get(&path).await?;
-    let stream = ReaderStream::new(reader);
+    match ctx.storage.get(&path).await {
+        Ok(reader) => {
+            let stream = ReaderStream::new(reader);
 
-    Ok(HttpResponse::Ok()
-        .content_type(mimetype)
-        .append_header(ContentLength(content_len as usize))
-        .streaming(stream))
+            Ok(HttpResponse::Ok()
+                .content_type(mimetype)
+                .append_header(ContentLength(content_len as usize))
+                .streaming(stream))
+        }
+        Err(e) if matches!(e.kind(), ErrorKind::NotFound) => {
+            tracing::error!(
+                path = path.to_string(),
+                "Storage desynchronization: The file exists in the database but is missing from the storage!"
+            );
+            ctx.events.publish(FileDetachedEvent {
+                media: id.into_inner(),
+                path,
+            });
+            Err(create_error!(FileDetached))
+        }
+        Err(e) => Err(e),
+    }
 }

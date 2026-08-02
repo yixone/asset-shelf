@@ -1,6 +1,9 @@
-use std::path::{Path, PathBuf};
+use std::{
+    io::ErrorKind,
+    path::{Path, PathBuf},
+};
 
-use result::{Result, create_error, error::ResultExt};
+use result::{Error, Result, create_error, error::ResultExt};
 use tokio::{
     fs::File,
     io::{AsyncWriteExt, BufWriter},
@@ -92,8 +95,11 @@ impl StorageBackend for NativeFsStorageBackend {
 
     async fn read(&self, path: &StoragePath) -> Result<BoxedReader> {
         let path = self.resolve_path(path);
-        let file = File::open(path).await.to_app_err()?;
-        Ok(Box::new(file))
+        match File::open(path).await {
+            Ok(f) => Ok(Box::new(f)),
+            Err(e) if e.kind() == ErrorKind::NotFound => Err(create_error!(NotFound)),
+            Err(e) => Err(Error::internal(e)),
+        }
     }
 
     async fn exists(&self, path: &StoragePath) -> Result<bool> {

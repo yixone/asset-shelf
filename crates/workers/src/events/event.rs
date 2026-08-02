@@ -1,8 +1,10 @@
 use models::types::{AssetId, MediaId};
+use storage::StoragePath;
 
 events! {
     AssetCreated => AssetCreatedEvent,
-    AssetDeleted => AssetDeletedEvent
+    AssetDeleted => AssetDeletedEvent,
+    MediaDetched => FileDetachedEvent
 }
 
 app_event!(
@@ -23,5 +25,12 @@ app_event!(
         asset: AssetId,
         /// The media ID associated with the deleted asset
         media: MediaId
+    }
+);
+app_event!(
+    /// The file was found in the database but is missing from the storage
+    FileDetachedEvent {
+        media: MediaId,
+        path: StoragePath
     }
 );
