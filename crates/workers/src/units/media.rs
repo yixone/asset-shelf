@@ -12,7 +12,7 @@ use db::{
     types::patches::{AssetFeaturesPatch, AssetPatch},
 };
 use events::{AssetCreatedEvent, EventBus};
-use media::image::{Image, ImageFormat};
+use media::image::{Image, ImageDecoder, ImageFormat};
 use models::{
     entities::{Asset, AssetState, MediaFile, MediaVariant},
     types::{AssetId, Color, MediaId},
@@ -185,7 +185,7 @@ impl MediaWorkerService {
         let file = self.ctx.storage.get(&path).await?;
 
         // Decodes the image from the original file
-        let img = Image::from_reader(file).await?;
+        let img = ImageDecoder::from_async_read(file).await?;
 
         // Generates different variants for an image
         self.generate_image_variants(asset, &img).await?;
@@ -193,11 +193,10 @@ impl MediaWorkerService {
         // Retrieves the basic image parameters and features
         let (width, height) = img.dimension();
 
-        let featured = img.prepare_features();
+        let featured = img.features();
         let color = Color::from(featured.avg_color());
         let p_hash = featured.p_hash();
         let a_hash = featured.a_hash();
-        drop(featured);
 
         let patch = AssetFeaturesPatch::new()
             .a_hash(Some(a_hash))
@@ -228,7 +227,9 @@ impl MediaWorkerService {
 
         // Generates and saves a thumbnail
         if !variants.contains(&MediaVariant::Thumbnail) {
-            let thumbnail = img.thumbnail(400).to_reader(ImageFormat::WebP)?;
+            let thumbnail = img
+                .thumbnail(400)
+                .reader(ImageFormat::WebP { quality: 80 })?;
             self.store_variant(&asset.media_id, MediaVariant::Thumbnail, thumbnail)
                 .await?;
         }

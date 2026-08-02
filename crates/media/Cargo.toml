@@ -9,5 +9,6 @@ result = { workspace = true }
 
 # External
 bytes = { workspace = true }
-image = { workspace = true }
+image = { workspace = true, features = ["webp"] }
 tokio = { workspace = true, features = ["io-util"] }
+webp = { workspace = true }

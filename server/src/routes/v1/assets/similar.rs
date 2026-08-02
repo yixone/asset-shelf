@@ -4,7 +4,7 @@ use db::{
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
     types::Pagination,
 };
-use joiner::JoinBuilder;
+use join::JoinBuilder;
 use models::{bulk::BulkIds, types::AssetId};
 use result::create_error;
 

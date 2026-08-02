@@ -1,4 +1,4 @@
-use joiner::{Joinable, impl_joinable};
+use join::{Joinable, impl_joinable};
 
 use crate::{entities::*, types::id::*};
 

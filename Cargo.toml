@@ -4,16 +4,14 @@ members = [
     # Application crates
     "crates/db",
     "crates/events",
+    "crates/flake-id",
+    "crates/join",
     "crates/media",
+    "crates/mimetype",
     "crates/models",
     "crates/result",
     "crates/storage",
     "crates/workers",
-
-    # Common crates
-    "packages/joiner",
-    "packages/flake-id",
-    "packages/mimetype",
 
     # Binary crates
     "server",
@@ -23,14 +21,14 @@ members = [
 # Workspace crates
 db = { path = "crates/db" }
 events = { path = "crates/events" }
+flake-id = { path = "crates/flake-id" }
+join = { path = "crates/join" }
 media = { path = "crates/media" }
+mimetype = { path = "crates/mimetype" }
 models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
 workers = { path = "crates/workers" }
-joiner = { path = "packages/joiner" }
-flake-id = { path = "packages/flake-id" }
-mimetype = { path = "packages/mimetype" }
 
 
 # External crates
@@ -50,3 +48,4 @@ tokio = "1.47.1"
 tokio-util = "0.7.16"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
+webp = "0.3.1"
