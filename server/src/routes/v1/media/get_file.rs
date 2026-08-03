@@ -6,29 +6,21 @@ use db::{database::DatabaseProvider, ops::MediaFilesOps};
 use events::FileDetachedEvent;
 use models::{entities::MediaVariant, types::MediaId};
 use result::{ErrorKind, create_error, error::ResultExt};
-use serde::Deserialize;
 use storage::StoragePath;
 use tokio_util::io::ReaderStream;
 
 use crate::{di::DataCtx, routes::ApiResult};
 
-#[derive(Deserialize)]
-struct GetMediaFileQuery {
-    #[serde(default)]
-    format: MediaVariant,
-}
-
-#[get("/{id}")]
+#[get("/{variant}/{id}")]
 async fn get_media_file(
-    id: web::Path<MediaId>,
-    query: web::Query<GetMediaFileQuery>,
+    path: web::Path<(MediaVariant, MediaId)>,
     ctx: web::Data<DataCtx>,
 ) -> ApiResult {
-    let query = query.into_inner();
+    let (variant, id) = path.into_inner();
 
     let media_file = ctx
         .db
-        .with_session(async |db| db.get_media_variant(&id, query.format).await)
+        .with_session(async |db| db.get_media_variant(&id, variant).await)
         .await?
         .ok_or(create_error!(NotFound))?;
 
@@ -51,10 +43,7 @@ async fn get_media_file(
                 path = path.to_string(),
                 "Storage desynchronization: The file exists in the database but is missing from the storage!"
             );
-            ctx.events.publish(FileDetachedEvent {
-                media: id.into_inner(),
-                path,
-            });
+            ctx.events.publish(FileDetachedEvent { media: id, path });
             Err(create_error!(FileDetached))
         }
         Err(e) => Err(e),
