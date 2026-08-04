@@ -33,13 +33,24 @@ define_mimes! {
         (0, [0x47, 0x49, 0x46, 0x38, 0x37, 0x61]),
         (0, [0x47, 0x49, 0x46, 0x38, 0x39, 0x61])
     ];
+    Mp4, "video/mp4", [
+        (4, [0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6F, 0x6D]),
+        (4, [0x66, 0x74, 0x79, 0x70, 0x4D, 0x53, 0x4E, 0x56])
+    ];
+    Avi, "video/x-msvideo", [
+        (0, [0x52, 0x49, 0x46, 0x46, ?, ?, ?, ?, 0x41, 0x56, 0x49, 0x20])
+    ];
+    Webm, "video/webm", [
+        (0, [0x1A, 0x45, 0xDF, 0xA3])
+    ];
 }
 
 generate_ptree! {
     0x42 => [Bmp] as _PB_42;
     0x47 => [Gif] as _PB_47;
-    0x52 => [Webp] as _PB_52;
+    0x52 => [Webp, Avi] as _PB_52;
     0x89 => [Png] as _PB_89;
+    0x1A => [Webm] as _PB_1A;
     0xFF => [Jpeg] as _PB_FF;
 }
 
@@ -78,6 +89,7 @@ impl MimeType {
             MimeType::Jpeg | MimeType::Png | MimeType::Bmp | MimeType::Webp | MimeType::Gif => {
                 MimeKind::Image
             }
+            MimeType::Mp4 | MimeType::Avi | MimeType::Webm => MimeKind::Video,
         }
     }
 }

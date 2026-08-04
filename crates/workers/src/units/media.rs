@@ -146,6 +146,10 @@ impl MediaWorkerService {
         // Executes a processing pipeline suitable for the asset type
         let res = match asset.media_type {
             mimetype::MimeKind::Image => self.process_asset_as_image(asset).await,
+            mimetype::MimeKind::Video => {
+                // TODO!
+                Ok(())
+            }
         };
 
         // Processes the result of asset processing
