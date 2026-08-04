@@ -180,6 +180,11 @@ impl<'a> UncommitedFile<'a> {
         };
         Ok(file)
     }
+
+    /// Returns a reference to the global path of this [`UncommitedFile`]
+    pub fn global_path(&self) -> &StoragePath {
+        &self.global_path
+    }
 }
 
 impl Drop for UncommitedFile<'_> {

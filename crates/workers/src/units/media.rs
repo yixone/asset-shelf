@@ -13,12 +13,13 @@ use db::{
 };
 use events::{AssetCreatedEvent, EventBus};
 use media::image::{Image, ImageDecoder, ImageFormat};
+use mimetype::MimeType;
 use models::{
     entities::{Asset, AssetState, MediaFile, MediaVariant},
     types::{AssetId, Color, MediaId},
 };
 use result::{Result, create_error, error::ResultExt};
-use storage::StoragePath;
+use storage::{StoragePath, global::GlobalPathData};
 use tokio::io::AsyncRead;
 use tokio_util::sync::CancellationToken;
 
@@ -186,7 +187,7 @@ impl MediaWorkerService {
 
         // Retrieves the original file from the storage
         let path = StoragePath::from_str(&original.storage_path).to_app_err()?;
-        let file = self.ctx.storage._get(&path).await?;
+        let file = self.ctx.storage.open(&path).await?;
 
         // Decodes the image from the original file
         let img = ImageDecoder::from_async_read(file).await?;
@@ -234,8 +235,13 @@ impl MediaWorkerService {
             let thumbnail = img
                 .thumbnail(400)
                 .reader(ImageFormat::WebP { quality: 80 })?;
-            self.store_variant(&asset.media_id, MediaVariant::Thumbnail, thumbnail)
-                .await?;
+            self.store_variant(
+                &asset.media_id,
+                MimeType::Webp,
+                MediaVariant::Thumbnail,
+                thumbnail,
+            )
+            .await?;
         }
 
         Ok(())
@@ -244,6 +250,7 @@ impl MediaWorkerService {
     async fn store_variant<R>(
         &self,
         media: &MediaId,
+        mimetype: MimeType,
         variant: MediaVariant,
         variant_bytes: R,
     ) -> Result<()>
@@ -253,11 +260,10 @@ impl MediaWorkerService {
         let variant_file = self
             .ctx
             .storage
-            ._upload(
-                MEDIA_NAMESPACE,
-                &media.to_string(),
-                variant.as_str(),
+            .upload(
+                GlobalPathData::new(&media.to_string(), variant.as_str()),
                 variant_bytes,
+                |_| Ok(()),
             )
             .await?;
 
@@ -265,16 +271,16 @@ impl MediaWorkerService {
             id: self.ctx.flake.get_id_as(),
             media_id: media.clone(),
             variant: MediaVariant::Thumbnail,
-            storage_path: variant_file.target.path.to_string(),
+            storage_path: variant_file.global_path().to_string(),
             created_at: Utc::now(),
-            size_bytes: variant_file.target.size_bytes as i64,
-            mimetype: variant_file.target.mimetype,
+            size_bytes: variant_file.size_bytes as i64,
+            mimetype,
         };
 
         let mut conn = self.ctx.db.acquire().await?;
         conn.insert_media_file(&variant_media_file).await?;
 
-        variant_file.release().await?;
+        variant_file.commit().await?;
 
         tracing::info!("MediaWorker: {variant} generated and saved for media:{media}");
         Ok(())

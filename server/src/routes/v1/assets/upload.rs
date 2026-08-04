@@ -7,9 +7,10 @@ use db::{
 };
 use events::AssetCreatedEvent;
 use futures::TryStreamExt;
+use mimetype::MimeType;
 use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
-use storage::file::UnreleasedFile;
+use storage::{files::UncommitedFile, global::GlobalPathData};
 
 use crate::{
     di::DataCtx,
@@ -18,18 +19,23 @@ use crate::{
     utils::multipart::{FieldExt, MultipartParseError},
 };
 
+const MAX_SIZE: usize = 1024 * 1024 * 1024;
+
 const DEFAULT_VARIANT: MediaVariant = MediaVariant::Original;
-// TODO: Move MEDIA_NAMESPACE to global const
-const MEDIA_NAMESPACE: &str = "media";
 
 /// Asset uploading context
 #[derive(Default)]
 struct UploadingContext<'a> {
-    file: Option<UnreleasedFile<'a>>,
+    upload: Option<UploadFile<'a>>,
 
     title: Option<String>,
     caption: Option<String>,
     source_url: Option<String>,
+}
+
+struct UploadFile<'a> {
+    file: UncommitedFile<'a>,
+    mimetype: MimeType,
 }
 
 /// Uploads an asset with a media file
@@ -55,20 +61,52 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
 
         match field_name {
             "file" => {
-                if upload.file.is_some() {
+                if upload.upload.is_some() {
                     continue;
                 }
                 let stream = field.into_async_reader();
+
+                let mut size_bytes = 0;
+                let mut magic_bytes_buffer = Vec::with_capacity(128);
+
                 let temp_stored = ctx
                     .storage
-                    ._upload(
-                        MEDIA_NAMESPACE,
-                        &media.id.to_string(),
-                        DEFAULT_VARIANT.as_str(),
+                    .upload(
+                        GlobalPathData::new(&media.id.to_string(), DEFAULT_VARIANT.as_str()),
                         stream,
+                        |chunk| {
+                            size_bytes += chunk.len();
+
+                            if size_bytes > MAX_SIZE {
+                                return Err(create_error!(FileTooLarge {
+                                    received: size_bytes,
+                                    max_size: MAX_SIZE
+                                }));
+                            }
+
+                            let header_len = magic_bytes_buffer.len();
+                            if header_len < magic_bytes_buffer.capacity() {
+                                let h_chunk = &chunk
+                                    [..chunk.len().min(magic_bytes_buffer.capacity() - header_len)];
+                                magic_bytes_buffer.extend_from_slice(h_chunk);
+                            }
+
+                            Ok(())
+                        },
                     )
                     .await?;
-                upload.file = Some(temp_stored);
+
+                let mimetype = match MimeType::guess(&magic_bytes_buffer) {
+                    Ok(m) => m,
+                    Err(_) => {
+                        return Err(create_error!(UnsupportedFileType));
+                    }
+                };
+
+                upload.upload = Some(UploadFile {
+                    file: temp_stored,
+                    mimetype,
+                });
             }
             "title" => upload.title = Some(field.read_to_string().await?),
             "caption" => upload.caption = Some(field.read_to_string().await?),
@@ -77,7 +115,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         }
     }
 
-    let Some(file) = upload.file else {
+    let Some(file) = upload.upload else {
         return Err(create_error!(MalformedPayload));
     };
 
@@ -85,10 +123,10 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         id: ctx.flake.get_id_as(),
         media_id: media.id.clone(),
         variant: DEFAULT_VARIANT,
-        storage_path: file.target.path.to_string(),
+        storage_path: file.file.global_path().to_string(),
         created_at: now,
-        size_bytes: file.target.size_bytes as i64,
-        mimetype: file.target.mimetype,
+        size_bytes: file.file.size_bytes as i64,
+        mimetype: file.mimetype,
     };
     let asset = Asset {
         id: ctx.flake.get_id_as(),
@@ -117,9 +155,9 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
     tx.insert_asset_features(&asset_features).await?;
     tx.insert_media_file(&media_file).await?;
 
-    let file = file.release().await?;
+    let file = file.file.commit().await?;
     if let Err(e) = tx.commit().await {
-        ctx.storage.remove_safely(&file.path).await;
+        ctx.storage.remove_safely(&file.global_path).await;
         return Err(e);
     }
 

@@ -8,7 +8,6 @@ use tempfile::TempDir;
 use tokio::io::AsyncReadExt;
 
 const DATA: &[u8] = &[0xFF, 0xD8, 0xFF, 0xDB, 0x67, 0x42, 0x52, 0x0, 0x0, 0x1, 0x1];
-const NAMEPSACE: &str = "test";
 
 async fn open_storage() -> NativeFsStorageBackend {
     let temp = TempDir::new().unwrap();
@@ -19,7 +18,7 @@ async fn open_storage() -> NativeFsStorageBackend {
 async fn create_and_read_file() {
     let storage_backend = open_storage().await;
 
-    let path = StoragePath::new(NAMEPSACE, "test_file");
+    let path = StoragePath::new("test_file");
 
     {
         let mut writer = storage_backend.create(&path).await.unwrap();
@@ -41,7 +40,7 @@ async fn create_and_read_file() {
 async fn abort_writting() {
     let storage_backend = open_storage().await;
 
-    let path = StoragePath::new(NAMEPSACE, "test_file");
+    let path = StoragePath::new("test_file");
 
     {
         let writer = storage_backend.create(&path).await.unwrap();
@@ -57,8 +56,8 @@ async fn abort_writting() {
 #[tokio::test]
 async fn delete_with_parents() {
     let storage_backend = open_storage().await;
-    let path_0 = StoragePath::new(NAMEPSACE, "a/b/c/d/file");
-    let path_1 = StoragePath::new(NAMEPSACE, "a/b/c/file");
+    let path_0 = StoragePath::new("a/b/c/d/file");
+    let path_1 = StoragePath::new("a/b/c/file");
 
     {
         let mut writer = storage_backend.create(&path_0).await.unwrap();
@@ -78,14 +77,14 @@ async fn delete_with_parents() {
         // Checking that the file's parent directory was deleted
         assert!(
             !storage_backend
-                .resolve_path(&StoragePath::new(NAMEPSACE, "a/b/c/d"))
+                .resolve_path(&StoragePath::new("a/b/c/d"))
                 .exists()
         );
 
         // Checking that a non-empty directory located along the deletion path was not deleted
         assert!(
             storage_backend
-                .resolve_path(&StoragePath::new(NAMEPSACE, "a/b/c"))
+                .resolve_path(&StoragePath::new("a/b/c"))
                 .is_dir()
         );
     }
@@ -94,8 +93,8 @@ async fn delete_with_parents() {
 #[tokio::test]
 async fn do_not_delete_parent_dir_if_not_empty() {
     let storage_backend = open_storage().await;
-    let path_0 = StoragePath::new(NAMEPSACE, "a/b/c/d/file");
-    let path_1 = StoragePath::new(NAMEPSACE, "a/b/c/d/file2");
+    let path_0 = StoragePath::new("a/b/c/d/file");
+    let path_1 = StoragePath::new("a/b/c/d/file2");
 
     {
         let mut writer = storage_backend.create(&path_0).await.unwrap();
@@ -113,7 +112,7 @@ async fn do_not_delete_parent_dir_if_not_empty() {
         // Checking that the file's parent directory was deleted
         assert!(
             storage_backend
-                .resolve_path(&StoragePath::new(NAMEPSACE, "a/b/c/d"))
+                .resolve_path(&StoragePath::new("a/b/c/d"))
                 .exists()
         );
 

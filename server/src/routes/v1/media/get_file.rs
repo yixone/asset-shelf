@@ -29,7 +29,7 @@ async fn get_media_file(
 
     let path = StoragePath::from_str(&media_file.storage_path).to_app_err()?;
 
-    match ctx.storage._get(&path).await {
+    match ctx.storage.open(&path).await {
         Ok(reader) => {
             let stream = ReaderStream::new(reader);
 
