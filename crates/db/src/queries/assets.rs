@@ -182,17 +182,19 @@ where
                 AS af
                 ON af.asset_id = a.id
             WHERE
-                a.state = ? OR
+                a.state != ? AND 
+            (
                 af.accent_color IS null OR
                 af.a_hash       IS null OR
                 af.p_hash       IS null OR
                 af.height       IS null OR
                 af.width        IS null
+            )
             ORDER BY a.created_at ASC
             LIMIT ?
             ",
         )
-        .bind(AssetState::Pending)
+        .bind(AssetState::Processing)
         .bind(limit)
         .fetch_all(self.executor())
         .await

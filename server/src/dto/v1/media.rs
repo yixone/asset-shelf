@@ -16,6 +16,8 @@ pub struct MediaFileDtoV1 {
     url: String,
     size_bytes: i64,
     mimetype: MimeType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    duration_milis: Option<i64>,
 }
 
 impl From<Vec<MediaFile>> for MediaGroupDtoV1 {
@@ -35,6 +37,7 @@ impl From<MediaFile> for MediaFileDtoV1 {
             url: build_media_url(&file.media_id, file.variant),
             size_bytes: file.size_bytes,
             mimetype: file.mimetype,
+            duration_milis: file.duration_milis,
         }
     }
 }

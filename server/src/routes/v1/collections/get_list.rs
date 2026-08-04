@@ -1,6 +1,6 @@
 use actix_web::{HttpResponse, get, web};
 use db::{database::DatabaseProvider, ops::CollectionsOps, types::Pagination};
-use joiner::JoinBuilder;
+use join::JoinBuilder;
 use models::{bulk::BulkIds, types::CollectionsOrdering};
 use serde::Deserialize;
 

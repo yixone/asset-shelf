@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
@@ -28,12 +28,15 @@ async fn main() -> Result<()> {
     db.migrate().await?;
 
     tracing::info!("Opening storage");
-    let storage_backend = NativeFsStorageBackend::new("storage/data").await?;
-    let storage = Arc::new(Storage::new(
-        storage_backend,
-        FlakeIdGenerator::new(1),
-        8 * 1024 * 1024 * 1024,
-    ));
+    let storage_backend = NativeFsStorageBackend::new("storage/global").await?;
+    let storage = Arc::new(
+        Storage::new(
+            storage_backend,
+            FlakeIdGenerator::new(1),
+            PathBuf::from("storage").join("temp"),
+        )
+        .await?,
+    );
 
     tracing::info!("Initializing event bus");
     let events = Arc::new(EventBus::new(1024));

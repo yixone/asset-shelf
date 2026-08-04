@@ -9,5 +9,7 @@ result = { workspace = true }
 
 # External
 bytes = { workspace = true }
-image = { workspace = true }
+cassette = { workspace = true }
+image = { workspace = true, features = ["rayon", "png", "jpeg", "webp", "gif"] }
 tokio = { workspace = true, features = ["io-util"] }
+webp = { workspace = true }

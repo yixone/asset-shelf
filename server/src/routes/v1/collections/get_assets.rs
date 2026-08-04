@@ -4,7 +4,7 @@ use db::{
     ops::{AssetFeaturesOps, AssetOps, CollectionAssetsOps, MediaFilesOps},
     types::Pagination,
 };
-use joiner::JoinBuilder;
+use join::JoinBuilder;
 use models::{
     bulk::BulkIds,
     types::{CollectionAssetsOrdering, CollectionId},

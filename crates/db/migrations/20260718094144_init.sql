@@ -52,6 +52,8 @@ CREATE TABLE media_files (
     size_bytes      BIGINT          NOT NULL,
     mimetype        VARCHAR(128)    NOT NULL,
 
+    duration_milis  BIGINT,
+
     PRIMARY KEY (id),
     FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE    
 );

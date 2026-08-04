@@ -8,7 +8,7 @@ use db::{
 };
 
 use events::{AssetDeletedEvent, EventBus};
-use joiner::JoinBuilder;
+use join::JoinBuilder;
 use models::{
     bulk::BulkIds,
     entities::{Asset, Media, MediaFile},

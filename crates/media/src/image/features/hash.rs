@@ -1,4 +1,4 @@
-use crate::features::dct::apply_dct2;
+use crate::image::features::dct::apply_dct2;
 
 /// Calculates a perceptual hash for a 32x32 black-and-white matrix
 pub fn p_hash(matrix: [[u8; 32]; 32]) -> i64 {
