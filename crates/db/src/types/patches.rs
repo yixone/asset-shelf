@@ -124,3 +124,9 @@ patch_model! {
         description: Option<String>
     }
 }
+
+patch_model! {
+    MediaFilePatch {
+        duration_milis: Option<i64>
+    }
+}

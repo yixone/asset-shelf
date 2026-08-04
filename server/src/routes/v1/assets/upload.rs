@@ -127,6 +127,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         created_at: now,
         size_bytes: file.file.size_bytes as i64,
         mimetype: file.mimetype,
+        duration_milis: None,
     };
     let asset = Asset {
         id: ctx.flake.get_id_as(),

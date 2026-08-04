@@ -531,7 +531,7 @@ dependencies = [
 [[package]]
 name = "cassette"
 version = "0.1.0"
-source = "git+https://github.com/yixone/cassette#beff23732645508e2a5545fa9f0ed440296c327d"
+source = "git+https://github.com/yixone/cassette?branch=master#5c3e7cee4606292ab7be047c0f353e529849c68c"
 dependencies = [
  "bytes",
  "image",
@@ -936,7 +936,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2463,7 +2463,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2997,7 +2997,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

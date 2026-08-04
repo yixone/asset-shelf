@@ -118,6 +118,15 @@ impl LocalFile {
     pub fn path(&self) -> &Path {
         &self.path
     }
+
+    pub async fn cleanup(mut self) {
+        self.need_cleanup = false;
+
+        // Deletes a file from the disk
+        if let Err(e) = tokio::fs::remove_file(&self.path).await {
+            tracing::error!(err = ?e, "Failed to delete temp local file");
+        }
+    }
 }
 
 impl Drop for LocalFile {

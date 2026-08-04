@@ -4,7 +4,7 @@ use models::{
 };
 use result::Result;
 
-use crate::types::{DeleteResult, InsertResult};
+use crate::types::{DeleteResult, InsertResult, UpdateResult, patches::MediaFilePatch};
 
 pub trait MediaOps {
     /// Inserts a [`Media`] into the database
@@ -34,6 +34,12 @@ pub trait MediaFilesOps {
 
     /// Inserts a set of [`MediaFile`] into the database
     async fn insert_media_file_bulk(&mut self, mf: &[MediaFile]) -> Result<InsertResult>;
+
+    async fn update_media_file(
+        &mut self,
+        id: &MediaFileId,
+        patch: MediaFilePatch,
+    ) -> Result<UpdateResult<MediaFile>>;
 
     /// Removes the [`MediaFile`] from the database.
     async fn delete_media_file(&mut self, id: &MediaFileId) -> Result<DeleteResult> {
