@@ -1,4 +1,6 @@
-use flake_id::{FlakeIdGenerator, str::FlakeIdStr};
+use std::path::PathBuf;
+
+use flake_id::FlakeIdGenerator;
 use futures::TryStreamExt;
 use mimetype::MimeType;
 use result::{Result, create_error, error::ResultExt};
@@ -6,45 +8,47 @@ use tokio::{io::AsyncRead, time::Instant};
 use tokio_util::io::ReaderStream;
 
 use crate::{
-    backend::StorageBackend,
+    backend::{StorageBackend, fs::NativeFsStorageBackend},
     file::{StorageFile, UnreleasedFile},
+    global::GlobalSection,
+    temp::TempSection,
 };
 
 pub mod backend;
 pub mod file;
 
+pub mod files;
+
+pub mod global;
+pub mod temp;
+
 pub use backend::path::StoragePath;
 
 /// File storage with double file writing
 pub struct Storage {
-    /// File storage backend
-    backend: Box<dyn StorageBackend>,
-    /// ID generator for temporary paths
-    id_gen: FlakeIdGenerator,
-    /// Maximum file size
-    max_size: usize,
+    /// Section for storing persistent files
+    global: GlobalSection,
+
+    /// Section for storing temporary files
+    temp: TempSection,
 }
 
 impl Storage {
     /// Creates a new [`Storage`]
-    pub fn new<B: StorageBackend + 'static>(
+    pub async fn new<B: StorageBackend + 'static>(
         backend: B,
         id_gen: FlakeIdGenerator,
-        max_size: usize,
-    ) -> Storage {
-        Storage {
-            backend: Box::new(backend),
-            id_gen,
-            max_size,
-        }
-    }
-
-    /// Generates temp file path
-    fn generate_temp_path(&self) -> StoragePath {
-        StoragePath {
-            namespace: "temp".to_string(),
-            key: self.id_gen.get_id_as::<FlakeIdStr>().to_string(),
-        }
+        temp_dir: PathBuf,
+    ) -> Result<Storage> {
+        Ok(Storage {
+            global: GlobalSection {
+                backend: Box::new(backend),
+            },
+            temp: TempSection {
+                backend: NativeFsStorageBackend::new(temp_dir).await?,
+                temp_id_generator: id_gen,
+            },
+        })
     }
 
     pub async fn upload<D>(
@@ -136,20 +140,4 @@ impl Storage {
     pub async fn get(&self, path: &StoragePath) -> Result<Box<dyn AsyncRead + Send + Unpin>> {
         self.backend.read(path).await
     }
-}
-
-fn shard_key(key: &str, levels: usize) -> String {
-    let mut res = String::new();
-
-    for i in 0..levels {
-        let idx = 2 * i;
-        if idx + 2 > key.len() {
-            break;
-        }
-        res.push_str(&key[idx..idx + 2]);
-        res.push('/');
-    }
-
-    res.push_str(key);
-    res
 }
