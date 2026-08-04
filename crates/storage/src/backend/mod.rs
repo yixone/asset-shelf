@@ -23,6 +23,15 @@ pub trait StorageBackend: Send + Sync {
     /// Opens a file reader at the specified [`StoragePath`] and returns it
     async fn read(&self, path: &StoragePath) -> Result<BoxedReader>;
 
+    /// Opens the file and reads its bytes from `start` to `end` (if specified),
+    /// then returns a reader for the read range
+    async fn read_ranged(
+        &self,
+        path: &StoragePath,
+        start: u64,
+        end: Option<u64>,
+    ) -> Result<BoxedReader>;
+
     /// Checks for the existence of a file at the specified [`StoragePath`]
     async fn exists(&self, path: &StoragePath) -> Result<bool>;
 

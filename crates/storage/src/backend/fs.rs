@@ -103,6 +103,32 @@ impl StorageBackend for NativeFsStorageBackend {
         }
     }
 
+    async fn read_ranged(
+        &self,
+        path: &StoragePath,
+        start: u64,
+        end: Option<u64>,
+    ) -> Result<BoxedReader> {
+        let path = self.resolve_path(&path.key);
+        let mut file = match File::open(path).await {
+            Ok(f) => f,
+            Err(e) if e.kind() == ErrorKind::NotFound => return Err(create_error!(NotFound)),
+            Err(e) => return Err(Error::internal(e)),
+        };
+
+        file.seek(std::io::SeekFrom::Start(start))
+            .await
+            .to_app_err()?;
+
+        match end {
+            Some(end) => {
+                let to_read = end - start + 1;
+                Ok(Box::new(file.take(to_read)))
+            }
+            None => Ok(Box::new(file)),
+        }
+    }
+
     async fn exists(&self, path: &StoragePath) -> Result<bool> {
         let path = self.resolve_path(path);
         tokio::fs::try_exists(path).await.to_app_err()
