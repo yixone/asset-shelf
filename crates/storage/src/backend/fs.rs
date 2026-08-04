@@ -6,7 +6,7 @@ use std::{
 use result::{Error, Result, create_error, error::ResultExt};
 use tokio::{
     fs::File,
-    io::{AsyncWriteExt, BufWriter},
+    io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufWriter},
 };
 
 use crate::backend::{BoxedReader, BoxedWriter, FileWriter, StorageBackend, path::StoragePath};
@@ -109,7 +109,7 @@ impl StorageBackend for NativeFsStorageBackend {
         start: u64,
         end: Option<u64>,
     ) -> Result<BoxedReader> {
-        let path = self.resolve_path(&path.key);
+        let path = self.resolve_path(path);
         let mut file = match File::open(path).await {
             Ok(f) => f,
             Err(e) if e.kind() == ErrorKind::NotFound => return Err(create_error!(NotFound)),
