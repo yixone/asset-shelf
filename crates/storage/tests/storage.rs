@@ -17,7 +17,7 @@ async fn storage_upload() {
     let storage = open_storage().await;
 
     let file = storage
-        .upload(NAMEPSACE, "FTF0ulblKa", "test", DATA)
+        ._upload(NAMEPSACE, "FTF0ulblKa", "test", DATA)
         .await
         .unwrap();
 

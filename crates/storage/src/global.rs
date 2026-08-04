@@ -6,10 +6,25 @@ pub(crate) struct GlobalSection {
     pub backend: Box<dyn StorageBackend>,
 }
 
+/// Data for global path generation
+pub struct GlobalPathData<'a> {
+    /// Container name
+    container: &'a str,
+    /// File path within the container
+    file: &'a str,
+}
+
+impl<'a> GlobalPathData<'a> {
+    /// Creates a new [`GlobalPathData`]
+    pub fn new(container: &'a str, file: &'a str) -> Self {
+        Self { container, file }
+    }
+}
+
 /// Generates a global path for a file in persistent storage section
-pub(crate) fn generate_global_path(container: &str, file_name: &str) -> StoragePath {
-    let container = shard_key(container, 2);
-    StoragePath::new(container).join(file_name)
+pub(crate) fn generate_global_path(data: GlobalPathData<'_>) -> StoragePath {
+    let container = shard_key(data.container, 2);
+    StoragePath::new(container).join(data.file)
 }
 
 /// Applies path sharding, transforming:

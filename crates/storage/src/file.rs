@@ -15,10 +15,10 @@ pub struct UnreleasedFile<'a> {
 
 impl<'a> UnreleasedFile<'a> {
     pub async fn release(self) -> Result<StorageFile> {
-        if let Err(e) = self.owner.rename(&self.temp_path, &self.target.path).await {
-            self.abort().await;
-            return Err(e);
-        }
+        // if let Err(e) = self.owner.rename(&self.temp_path, &self.target.path).await {
+        //     self.abort().await;
+        //     return Err(e);
+        // }
         Ok(self.target)
     }
 

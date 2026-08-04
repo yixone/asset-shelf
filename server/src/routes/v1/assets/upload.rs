@@ -61,7 +61,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
                 let stream = field.into_async_reader();
                 let temp_stored = ctx
                     .storage
-                    .upload(
+                    ._upload(
                         MEDIA_NAMESPACE,
                         &media.id.to_string(),
                         DEFAULT_VARIANT.as_str(),

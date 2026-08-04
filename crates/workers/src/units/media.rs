@@ -186,7 +186,7 @@ impl MediaWorkerService {
 
         // Retrieves the original file from the storage
         let path = StoragePath::from_str(&original.storage_path).to_app_err()?;
-        let file = self.ctx.storage.get(&path).await?;
+        let file = self.ctx.storage._get(&path).await?;
 
         // Decodes the image from the original file
         let img = ImageDecoder::from_async_read(file).await?;
@@ -253,7 +253,7 @@ impl MediaWorkerService {
         let variant_file = self
             .ctx
             .storage
-            .upload(
+            ._upload(
                 MEDIA_NAMESPACE,
                 &media.to_string(),
                 variant.as_str(),
