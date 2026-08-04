@@ -12,6 +12,10 @@ pub struct Image {
 }
 
 impl Image {
+    pub fn from_dynamic(img: DynamicImage) -> Self {
+        Image { inner: img }
+    }
+
     /// Returns the dimensions of the current image
     pub fn dimension(&self) -> (u32, u32) {
         (self.inner.width(), self.inner.height())

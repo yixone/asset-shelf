@@ -8,7 +8,11 @@ use sqlx::QueryBuilder;
 use crate::{
     ops::{MediaFilesOps, MediaOps},
     sqlite::SqliteExecutor,
-    types::result::{DeleteResult, InsertResult},
+    types::{
+        UpdateResult,
+        patches::MediaFilePatch,
+        result::{DeleteResult, InsertResult},
+    },
 };
 
 impl<T> MediaOps for T
@@ -104,7 +108,8 @@ where
             "
             INSERT INTO media_files (
                 id, storage_path, media_id,
-                variant, created_at, size_bytes, mimetype
+                variant, created_at, size_bytes, mimetype,
+                duration_milis
             )
             ",
         );
@@ -117,9 +122,37 @@ where
             qb.push_bind(mf.created_at);
             qb.push_bind(mf.size_bytes);
             qb.push_bind(mf.mimetype);
+            qb.push_bind(mf.duration_milis);
         });
 
         let res = qb.build().execute(self.executor()).await.to_app_err()?;
+        Ok(res.into())
+    }
+
+    async fn update_media_file(
+        &mut self,
+        id: &MediaFileId,
+        patch: MediaFilePatch,
+    ) -> Result<UpdateResult<MediaFile>> {
+        let mut qb = QueryBuilder::new(
+            "
+            UPDATE media_files
+            SET
+            ",
+        );
+
+        patch.apply_sql(&mut qb);
+
+        qb.push(" WHERE id = ");
+        qb.push_bind(id);
+
+        qb.push(" RETURNING * ");
+
+        let res = qb
+            .build_query_as()
+            .fetch_optional(self.executor())
+            .await
+            .to_app_err()?;
         Ok(res.into())
     }
 

@@ -9,16 +9,22 @@ use chrono::Utc;
 use db::{
     database::DatabaseProvider,
     ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
-    types::patches::{AssetFeaturesPatch, AssetPatch},
+    types::patches::{AssetFeaturesPatch, AssetPatch, MediaFilePatch},
 };
 use events::{AssetCreatedEvent, EventBus};
-use media::image::{Image, ImageDecoder, ImageFormat};
+use media::{
+    image::{Image, ImageDecoder, ImageFormat},
+    video::{
+        self, ExtractVideoFragmentParams, FragmentParams, input::MediaInput, types::AudioMode,
+    },
+};
+use mimetype::{MimeKind, MimeType};
 use models::{
     entities::{Asset, AssetState, MediaFile, MediaVariant},
     types::{AssetId, Color, MediaId},
 };
 use result::{Result, create_error, error::ResultExt};
-use storage::StoragePath;
+use storage::{StoragePath, global::GlobalPathData};
 use tokio::io::AsyncRead;
 use tokio_util::sync::CancellationToken;
 
@@ -26,8 +32,6 @@ use crate::{
     WorkerContext,
     worker::{AbstractWorker, WorkerConfig},
 };
-
-const MEDIA_NAMESPACE: &str = "media";
 
 /// Background media worker
 pub struct MediaWorker {
@@ -145,7 +149,8 @@ impl MediaWorkerService {
 
         // Executes a processing pipeline suitable for the asset type
         let res = match asset.media_type {
-            mimetype::MimeKind::Image => self.process_asset_as_image(asset).await,
+            MimeKind::Image => self.process_asset_as_image(asset).await,
+            MimeKind::Video => self.process_asset_as_video(asset).await,
         };
 
         // Processes the result of asset processing
@@ -172,6 +177,8 @@ impl MediaWorkerService {
 
     /// Executes the media image processing pipeline for the specified [`Asset`]
     async fn process_asset_as_image(&self, asset: &Asset) -> Result<()> {
+        tracing::info!("Processing {} as image", asset.id);
+
         // Retrieves information about the original media file
         let original = {
             let mut conn = self.ctx.db.acquire().await?;
@@ -182,7 +189,7 @@ impl MediaWorkerService {
 
         // Retrieves the original file from the storage
         let path = StoragePath::from_str(&original.storage_path).to_app_err()?;
-        let file = self.ctx.storage.get(&path).await?;
+        let file = self.ctx.storage.open(&path).await?;
 
         // Decodes the image from the original file
         let img = ImageDecoder::from_async_read(file).await?;
@@ -212,26 +219,174 @@ impl MediaWorkerService {
         Ok(())
     }
 
+    /// Executes the media video processing pipeline for the specified [`Asset`]
+    async fn process_asset_as_video(&self, asset: &Asset) -> Result<()> {
+        tracing::info!("Processing {} as video", asset.id);
+
+        // Retrieves information about the original media file
+        let original = {
+            let mut conn = self.ctx.db.acquire().await?;
+            conn.get_media_variant(&asset.media_id, MediaVariant::Original)
+                .await?
+                .ok_or(create_error!(NotFound))?
+        };
+
+        // Copies the video to a temporary directory for processing
+        let path = StoragePath::from_str(&original.storage_path).to_app_err()?;
+        let original_video = self.ctx.storage.open_local(&path).await?;
+
+        // Opens the video as a cassette input
+        let video = video::input::MediaInput::try_new(original_video.path()).to_app_err()?;
+
+        // Extracts metadata from video
+        let metadata = media::video::probe_video(&video).await.to_app_err()?;
+        let duration_milis = (metadata.video.duration_secs * 1000.0) as i64;
+        let res = metadata.video.resolution;
+        let (width, height) = (res.width, res.height);
+
+        // Extract frame and generates thumbnail
+        let frame = media::video::extract_frame(Duration::from_secs(0), &video)
+            .await
+            .to_app_err()?;
+        let frame = Image::from_dynamic(frame);
+
+        // Generates video variants
+        self.generate_video_variants(asset, duration_milis, &frame, &video)
+            .await?;
+
+        // Extract features from thumbnail
+        let featured = frame.features();
+        let color = Color::from(featured.avg_color());
+        let p_hash = featured.p_hash();
+        let a_hash = featured.a_hash();
+
+        // Writes features to the database
+        let mut conn = self.ctx.db.acquire().await?;
+        conn.update_asset_features(
+            &asset.id,
+            AssetFeaturesPatch::new()
+                .a_hash(Some(a_hash))
+                .p_hash(Some(p_hash))
+                .height(Some(height))
+                .width(Some(width))
+                .accent_color(Some(color)),
+        )
+        .await?;
+
+        let original_file = conn
+            .get_media_variant(&asset.media_id, MediaVariant::Original)
+            .await?
+            .ok_or(create_error!(NotFound))?;
+
+        conn.update_media_file(
+            &original_file.id,
+            MediaFilePatch::new().duration_milis(Some(duration_milis)),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// Checks which variants already exist for the specified asset
+    async fn get_exists_media_variants(&self, asset: &Asset) -> Result<HashSet<MediaVariant>> {
+        let mut conn = self.ctx.db.acquire().await?;
+        let stored_variants = conn.get_media_files(&asset.media_id).await?;
+        let mut variants = HashSet::with_capacity(stored_variants.len());
+
+        for v in stored_variants {
+            variants.insert(v.variant);
+        }
+
+        Ok(variants)
+    }
+
+    async fn generate_video_variants(
+        &self,
+        asset: &Asset,
+        video_duration_milis: i64,
+        frame: &Image,
+        video: &MediaInput,
+    ) -> Result<()> {
+        // Checks which variants already exist for the specified asset
+        let variants = self.get_exists_media_variants(asset).await?;
+
+        if !variants.contains(&MediaVariant::Thumbnail) {
+            let thumbnail = frame
+                .thumbnail(400)
+                .reader(ImageFormat::WebP { quality: 80 })?;
+            self.store_variant(
+                &asset.media_id,
+                MimeType::Webp,
+                MediaVariant::Thumbnail,
+                thumbnail,
+            )
+            .await?;
+        }
+
+        if !variants.contains(&MediaVariant::LoopPreview) {
+            let reserve = self.ctx.storage.reserve(GlobalPathData::new(
+                &asset.media_id.to_string(),
+                MediaVariant::LoopPreview.as_str(),
+            ));
+
+            let duration = Duration::from_millis((5000).min(video_duration_milis as u64));
+
+            video::extract_video_fragment(
+                video,
+                reserve.path(),
+                ExtractVideoFragmentParams {
+                    fragment: FragmentParams {
+                        start: Duration::from_millis(0),
+                        duration,
+                    },
+                    frame_rate: None,
+                    audio: AudioMode::Disabled,
+                    output_resolution: Some((1280, 720)),
+                },
+            )
+            .await
+            .to_app_err()?;
+
+            let file = reserve.publish().await?;
+
+            let variant_media_file = MediaFile {
+                id: self.ctx.flake.get_id_as(),
+                media_id: asset.media_id.clone(),
+                variant: MediaVariant::LoopPreview,
+                storage_path: file.path.to_string(),
+                created_at: Utc::now(),
+                size_bytes: file.size_bytes as i64,
+                mimetype: MimeType::Mp4,
+                duration_milis: Some(duration.as_millis() as i64),
+            };
+
+            let mut conn = self.ctx.db.acquire().await?;
+            conn.insert_media_file(&variant_media_file).await?;
+            tracing::info!(
+                "MediaWorker: loop preview generated and saved for media {}",
+                asset.media_id
+            );
+        }
+
+        Ok(())
+    }
+
     async fn generate_image_variants(&self, asset: &Asset, img: &Image) -> Result<()> {
         // Checks which variants already exist for the specified asset
-        let variants = {
-            let mut conn = self.ctx.db.acquire().await?;
-            let stored_variants = conn.get_media_files(&asset.media_id).await?;
-            let mut variants = HashSet::with_capacity(stored_variants.len());
-
-            for v in stored_variants {
-                variants.insert(v.variant);
-            }
-            variants
-        };
+        let variants = self.get_exists_media_variants(asset).await?;
 
         // Generates and saves a thumbnail
         if !variants.contains(&MediaVariant::Thumbnail) {
             let thumbnail = img
                 .thumbnail(400)
                 .reader(ImageFormat::WebP { quality: 80 })?;
-            self.store_variant(&asset.media_id, MediaVariant::Thumbnail, thumbnail)
-                .await?;
+            self.store_variant(
+                &asset.media_id,
+                MimeType::Webp,
+                MediaVariant::Thumbnail,
+                thumbnail,
+            )
+            .await?;
         }
 
         Ok(())
@@ -240,6 +395,7 @@ impl MediaWorkerService {
     async fn store_variant<R>(
         &self,
         media: &MediaId,
+        mimetype: MimeType,
         variant: MediaVariant,
         variant_bytes: R,
     ) -> Result<()>
@@ -250,10 +406,9 @@ impl MediaWorkerService {
             .ctx
             .storage
             .upload(
-                MEDIA_NAMESPACE,
-                &media.to_string(),
-                variant.as_str(),
+                GlobalPathData::new(&media.to_string(), variant.as_str()),
                 variant_bytes,
+                |_| Ok(()),
             )
             .await?;
 
@@ -261,18 +416,19 @@ impl MediaWorkerService {
             id: self.ctx.flake.get_id_as(),
             media_id: media.clone(),
             variant: MediaVariant::Thumbnail,
-            storage_path: variant_file.target.path.to_string(),
+            storage_path: variant_file.global_path().to_string(),
             created_at: Utc::now(),
-            size_bytes: variant_file.target.size_bytes as i64,
-            mimetype: variant_file.target.mimetype,
+            size_bytes: variant_file.size_bytes as i64,
+            mimetype,
+            duration_milis: None,
         };
 
         let mut conn = self.ctx.db.acquire().await?;
         conn.insert_media_file(&variant_media_file).await?;
 
-        variant_file.release().await?;
+        variant_file.commit().await?;
 
-        tracing::info!("MediaWorker: {variant} generated and saved for media:{media}");
+        tracing::info!("MediaWorker: {variant} generated and saved for media: {media}");
         Ok(())
     }
 }

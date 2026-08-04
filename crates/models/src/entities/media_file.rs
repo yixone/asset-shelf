@@ -16,6 +16,8 @@ pub struct MediaFile {
 
     pub size_bytes: i64,
     pub mimetype: MimeType,
+
+    pub duration_milis: Option<i64>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -23,12 +25,13 @@ pub struct MediaFile {
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
-    serde(rename_all = "lowercase")
+    serde(rename_all = "snake_case")
 )]
 pub enum MediaVariant {
     #[default]
     Original,
     Thumbnail,
+    LoopPreview,
 }
 
 impl MediaVariant {
@@ -36,6 +39,7 @@ impl MediaVariant {
         match self {
             MediaVariant::Original => "original",
             MediaVariant::Thumbnail => "thumbnail",
+            MediaVariant::LoopPreview => "loop_preview",
         }
     }
 }
