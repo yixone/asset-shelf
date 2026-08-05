@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use mimetype::MimeKind;
 use models::entities::{Asset, AssetFeatures, AssetState};
 use serde::Serialize;
 
@@ -11,6 +12,9 @@ pub struct AssetDtoV1 {
 
     #[serde(flatten)]
     media: MediaGroupDtoV1,
+
+    #[serde(rename = "type")]
+    media_type: MimeKind,
 
     created_at: DateTime<Utc>,
     deleted_at: Option<DateTime<Utc>>,
@@ -34,6 +38,7 @@ where
             id: asset.id.to_string(),
             state: asset.state,
             media: media.into(),
+            media_type: asset.media_type,
             created_at: asset.created_at,
             deleted_at: asset.deleted_at,
             title: asset.title,
