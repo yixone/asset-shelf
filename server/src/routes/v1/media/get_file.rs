@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use actix_web::{
     HttpRequest, HttpResponse, get,
-    http::header::{self, ACCEPT_RANGES, ContentLength, ContentRange, Header, Range},
+    http::header::{self, ACCEPT_RANGES, ContentLength, ContentRange},
     web,
 };
 
@@ -17,7 +17,7 @@ use result::{ErrorKind, Result, create_error, error::ResultExt};
 use storage::StoragePath;
 use tokio_util::io::ReaderStream;
 
-use crate::{di::DataCtx, routes::ApiResult};
+use crate::{di::DataCtx, routes::ApiResult, utils};
 
 #[get("/{variant}/{id}")]
 async fn get_media_file(
@@ -33,8 +33,6 @@ async fn get_media_file(
         .await?
         .ok_or(create_error!(NotFound))?;
 
-    let path = StoragePath::from_str(&media_file.storage_path).to_app_err()?;
-
     let stream = match media_file.mimetype.kind() {
         MimeKind::Image => return_image_stream(&ctx, &media_file).await?,
         MimeKind::Video => return_video_stream(&ctx, &media_file, &request).await?,
@@ -42,6 +40,7 @@ async fn get_media_file(
     match stream {
         Some(stream) => Ok(stream),
         None => {
+            let path = StoragePath::from_str(&media_file.storage_path).to_app_err()?;
             tracing::error!(
                 path = path.to_string(),
                 "Storage desynchronization: The file exists in the database but is missing from the storage!"
@@ -85,24 +84,7 @@ async fn return_video_stream(
     let mimetype = media_file.mimetype.as_str();
     let content_len = media_file.size_bytes;
 
-    let range = if let Ok(range) = Range::parse(req) {
-        match range {
-            Range::Bytes(range) if range.len() == 1 => {
-                if let Some(b) = range.first() {
-                    if let Some((f, t)) = b.to_satisfiable_range(content_len as u64) {
-                        Some((f, t))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    } else {
-        None
-    };
+    let range = utils::header::parse_request_range(req, content_len as u64);
 
     let path = StoragePath::from_str(&media_file.storage_path).to_app_err()?;
 
