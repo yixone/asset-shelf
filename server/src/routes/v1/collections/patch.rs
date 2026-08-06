@@ -1,7 +1,7 @@
 use actix_web::{HttpResponse, patch, web};
 use db::{
     database::DatabaseProvider,
-    ops::CollectionsOps,
+    ops::{CollectionsRelationsOps, CollectionsWriteOps},
     types::{UpdateResult, patches::CollectionPatch},
 };
 use models::types::CollectionId;
@@ -38,8 +38,10 @@ async fn patch_collection(
         // Returns the updated model
         UpdateResult::Updated(c) => {
             let ca = conn
-                .get_collection_additions(*id)
+                .get_collections_additions_by_ids(std::slice::from_ref(&id))
                 .await?
+                .into_iter()
+                .next()
                 .expect("CollectionAdditions were not calculated for the existing collection");
             let res = CollectionDtoV1::from((c, ca));
             Ok(HttpResponse::Ok().json(res))

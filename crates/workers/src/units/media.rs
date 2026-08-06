@@ -8,7 +8,10 @@ use std::{
 use chrono::Utc;
 use db::{
     database::DatabaseProvider,
-    ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
+    ops::{
+        AssetFeaturesWriteOps, AssetsMaintenanceOps, AssetsReadOps, AssetsWriteOps,
+        MediaFilesReadOps, MediaFilesWriteOps,
+    },
     types::patches::{AssetFeaturesPatch, AssetPatch, MediaFilePatch},
 };
 use events::{AssetCreatedEvent, EventBus};
@@ -114,7 +117,7 @@ impl MediaWorkerService {
         // Retrieves an Asset by ID
         let asset = {
             let mut conn = self.ctx.db.acquire().await?;
-            let Some(asset) = conn.get_asset(id).await? else {
+            let Some(asset) = conn.get_asset_by_id(id).await? else {
                 // TODO: ADD TRACING!
                 return Ok(());
             };
@@ -290,7 +293,7 @@ impl MediaWorkerService {
     /// Checks which variants already exist for the specified asset
     async fn get_exists_media_variants(&self, asset: &Asset) -> Result<HashSet<MediaVariant>> {
         let mut conn = self.ctx.db.acquire().await?;
-        let stored_variants = conn.get_media_files(&asset.media_id).await?;
+        let stored_variants = conn.get_media_files_by_group(&asset.media_id).await?;
         let mut variants = HashSet::with_capacity(stored_variants.len());
 
         for v in stored_variants {

@@ -8,6 +8,13 @@ use crate::types::{InsertResult, Pagination, UpdateResult, patches::AssetFeature
 
 /// Read operations for data associated with the [`AssetFeatures`] domain
 pub trait AssetFeaturesReadOps {
+    /// Returns [`AssetFeatures`] for a given [`AssetId`]
+    async fn get_asset_features_by_id(&mut self, id: &AssetId) -> Result<Option<AssetFeatures>> {
+        self.get_assets_features_by_ids(std::slice::from_ref(id))
+            .await
+            .map(|a| a.into_iter().next())
+    }
+
     /// Returns a set of [`assets features`](AssetFeatures) based on a set of [`IDs`](AssetId)
     async fn get_assets_features_by_ids(&mut self, ids: &[AssetId]) -> Result<Vec<AssetFeatures>>;
 

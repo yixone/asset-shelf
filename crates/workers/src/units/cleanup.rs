@@ -3,7 +3,10 @@ use std::{str::FromStr, sync::Arc, time::Duration};
 use chrono::Utc;
 use db::{
     database::{DatabaseProvider, DatabaseTransaction},
-    ops::{AssetOps, MediaFilesOps, MediaOps},
+    ops::{
+        AssetsReadOps, AssetsWriteOps, MediaFilesReadOps, MediaFilesWriteOps, MediaMaintenanceOps,
+        MediaReadOps, MediaWriteOps,
+    },
     types::Pagination,
 };
 
@@ -87,10 +90,10 @@ struct CleanupWorkerService {
 impl CleanupWorkerService {
     async fn remove_media_by_id(&self, id: &MediaId) -> Result<()> {
         let mut conn = self.ctx.db.acquire().await?;
-        let Some(media) = conn.get_media(id).await? else {
+        let Some(media) = conn.get_media_by_id(id).await? else {
             return Ok(());
         };
-        let files = conn.get_media_files(&media.id).await?;
+        let files = conn.get_media_files_by_group(&media.id).await?;
 
         self.delete_media(&media, files).await
     }
@@ -101,7 +104,7 @@ impl CleanupWorkerService {
         let mut conn = self.ctx.db.acquire().await?;
         loop {
             let media = conn.get_orphans_media(50).await?;
-            let files = conn.get_media_files_bulk(&media.ids()).await?;
+            let files = conn.get_media_files_by_groups(&media.ids()).await?;
 
             let count = media.len();
 
@@ -165,7 +168,7 @@ impl CleanupWorkerService {
 
         let mut tx = self.ctx.db.begin().await?;
 
-        tx.delete_media_file_bulk(&files.ids()).await?;
+        tx.delete_many_media_files(&files.ids()).await?;
         tx.delete_media(&media.id).await?;
 
         tx.commit().await?;

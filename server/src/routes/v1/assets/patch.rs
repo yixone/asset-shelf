@@ -1,7 +1,7 @@
 use actix_web::{HttpResponse, patch, web};
 use db::{
     database::DatabaseProvider,
-    ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
+    ops::{AssetFeaturesReadOps, AssetsWriteOps, MediaFilesReadOps},
     types::{UpdateResult, patches::AssetPatch},
 };
 use models::types::AssetId;
@@ -44,10 +44,10 @@ async fn patch_asset(
         // Returns the updated model
         UpdateResult::Updated(a) => {
             let feats = conn
-                .get_asset_features(&id)
+                .get_asset_features_by_id(&id)
                 .await?
                 .ok_or(create_error!(NotFound))?;
-            let media = conn.get_media_files(&a.media_id).await?;
+            let media = conn.get_media_files_by_group(&a.media_id).await?;
             let res = AssetDtoV1::from((a, feats, media));
 
             Ok(HttpResponse::Ok().json(res))

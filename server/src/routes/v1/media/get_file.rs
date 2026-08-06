@@ -6,7 +6,7 @@ use actix_web::{
     web,
 };
 
-use db::{database::DatabaseProvider, ops::MediaFilesOps};
+use db::{database::DatabaseProvider, ops::MediaFilesReadOps};
 use events::FileDetachedEvent;
 use mimetype::MimeKind;
 use models::{

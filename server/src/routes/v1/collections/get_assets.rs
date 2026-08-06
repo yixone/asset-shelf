@@ -1,7 +1,7 @@
 use actix_web::{HttpResponse, get, web};
 use db::{
     database::DatabaseProvider,
-    ops::{AssetFeaturesOps, AssetOps, CollectionAssetsOps, MediaFilesOps},
+    ops::{AssetFeaturesReadOps, AssetsReadOps, CollectionsRelationsOps, MediaFilesReadOps},
     types::Pagination,
 };
 use join::JoinBuilder;
@@ -35,9 +35,9 @@ async fn get_collection_assets(
         .get_collection_assets(&id, pagination, q.ordering.unwrap_or_default())
         .await?;
 
-    let a = db.get_assets_bulk(&ca.ids()).await?;
-    let af = db.get_assets_features_bulk(&a.ids()).await?;
-    let m = db.get_media_files_bulk(&a.ids()).await?;
+    let a = db.get_assets_by_ids(&ca.ids()).await?;
+    let af = db.get_assets_features_by_ids(&a.ids()).await?;
+    let m = db.get_media_files_by_groups(&a.ids()).await?;
     drop(db);
 
     let res = JoinBuilder::new(ca)

@@ -3,7 +3,7 @@ use actix_web::{HttpResponse, post, web};
 use chrono::Utc;
 use db::{
     database::{DatabaseProvider, DatabaseTransaction},
-    ops::{AssetFeaturesOps, AssetOps, MediaFilesOps, MediaOps},
+    ops::{AssetFeaturesWriteOps, AssetsWriteOps, MediaFilesWriteOps, MediaWriteOps},
 };
 use events::AssetCreatedEvent;
 use futures::TryStreamExt;

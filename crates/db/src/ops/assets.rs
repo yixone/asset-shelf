@@ -1,19 +1,21 @@
 use models::{
-    entities::{Asset, AssetFeatures},
-    types::{AssetId, AssetsOrdering, Color},
+    entities::Asset,
+    types::{AssetId, AssetsOrdering},
 };
 use result::Result;
 
-use crate::types::{
-    DeleteResult, InsertResult, Pagination, UpdateResult,
-    patches::{AssetFeaturesPatch, AssetPatch},
-};
+use crate::types::{DeleteResult, InsertResult, Pagination, UpdateResult, patches::AssetPatch};
 
 /// Read operations for data associated with the [`Asset`] domain
 pub trait AssetsReadOps {
+    /// Returns [`Asset`] for a given [`AssetId`]
+    async fn get_asset_by_id(&mut self, id: &AssetId) -> Result<Option<Asset>> {
+        self.get_assets_by_ids(std::slice::from_ref(id))
+            .await
+            .map(|a| a.into_iter().next())
+    }
+
     /// Returns a set of [`assets`](Asset) based on a set of [`IDs`](AssetId)
-    ///
-    /// performing fetching in a single query, which avoids the N+1 problem
     async fn get_assets_by_ids(&mut self, ids: &[AssetId]) -> Result<Vec<Asset>>;
 
     /// Returns a set of assets marked as deleted
@@ -52,55 +54,4 @@ pub trait AssetsWriteOps {
 pub trait AssetsMaintenanceOps {
     /// Returns a set of assets requiring processing
     async fn get_unprocessed_assets(&mut self, limit: u32) -> Result<Vec<Asset>>;
-}
-
-pub trait AssetOps {
-    async fn insert_asset(&mut self, a: &Asset) -> Result<InsertResult>;
-
-    async fn update_asset(
-        &mut self,
-        id: &AssetId,
-        patch: AssetPatch,
-    ) -> Result<UpdateResult<Asset>>;
-    async fn delete_asset(&mut self, id: &AssetId) -> Result<DeleteResult>;
-
-    async fn get_asset(&mut self, id: &AssetId) -> Result<Option<Asset>> {
-        self.get_assets_bulk(std::slice::from_ref(id))
-            .await
-            .map(|a| a.into_iter().next())
-    }
-    async fn get_assets_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<Asset>>;
-
-    async fn list_assets(&mut self, p: Pagination, o: AssetsOrdering) -> Result<Vec<Asset>>;
-    async fn random_assets(&mut self, limit: u32) -> Result<Vec<Asset>>;
-    async fn count_assets(&mut self) -> Result<u64>;
-
-    async fn get_unprocessed_assets(&mut self, limit: u32) -> Result<Vec<Asset>>;
-
-    async fn get_deleted_assets(&mut self, p: Pagination, o: AssetsOrdering) -> Result<Vec<Asset>>;
-}
-
-// TODO: add `get similarity search candidates` or something like this
-pub trait AssetFeaturesOps {
-    async fn insert_asset_features(&mut self, af: &AssetFeatures) -> Result<InsertResult>;
-
-    async fn update_asset_features(
-        &mut self,
-        id: &AssetId,
-        patch: AssetFeaturesPatch,
-    ) -> Result<UpdateResult<AssetFeatures>>;
-
-    async fn get_asset_features(&mut self, id: &AssetId) -> Result<Option<AssetFeatures>> {
-        self.get_assets_features_bulk(std::slice::from_ref(id))
-            .await
-            .map(|a| a.into_iter().next())
-    }
-    async fn get_assets_features_bulk(&mut self, ids: &[AssetId]) -> Result<Vec<AssetFeatures>>;
-
-    async fn get_similarity_candidates(
-        &mut self,
-        color: Color,
-        aspect_ratio: f32,
-        p: Pagination,
-    ) -> Result<Vec<AssetFeatures>>;
 }

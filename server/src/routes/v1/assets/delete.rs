@@ -1,6 +1,10 @@
 use actix_web::{HttpResponse, delete, web};
 use chrono::Utc;
-use db::{database::DatabaseProvider, ops::AssetOps, types::patches::AssetPatch};
+use db::{
+    database::DatabaseProvider,
+    ops::{AssetsReadOps, AssetsWriteOps},
+    types::patches::AssetPatch,
+};
 use events::AssetDeletedEvent;
 use models::types::AssetId;
 use result::create_error;
@@ -29,7 +33,10 @@ struct DeleteAssetResponse {
 async fn delete_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiResult {
     let mut conn = ctx.db.acquire().await?;
 
-    let asset = conn.get_asset(&id).await?.ok_or(create_error!(NotFound))?;
+    let asset = conn
+        .get_asset_by_id(&id)
+        .await?
+        .ok_or(create_error!(NotFound))?;
 
     let state = match asset.deleted_at {
         Some(del) => {

@@ -9,12 +9,74 @@ use result::{Result, error::ResultExt};
 use sqlx::{QueryBuilder, prelude::FromRow};
 
 use crate::{
-    ops::{CollectionAssetsOps, CollectionsOps},
+    ops::{CollectionsReadOps, CollectionsRelationsOps, CollectionsWriteOps},
     sqlite::SqliteExecutor,
     types::{DeleteResult, InsertResult, Pagination, UpdateResult, patches::CollectionPatch},
 };
 
-impl<T> CollectionsOps for T
+impl<T> CollectionsReadOps for T
+where
+    T: SqliteExecutor,
+{
+    async fn get_collections_by_ids(&mut self, ids: &[CollectionId]) -> Result<Vec<Collection>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut qb = QueryBuilder::new(
+            "
+            SELECT * FROM collections
+            WHERE id IN
+            ",
+        );
+        qb.push_tuples(ids, |mut qb, id| {
+            qb.push_bind(id);
+        });
+
+        qb.build_query_as()
+            .fetch_all(self.executor())
+            .await
+            .to_app_err()
+    }
+
+    async fn list_collections(
+        &mut self,
+        p: Pagination,
+        o: CollectionsOrdering,
+    ) -> Result<Vec<Collection>> {
+        if p.limit() == 0 {
+            return Ok(Vec::new());
+        }
+
+        let mut qb = QueryBuilder::new(
+            "
+            SELECT c.*
+            FROM collections AS c
+            LEFT JOIN collection_assets AS ca 
+            ON ca.collection_id = c.id
+            AND ca.added_at = (
+                SELECT MAX(added_at)
+                FROM collection_assets AS ca
+                WHERE ca.collection_id = c.id
+            )
+            ",
+        );
+        let mut query = qb.separated(" ");
+
+        match o {
+            CollectionsOrdering::Latest => query.push("ORDER BY ca.added_at DESC"),
+            CollectionsOrdering::Oldest => query.push("ORDER BY ca.added_at ASC"),
+        };
+        p.apply_sql(&mut qb);
+
+        qb.build_query_as()
+            .fetch_all(self.executor())
+            .await
+            .to_app_err()
+    }
+}
+
+impl<T> CollectionsWriteOps for T
 where
     T: SqliteExecutor,
 {
@@ -83,65 +145,13 @@ where
         .to_app_err()?;
         Ok(res.into())
     }
+}
 
-    async fn list_collections(
-        &mut self,
-        p: Pagination,
-        o: CollectionsOrdering,
-    ) -> Result<Vec<Collection>> {
-        if p.limit() == 0 {
-            return Ok(Vec::new());
-        }
-
-        let mut qb = QueryBuilder::new(
-            "
-            SELECT c.*
-            FROM collections AS c
-            LEFT JOIN collection_assets AS ca 
-            ON ca.collection_id = c.id
-            AND ca.added_at = (
-                SELECT MAX(added_at)
-                FROM collection_assets AS ca
-                WHERE ca.collection_id = c.id
-            )
-            ",
-        );
-        let mut query = qb.separated(" ");
-
-        match o {
-            CollectionsOrdering::Latest => query.push("ORDER BY ca.added_at DESC"),
-            CollectionsOrdering::Oldest => query.push("ORDER BY ca.added_at ASC"),
-        };
-        p.apply_sql(&mut qb);
-
-        qb.build_query_as()
-            .fetch_all(self.executor())
-            .await
-            .to_app_err()
-    }
-
-    async fn get_collections_bulk(&mut self, ids: &[CollectionId]) -> Result<Vec<Collection>> {
-        if ids.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let mut qb = QueryBuilder::new(
-            "
-            SELECT * FROM collections
-            WHERE id IN
-            ",
-        );
-        qb.push_tuples(ids, |mut qb, id| {
-            qb.push_bind(id);
-        });
-
-        qb.build_query_as()
-            .fetch_all(self.executor())
-            .await
-            .to_app_err()
-    }
-
-    async fn get_collections_additions_bulk(
+impl<T> CollectionsRelationsOps for T
+where
+    T: SqliteExecutor,
+{
+    async fn get_collections_additions_by_ids(
         &mut self,
         ids: &[CollectionId],
     ) -> Result<Vec<CollectionAdditions>> {
@@ -190,12 +200,7 @@ where
             .map(CollectionAdditions::from)
             .collect())
     }
-}
 
-impl<T> CollectionAssetsOps for T
-where
-    T: SqliteExecutor,
-{
     async fn insert_collection_asset(&mut self, ca: &CollectionAsset) -> Result<InsertResult> {
         let res = sqlx::query(
             "

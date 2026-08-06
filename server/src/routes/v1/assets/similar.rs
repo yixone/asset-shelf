@@ -1,7 +1,7 @@
 use actix_web::{HttpResponse, get, web};
 use db::{
     database::DatabaseProvider,
-    ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
+    ops::{AssetFeaturesReadOps, AssetsReadOps, MediaFilesReadOps},
     types::Pagination,
 };
 use join::JoinBuilder;
@@ -18,7 +18,7 @@ use crate::{
 async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiResult {
     let reference = ctx
         .db
-        .with_session(async |db| db.get_asset_features(&id).await)
+        .with_session(async |db| db.get_asset_features_by_id(&id).await)
         .await?
         .ok_or(create_error!(NotFound))?;
 
@@ -33,8 +33,12 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
     let candidates = ctx
         .db
         .with_session(async |db| {
-            db.get_similarity_candidates(color, aspect_ratio, Pagination::new(100, 0))
-                .await
+            db.get_asset_features_similarity_candidates(
+                color,
+                aspect_ratio,
+                Pagination::new(100, 0),
+            )
+            .await
         })
         .await?;
 
@@ -45,8 +49,8 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
 
     let similar = searcher.finalize();
     let mut conn = ctx.db.acquire().await?;
-    let assets = conn.get_assets_bulk(&similar.ids()).await?;
-    let media_files = conn.get_media_files_bulk(&assets.ids()).await?;
+    let assets = conn.get_assets_by_ids(&similar.ids()).await?;
+    let media_files = conn.get_media_files_by_groups(&assets.ids()).await?;
     drop(conn);
 
     let res = JoinBuilder::new(similar)

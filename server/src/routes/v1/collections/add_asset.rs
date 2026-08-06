@@ -2,7 +2,7 @@ use actix_web::{HttpResponse, post, web};
 use chrono::{DateTime, Utc};
 use db::{
     database::DatabaseProvider,
-    ops::{CollectionAssetsOps, CollectionsOps},
+    ops::{CollectionsReadOps, CollectionsRelationsOps},
 };
 use models::{
     entities::CollectionAsset,
@@ -38,7 +38,7 @@ async fn add_collection_asset(
     let mut conn = ctx.db.acquire().await?;
 
     let collection = conn
-        .get_collection(*id)
+        .get_collection_by_id(&id)
         .await?
         .ok_or(create_error!(NotFound))?;
 

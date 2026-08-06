@@ -1,5 +1,5 @@
 use actix_web::{HttpResponse, delete, web};
-use db::{database::DatabaseProvider, ops::CollectionsOps, types::DeleteResult};
+use db::{database::DatabaseProvider, ops::CollectionsWriteOps, types::DeleteResult};
 use models::types::CollectionId;
 use result::create_error;
 

@@ -1,5 +1,9 @@
 use actix_web::{HttpResponse, get, web};
-use db::{database::DatabaseProvider, ops::CollectionsOps, types::Pagination};
+use db::{
+    database::DatabaseProvider,
+    ops::{CollectionsReadOps, CollectionsRelationsOps},
+    types::Pagination,
+};
 use join::JoinBuilder;
 use models::{bulk::BulkIds, types::CollectionsOrdering};
 use serde::Deserialize;
@@ -26,7 +30,7 @@ async fn get_collections_list(
     let c = db
         .list_collections(pagination, q.ordering.unwrap_or_default())
         .await?;
-    let ca = db.get_collections_additions_bulk(&c.ids()).await?;
+    let ca = db.get_collections_additions_by_ids(&c.ids()).await?;
     drop(db);
 
     let res = JoinBuilder::new(c)

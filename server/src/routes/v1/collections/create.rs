@@ -1,6 +1,6 @@
 use actix_web::{HttpResponse, post, web};
 use chrono::Utc;
-use db::{database::DatabaseProvider, ops::CollectionsOps};
+use db::{database::DatabaseProvider, ops::CollectionsWriteOps};
 use models::entities::{Collection, CollectionAdditions};
 use serde::Deserialize;
 

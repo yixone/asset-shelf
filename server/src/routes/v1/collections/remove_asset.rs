@@ -1,5 +1,5 @@
 use actix_web::{HttpResponse, delete, web};
-use db::{database::DatabaseProvider, ops::CollectionAssetsOps};
+use db::{database::DatabaseProvider, ops::CollectionsRelationsOps};
 use models::types::{CollectionAssetId, CollectionId};
 
 use crate::{di::DataCtx, routes::ApiResult};
