@@ -2,7 +2,7 @@ use actix_web::{HttpResponse, post, web};
 use db::{
     database::DatabaseProvider,
     ops::{AssetFeaturesReadOps, AssetsWriteOps, MediaFilesReadOps},
-    types::{UpdateResult, patches::AssetPatch},
+    types::{UpdateResult, patch::AssetPatch},
 };
 use models::types::AssetId;
 use result::create_error;

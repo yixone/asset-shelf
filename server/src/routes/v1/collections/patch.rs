@@ -2,7 +2,7 @@ use actix_web::{HttpResponse, patch, web};
 use db::{
     database::DatabaseProvider,
     ops::{CollectionsRelationsOps, CollectionsWriteOps},
-    types::{UpdateResult, patches::CollectionPatch},
+    types::{UpdateResult, patch::CollectionPatch},
 };
 use models::types::CollectionId;
 use result::create_error;

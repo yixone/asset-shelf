@@ -12,7 +12,7 @@ use db::{
         AssetFeaturesWriteOps, AssetsMaintenanceOps, AssetsReadOps, AssetsWriteOps,
         MediaFilesReadOps, MediaFilesWriteOps,
     },
-    types::patches::{AssetFeaturesPatch, AssetPatch, MediaFilePatch},
+    types::patch::{AssetFeaturesPatch, AssetPatch, MediaFilePatch},
 };
 use events::{AssetCreatedEvent, EventBus};
 use media::{

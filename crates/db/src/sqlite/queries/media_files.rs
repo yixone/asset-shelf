@@ -8,7 +8,7 @@ use sqlx::QueryBuilder;
 use crate::{
     ops::{MediaFilesMaintenanceOps, MediaFilesReadOps, MediaFilesWriteOps},
     sqlite::SqliteExecutor,
-    types::{DeleteResult, InsertResult, UpdateResult, patches::MediaFilePatch},
+    types::{DeleteResult, InsertResult, UpdateResult, patch::MediaFilePatch},
 };
 
 impl<T> MediaFilesReadOps for T

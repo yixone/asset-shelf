@@ -8,7 +8,7 @@ use sqlx::QueryBuilder;
 use crate::{
     ops::{AssetsMaintenanceOps, AssetsReadOps, AssetsWriteOps},
     sqlite::SqliteExecutor,
-    types::{DeleteResult, InsertResult, Pagination, UpdateResult, patches::AssetPatch},
+    types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::AssetPatch},
 };
 
 impl<T> AssetsReadOps for T

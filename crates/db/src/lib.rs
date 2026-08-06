@@ -3,7 +3,6 @@
 pub mod database;
 
 pub mod ops;
-pub mod queries;
 pub mod types;
 
 pub mod sqlite;

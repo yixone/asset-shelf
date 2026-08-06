@@ -11,7 +11,7 @@ use sqlx::{QueryBuilder, prelude::FromRow};
 use crate::{
     ops::{CollectionsReadOps, CollectionsRelationsOps, CollectionsWriteOps},
     sqlite::SqliteExecutor,
-    types::{DeleteResult, InsertResult, Pagination, UpdateResult, patches::CollectionPatch},
+    types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::CollectionPatch},
 };
 
 impl<T> CollectionsReadOps for T

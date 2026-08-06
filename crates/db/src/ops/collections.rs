@@ -4,9 +4,7 @@ use models::{
 };
 use result::Result;
 
-use crate::types::{
-    DeleteResult, InsertResult, Pagination, UpdateResult, patches::CollectionPatch,
-};
+use crate::types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::CollectionPatch};
 
 /// Read operations for data associated with the [`Collection`] domain
 pub trait CollectionsReadOps {

@@ -3,7 +3,7 @@ use chrono::Utc;
 use db::{
     database::DatabaseProvider,
     ops::{AssetsReadOps, AssetsWriteOps},
-    types::patches::AssetPatch,
+    types::patch::AssetPatch,
 };
 use events::AssetDeletedEvent;
 use models::types::AssetId;

@@ -4,7 +4,7 @@ use models::{
 };
 use result::Result;
 
-use crate::types::{DeleteResult, InsertResult, UpdateResult, patches::MediaFilePatch};
+use crate::types::{DeleteResult, InsertResult, UpdateResult, patch::MediaFilePatch};
 
 /// Read operations for data associated with the [`MediaFile`] domain
 pub trait MediaFilesReadOps {

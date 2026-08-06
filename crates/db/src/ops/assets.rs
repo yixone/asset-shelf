@@ -4,7 +4,7 @@ use models::{
 };
 use result::Result;
 
-use crate::types::{DeleteResult, InsertResult, Pagination, UpdateResult, patches::AssetPatch};
+use crate::types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::AssetPatch};
 
 /// Read operations for data associated with the [`Asset`] domain
 pub trait AssetsReadOps {
