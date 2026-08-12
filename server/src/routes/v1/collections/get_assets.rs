@@ -1,14 +1,6 @@
 use actix_web::{HttpResponse, get, web};
-use db::{
-    database::DatabaseProvider,
-    ops::{AssetFeaturesOps, AssetOps, CollectionAssetsOps, MediaFilesOps},
-    types::Pagination,
-};
-use join::JoinBuilder;
-use models::{
-    bulk::BulkIds,
-    types::{CollectionAssetsOrdering, CollectionId},
-};
+use db::types::Pagination;
+use models::types::{CollectionAssetsOrdering, CollectionId};
 use serde::Deserialize;
 
 use crate::{di::DataCtx, dto::v1::collections::CollectionAssetDtoV1, routes::ApiResult};
@@ -30,21 +22,16 @@ async fn get_collection_assets(
     let q = query.into_inner();
     let pagination = Pagination::try_new(q.limit.unwrap_or(50), q.offset.unwrap_or(0))?;
 
-    let mut db = ctx.db.acquire().await?;
-    let ca = db
-        .get_collection_assets(&id, pagination, q.ordering.unwrap_or_default())
+    let assets = ctx
+        .db
+        .collections
+        .get_items(*id, pagination, q.ordering.unwrap_or_default())
         .await?;
 
-    let a = db.get_assets_bulk(&ca.ids()).await?;
-    let af = db.get_assets_features_bulk(&a.ids()).await?;
-    let m = db.get_media_files_bulk(&a.ids()).await?;
-    drop(db);
+    let res = assets
+        .into_iter()
+        .map(CollectionAssetDtoV1::from)
+        .collect::<Vec<_>>();
 
-    let res = JoinBuilder::new(ca)
-        .with(a, |ca| ca)
-        .with(af, |(_, a)| a)
-        .with_group(m, |((_, a), _)| a)
-        .transform(|(((ca, a), af), m)| (ca, (a, af, m)))
-        .build_as(CollectionAssetDtoV1::from);
     Ok(HttpResponse::Ok().json(res))
 }

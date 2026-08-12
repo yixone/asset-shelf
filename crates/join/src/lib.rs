@@ -172,24 +172,24 @@ impl<T> JoinBuilder<T> {
 /// ```
 #[macro_export]
 macro_rules! impl_joinable {
-    ($right:path[$rk:ident] with $left:ty[$lk:ident] as $keyt:ty) => {
+    ($right:path[$($rk:ident).+] with $left:ty[$($lk:ident).+] as $keyt:ty) => {
         impl Joinable<$right> for $left {
             type Key = $keyt;
             fn key(&self) -> &Self::Key {
-                &self.$lk
+                &self.$($lk).+
             }
             fn foreign_key(t: &$right) -> &Self::Key {
-                &t.$rk
+                &t.$($rk).+
             }
         }
 
         impl Joinable<$left> for $right {
             type Key = $keyt;
             fn key(&self) -> &Self::Key {
-                &self.$rk
+                &self.$($rk).+
             }
             fn foreign_key(t: &$left) -> &Self::Key {
-                &t.$lk
+                &t.$($lk).+
             }
         }
     };

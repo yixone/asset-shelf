@@ -1,12 +1,6 @@
 use actix_web::{HttpResponse, get, web};
-use db::{
-    database::DatabaseProvider,
-    ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
-    types::Pagination,
-};
-use join::JoinBuilder;
-use models::{bulk::BulkIds, types::AssetId};
-use result::create_error;
+use db::types::Pagination;
+use models::types::AssetId;
 
 use crate::{
     di::DataCtx,
@@ -16,11 +10,8 @@ use crate::{
 
 #[get("/{id}/similar")]
 async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiResult {
-    let reference = ctx
-        .db
-        .with_session(async |db| db.get_asset_features(&id).await)
-        .await?
-        .ok_or(create_error!(NotFound))?;
+    let asset = ctx.db.assets.get_by_id(*id).await?;
+    let reference = asset.features;
 
     let Some(color) = reference.accent_color else {
         return Ok(HttpResponse::NoContent().finish());
@@ -32,10 +23,8 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
 
     let candidates = ctx
         .db
-        .with_session(async |db| {
-            db.get_similarity_candidates(color, aspect_ratio, Pagination::new(100, 0))
-                .await
-        })
+        .assets
+        .get_for_similar_search(color, aspect_ratio, Pagination::new(100, 0))
         .await?;
 
     let mut searcher = SimilarSearcher::new(reference);
@@ -44,16 +33,10 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
     searcher.sort_by_score();
 
     let similar = searcher.finalize();
-    let mut conn = ctx.db.acquire().await?;
-    let assets = conn.get_assets_bulk(&similar.ids()).await?;
-    let media_files = conn.get_media_files_bulk(&assets.ids()).await?;
-    drop(conn);
+    let ids = similar.iter().map(|s| s.asset_id).collect::<Vec<_>>();
 
-    let res = JoinBuilder::new(similar)
-        .with(assets, |s| s)
-        .with_group(media_files, |(_, a)| a)
-        .transform(|((af, a), mf)| (a, af, mf))
-        .build_as(AssetDtoV1::from);
+    let assets = ctx.db.assets.get_by_ids(&ids).await?;
+    let res = assets.into_iter().map(AssetDtoV1::from).collect::<Vec<_>>();
 
     Ok(HttpResponse::Ok().json(res))
 }

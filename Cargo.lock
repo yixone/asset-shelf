@@ -785,6 +785,34 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
+ "db-core",
+ "db-sqlite",
+ "flake-id",
+ "models",
+ "result",
+ "sqlx",
+ "tracing",
+]
+
+[[package]]
+name = "db-core"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "join",
+ "models",
+ "result",
+ "sqlx",
+]
+
+[[package]]
+name = "db-sqlite"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "db-core",
  "flake-id",
  "models",
  "result",

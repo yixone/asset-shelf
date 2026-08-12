@@ -6,7 +6,6 @@ use actix_web::{
     web,
 };
 
-use db::{database::DatabaseProvider, ops::MediaFilesOps};
 use events::FileDetachedEvent;
 use mimetype::MimeKind;
 use models::{
@@ -27,11 +26,7 @@ async fn get_media_file(
 ) -> ApiResult {
     let (variant, id) = path.into_inner();
 
-    let media_file = ctx
-        .db
-        .with_session(async |db| db.get_media_variant(&id, variant).await)
-        .await?
-        .ok_or(create_error!(NotFound))?;
+    let media_file = ctx.db.media.get_variant(&id, variant).await?;
 
     let stream = match media_file.mimetype.kind() {
         MimeKind::Image => return_image_stream(&ctx, &media_file).await?,

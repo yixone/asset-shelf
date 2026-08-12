@@ -2,13 +2,8 @@ use actix_web::{
     HttpResponse, get,
     web::{self},
 };
-use db::{
-    database::DatabaseProvider,
-    ops::{AssetFeaturesOps, AssetOps, MediaFilesOps},
-    types::Pagination,
-};
-use join::JoinBuilder;
-use models::{bulk::BulkIds, types::AssetsOrdering};
+use db::types::Pagination;
+use models::types::AssetsOrdering;
 use serde::Deserialize;
 
 use crate::{di::DataCtx, dto::v1::assets::AssetDtoV1, routes::ApiResult};
@@ -29,20 +24,13 @@ async fn get_assets_list(
     let q = query.into_inner();
     let pagination = Pagination::try_new(q.limit.unwrap_or(50), q.offset.unwrap_or(0))?;
 
-    let mut db = ctx.db.acquire().await?;
-
-    let assets = db
-        .list_assets(pagination, q.ordering.unwrap_or_default())
+    let assets = ctx
+        .db
+        .assets
+        .list(pagination, q.ordering.unwrap_or_default())
         .await?;
 
-    let feats = db.get_assets_features_bulk(&assets.ids()).await?;
-    let media = db.get_media_files_bulk(&assets.ids()).await?;
-
-    let res = JoinBuilder::new(assets)
-        .with(feats, |a| a)
-        .with_group(media, |(a, _)| a)
-        .transform(|((a, af), mf)| (a, af, mf))
-        .build_as(AssetDtoV1::from);
+    let res = assets.into_iter().map(AssetDtoV1::from).collect::<Vec<_>>();
 
     Ok(HttpResponse::Ok().json(res))
 }

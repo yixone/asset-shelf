@@ -1,0 +1,15 @@
+[package]
+name = "db-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Workspace
+models = { workspace = true }
+result = { workspace = true }
+join = { workspace = true }
+
+# External
+async-trait = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }

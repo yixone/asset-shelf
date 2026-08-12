@@ -1,14 +1,15 @@
 [package]
-name = "db"
+name = "db-sqlite"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 # Workspace
 db-core = { workspace = true }
-db-sqlite = { workspace = true }
+
 models = { workspace = true, features = ["sqlx"] }
 result = { workspace = true }
+
 flake-id = { workspace = true }
 
 # External

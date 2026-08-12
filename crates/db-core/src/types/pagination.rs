@@ -14,7 +14,7 @@ impl Pagination {
     }
 
     pub fn try_new(limit: u32, offset: u32) -> Result<Self> {
-        if limit > 200 {
+        if limit > 1000 {
             return Err(create_error!(PaginationTooLarge));
         };
 

@@ -1,9 +1,5 @@
 use actix_web::{HttpResponse, patch, web};
-use db::{
-    database::DatabaseProvider,
-    ops::CollectionsOps,
-    types::{UpdateResult, patches::CollectionPatch},
-};
+use db::types::{UpdateResult, patch::CollectionPatch};
 use models::types::CollectionId;
 use result::create_error;
 use serde::Deserialize;
@@ -33,15 +29,10 @@ async fn patch_collection(
         description: data.description.into(),
     };
 
-    let mut conn = ctx.db.acquire().await?;
-    match conn.update_collection(*id, patch).await? {
+    match ctx.db.collections.update(*id, patch).await? {
         // Returns the updated model
         UpdateResult::Updated(c) => {
-            let ca = conn
-                .get_collection_additions(*id)
-                .await?
-                .expect("CollectionAdditions were not calculated for the existing collection");
-            let res = CollectionDtoV1::from((c, ca));
+            let res = CollectionDtoV1::from(c);
             Ok(HttpResponse::Ok().json(res))
         }
         // Collection not found

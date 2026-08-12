@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use db::queries::collection::{CollectionItemQuery, CollectionQuery};
 use models::entities::{Collection, CollectionAdditions, CollectionAsset, MediaVariant};
 use serde::Serialize;
 
@@ -12,6 +13,14 @@ pub struct CollectionDtoV1 {
     assets_count: u32,
     thumbnails: Vec<String>,
     created_at: DateTime<Utc>,
+}
+
+impl From<CollectionQuery> for CollectionDtoV1 {
+    fn from(q: CollectionQuery) -> Self {
+        let collection = q.inner;
+        let additions = q.addition;
+        CollectionDtoV1::from((collection, additions))
+    }
 }
 
 impl From<(Collection, CollectionAdditions)> for CollectionDtoV1 {
@@ -36,6 +45,14 @@ pub struct CollectionAssetDtoV1 {
     relation: String,
     added_at: DateTime<Utc>,
     asset: AssetDtoV1,
+}
+
+impl From<CollectionItemQuery> for CollectionAssetDtoV1 {
+    fn from(q: CollectionItemQuery) -> Self {
+        let ca = q.inner;
+        let asset = q.asset;
+        CollectionAssetDtoV1::from((ca, asset))
+    }
 }
 
 impl<T> From<(CollectionAsset, T)> for CollectionAssetDtoV1
