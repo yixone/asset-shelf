@@ -43,7 +43,7 @@ impl MediaRepository for SqliteMediaRepository {
     async fn insert_file(&self, file: &MediaFile) -> Result<InsertResult> {
         let res = sqlx::query(
             "
-            INSERT INTO media (
+            INSERT INTO media_files (
                 id, storage_path, media_id,
                 variant, created_at, size_bytes, mimetype,
                 duration_milis
