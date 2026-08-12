@@ -5,13 +5,10 @@ edition = "2024"
 
 [dependencies]
 # Workspace
-models = { workspace = true, features = ["sqlx"] }
+models = { workspace = true }
 result = { workspace = true }
-
-flake-id = { workspace = true }
 
 # External
 async-trait = { workspace = true }
 chrono = { workspace = true }
-sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }
-tracing = { workspace = true }
+sqlx = { workspace = true }

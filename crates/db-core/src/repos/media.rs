@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[async_trait::async_trait]
-pub trait MediaRepository {
+pub trait MediaRepository: Send + Sync {
     async fn insert(&self, media: &Media) -> Result<InsertResult>;
 
     async fn insert_file(&self, file: &MediaFile) -> Result<InsertResult>;

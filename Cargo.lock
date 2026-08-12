@@ -798,11 +798,9 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
- "flake-id",
  "models",
  "result",
  "sqlx",
- "tracing",
 ]
 
 [[package]]

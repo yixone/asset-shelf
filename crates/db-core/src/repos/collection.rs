@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[async_trait::async_trait]
-pub trait CollectionRepository {
+pub trait CollectionRepository: Send + Sync {
     async fn insert(&self, collection: &Collection) -> Result<InsertResult>;
 
     async fn update(

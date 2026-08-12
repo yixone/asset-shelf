@@ -6,7 +6,6 @@ use result::{Result, create_error};
 
 use crate::{
     queries::asset::AssetQuery,
-    repos::Repository,
     types::{
         DeleteResult, InsertResult, Pagination, UpdateResult,
         patch::{AssetFeaturesPatch, AssetPatch},
@@ -15,7 +14,7 @@ use crate::{
 
 /// Repository for working with the [`Asset`] domain model and its relations
 #[async_trait::async_trait]
-pub trait AssetRepository: Repository {
+pub trait AssetRepository: Send + Sync {
     async fn insert(&self, asset: &Asset, features: &AssetFeatures) -> Result<InsertResult>;
 
     async fn update(&self, id: AssetId, patch: AssetPatch) -> Result<UpdateResult<AssetQuery>>;
