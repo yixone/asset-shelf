@@ -1,0 +1,12 @@
+pub mod asset;
+pub mod collection;
+pub mod media;
+
+pub trait Repository: Send + Sync {}
+
+// TODO: Move to `db` crate!
+// pub struct RepositoryContext {
+//     pub assets: Arc<dyn asset::AssetRepository>,
+//     pub collections: Arc<dyn collection::CollectionRepository>,
+//     pub media: Arc<dyn media::MediaRepository>,
+// }

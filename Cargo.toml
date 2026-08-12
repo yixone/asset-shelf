@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     # Application crates
     "crates/db",
+    "crates/db-core",
+    "crates/db-sqlite",
     "crates/events",
     "crates/flake-id",
     "crates/join",
@@ -20,6 +22,8 @@ members = [
 [workspace.dependencies]
 # Workspace crates
 db = { path = "crates/db" }
+db-core = { path = "crates/db-core" }
+db-sqlite = { path = "crates/db-sqlite" }
 events = { path = "crates/events" }
 flake-id = { path = "crates/flake-id" }
 join = { path = "crates/join" }
