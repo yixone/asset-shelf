@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use db::queries::asset::AssetQuery;
 use mimetype::MimeKind;
 use models::entities::{Asset, AssetFeatures, AssetState};
 use serde::Serialize;
@@ -27,6 +28,15 @@ pub struct AssetDtoV1 {
     height: Option<u32>,
 
     color: Option<String>,
+}
+
+impl From<AssetQuery> for AssetDtoV1 {
+    fn from(q: AssetQuery) -> Self {
+        let asset = q.inner;
+        let asset_features = q.features;
+        let media = q.media;
+        AssetDtoV1::from((asset, asset_features, media))
+    }
 }
 
 impl<M> From<(Asset, AssetFeatures, M)> for AssetDtoV1

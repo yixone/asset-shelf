@@ -1,13 +1,8 @@
 use actix_web::{HttpResponse, delete, web};
 use chrono::Utc;
-use db::{
-    database::DatabaseProvider,
-    ops::{AssetsReadOps, AssetsWriteOps},
-    types::patch::AssetPatch,
-};
+use db::types::patch::AssetPatch;
 use events::AssetDeletedEvent;
 use models::types::AssetId;
-use result::create_error;
 use serde::Serialize;
 
 use crate::{di::DataCtx, routes::ApiResult};
@@ -31,29 +26,24 @@ struct DeleteAssetResponse {
 
 #[delete("/{id}")]
 async fn delete_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiResult {
-    let mut conn = ctx.db.acquire().await?;
+    let asset = ctx.db.assets.get_by_id(*id).await?;
 
-    let asset = conn
-        .get_asset_by_id(&id)
-        .await?
-        .ok_or(create_error!(NotFound))?;
-
-    let state = match asset.deleted_at {
+    let state = match asset.inner.deleted_at {
         Some(del) => {
             tracing::info!(id = ?id, marked_at = ?del, "Removing an already marked asset");
 
-            conn.delete_asset(&asset.id).await?;
+            ctx.db.assets.delete(*id).await?;
 
             ctx.events.publish(AssetDeletedEvent {
-                asset: asset.id,
-                media: asset.media_id,
+                asset: asset.inner.id,
+                media: asset.inner.media_id,
             });
 
             RemovalStateResponse::Deleted
         }
         None => {
             let patch = AssetPatch::new().deleted_at(Some(Utc::now()));
-            conn.update_asset(&asset.id, patch).await?;
+            ctx.db.assets.update(*id, patch).await?;
 
             RemovalStateResponse::Marked
         }
@@ -61,7 +51,7 @@ async fn delete_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiRes
 
     let res = DeleteAssetResponse {
         state,
-        id: asset.id,
+        id: asset.inner.id,
     };
     Ok(HttpResponse::Ok().json(res))
 }

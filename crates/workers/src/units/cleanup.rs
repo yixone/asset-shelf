@@ -1,20 +1,11 @@
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use chrono::Utc;
-use db::{
-    database::{DatabaseProvider, DatabaseTransaction},
-    ops::{
-        AssetsReadOps, AssetsWriteOps, MediaFilesReadOps, MediaFilesWriteOps, MediaMaintenanceOps,
-        MediaReadOps, MediaWriteOps,
-    },
-    types::Pagination,
-};
+use db::{queries::media::MediaQuery, types::Pagination};
 
 use events::{AssetDeletedEvent, EventBus};
-use join::JoinBuilder;
 use models::{
-    bulk::BulkIds,
-    entities::{Asset, Media, MediaFile},
+    entities::{Asset, MediaFile},
     types::{AssetsOrdering, MediaId},
 };
 use result::{Result, error::ResultExt};
@@ -89,27 +80,20 @@ struct CleanupWorkerService {
 
 impl CleanupWorkerService {
     async fn remove_media_by_id(&self, id: &MediaId) -> Result<()> {
-        let mut conn = self.ctx.db.acquire().await?;
-        let Some(media) = conn.get_media_by_id(id).await? else {
-            return Ok(());
-        };
-        let files = conn.get_media_files_by_group(&media.id).await?;
-
-        self.delete_media(&media, files).await
+        let media = self.ctx.db.media.get_by_id(id).await?;
+        self.delete_media(media).await
     }
 
     async fn cleanup_orphaned(&self) -> Result<usize> {
         let mut deleted = 0;
 
-        let mut conn = self.ctx.db.acquire().await?;
         loop {
-            let media = conn.get_orphans_media(50).await?;
-            let files = conn.get_media_files_by_groups(&media.ids()).await?;
+            let media = self.ctx.db.media.get_orphans(50).await?;
 
             let count = media.len();
 
-            for (m, f) in JoinBuilder::new(media).with_group(files, |m| m).build() {
-                self.delete_media(&m, f).await?;
+            for m in media {
+                self.delete_media(m).await?;
                 deleted += 1;
             }
 
@@ -117,6 +101,7 @@ impl CleanupWorkerService {
                 break;
             }
         }
+
         Ok(deleted)
     }
 
@@ -125,21 +110,24 @@ impl CleanupWorkerService {
         let now = Utc::now();
         let retention_time = chrono::Duration::days(30);
 
-        let mut conn = self.ctx.db.acquire().await?;
         loop {
-            let marked = conn
-                .get_deleted_assets(Pagination::new(50, 0), AssetsOrdering::Oldest)
+            let marked = self
+                .ctx
+                .db
+                .assets
+                .get_deleted(Pagination::new(50, 0), AssetsOrdering::Oldest)
                 .await?;
 
             let mut processed = 0;
 
             for a in &marked {
                 let deleted = a
+                    .inner
                     .deleted_at
                     .expect("asset_repo.get_deleted_list(..) returned asset without deleted_at");
 
                 if (now - deleted) >= retention_time {
-                    self.delete_asset(a).await?;
+                    self.delete_asset(&a.inner).await?;
                     processed += 1;
                 } else {
                     tracing::info!("Reached an asset that was deleted less than 30 days ago");
@@ -156,22 +144,17 @@ impl CleanupWorkerService {
     }
 
     async fn delete_asset(&self, asset: &Asset) -> Result<()> {
-        let mut conn = self.ctx.db.acquire().await?;
-        conn.delete_asset(&asset.id).await?;
+        self.ctx.db.assets.delete(asset.id).await?;
         Ok(())
     }
 
-    async fn delete_media(&self, media: &Media, files: Vec<MediaFile>) -> Result<()> {
-        for f in &files {
+    async fn delete_media(&self, media: MediaQuery) -> Result<()> {
+        for f in &media.files {
+            self.ctx.db.media.delete_file(&f.id).await?;
             self.delete_media_file(f).await?;
         }
 
-        let mut tx = self.ctx.db.begin().await?;
-
-        tx.delete_many_media_files(&files.ids()).await?;
-        tx.delete_media(&media.id).await?;
-
-        tx.commit().await?;
+        self.ctx.db.media.delete(&media.inner.id).await?;
 
         Ok(())
     }

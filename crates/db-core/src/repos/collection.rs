@@ -4,7 +4,7 @@ use models::{
         AssetId, CollectionAssetId, CollectionAssetsOrdering, CollectionId, CollectionsOrdering,
     },
 };
-use result::Result;
+use result::{Result, create_error};
 
 use crate::{
     queries::collection::{CollectionItemQuery, CollectionQuery},
@@ -30,11 +30,21 @@ pub trait CollectionRepository: Send + Sync {
         order: CollectionAssetsOrdering,
     ) -> Result<Vec<CollectionItemQuery>>;
 
-    async fn add_asset(&self, id: CollectionId, asset: AssetId) -> Result<CollectionAsset>;
+    async fn add_asset(
+        &self,
+        rel: CollectionAssetId,
+        id: CollectionId,
+        asset: AssetId,
+    ) -> Result<CollectionAsset>;
 
     async fn remove_asset(&self, id: CollectionId, rel: CollectionAssetId) -> Result<DeleteResult>;
 
-    async fn get_by_id(&self, id: CollectionId) -> Result<CollectionQuery>;
+    async fn get_by_id(&self, id: CollectionId) -> Result<CollectionQuery> {
+        let q = self.get_by_ids(&[id]).await?;
+        q.into_iter().next().ok_or(create_error!(NotFound))
+    }
+
+    async fn get_by_ids(&self, ids: &[CollectionId]) -> Result<Vec<CollectionQuery>>;
 
     async fn list(
         &self,

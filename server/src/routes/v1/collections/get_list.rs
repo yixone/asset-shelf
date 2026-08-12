@@ -1,11 +1,6 @@
 use actix_web::{HttpResponse, get, web};
-use db::{
-    database::DatabaseProvider,
-    ops::{CollectionsReadOps, CollectionsRelationsOps},
-    types::Pagination,
-};
-use join::JoinBuilder;
-use models::{bulk::BulkIds, types::CollectionsOrdering};
+use db::types::Pagination;
+use models::types::CollectionsOrdering;
 use serde::Deserialize;
 
 use crate::{di::DataCtx, dto::v1::collections::CollectionDtoV1, routes::ApiResult};
@@ -26,17 +21,16 @@ async fn get_collections_list(
     let q = query.into_inner();
     let pagination = Pagination::try_new(q.limit.unwrap_or(50), q.offset.unwrap_or(0))?;
 
-    let mut db = ctx.db.acquire().await?;
-    let c = db
-        .list_collections(pagination, q.ordering.unwrap_or_default())
+    let collections = ctx
+        .db
+        .collections
+        .list(pagination, q.ordering.unwrap_or_default())
         .await?;
-    let ca = db.get_collections_additions_by_ids(&c.ids()).await?;
-    drop(db);
 
-    let res = JoinBuilder::new(c)
-        .with(ca, |c| c)
-        .transform(|(c, ca)| (c, ca))
-        .build_as(CollectionDtoV1::from);
+    let res = collections
+        .into_iter()
+        .map(CollectionDtoV1::from)
+        .collect::<Vec<_>>();
 
     Ok(HttpResponse::Ok().json(res))
 }

@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
-use db::sqlite::SqliteDatabase;
+use db::sqlite::driver::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
@@ -24,8 +24,10 @@ async fn main() -> Result<()> {
     print_header();
 
     tracing::info!("Opening database");
-    let db = Arc::new(SqliteDatabase::open("storage/data.db").await?);
+    let db = SqliteDatabase::open("storage/data.db").await?;
     db.migrate().await?;
+
+    let db = Arc::new(db.repositories());
 
     tracing::info!("Opening storage");
     let storage_backend = NativeFsStorageBackend::new("storage/global").await?;

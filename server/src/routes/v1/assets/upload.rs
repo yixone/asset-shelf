@@ -1,10 +1,6 @@
 use actix_multipart::Multipart;
 use actix_web::{HttpResponse, post, web};
 use chrono::Utc;
-use db::{
-    database::{DatabaseProvider, DatabaseTransaction},
-    ops::{AssetFeaturesWriteOps, AssetsWriteOps, MediaFilesWriteOps, MediaWriteOps},
-};
 use events::AssetCreatedEvent;
 use futures::TryStreamExt;
 use mimetype::MimeType;
@@ -149,18 +145,16 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         accent_color: None,
     };
 
-    let mut tx = ctx.db.begin().await?;
+    ctx.db.media.insert(&media).await?;
+    ctx.db.media.insert_file(&media_file).await?;
+    ctx.db.assets.insert(&asset, &asset_features).await?;
 
-    tx.insert_media(&media).await?;
-    tx.insert_asset(&asset).await?;
-    tx.insert_asset_features(&asset_features).await?;
-    tx.insert_media_file(&media_file).await?;
+    file.file.commit().await?;
 
-    let file = file.file.commit().await?;
-    if let Err(e) = tx.commit().await {
-        ctx.storage.remove_safely(&file.global_path).await;
-        return Err(e);
-    }
+    // if let Err(e) = tx.commit().await {
+    //     ctx.storage.remove_safely(&file.global_path).await;
+    //     return Err(e);
+    // }
 
     ctx.events.publish(AssetCreatedEvent { asset: asset.id });
 

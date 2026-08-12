@@ -1,5 +1,5 @@
 use models::{
-    entities::{Asset, AssetFeatures},
+    entities::{Asset, AssetFeatures, AssetState},
     types::{AssetId, AssetsOrdering, Color},
 };
 use result::{Result, create_error};
@@ -18,6 +18,14 @@ pub trait AssetRepository: Send + Sync {
     async fn insert(&self, asset: &Asset, features: &AssetFeatures) -> Result<InsertResult>;
 
     async fn update(&self, id: AssetId, patch: AssetPatch) -> Result<UpdateResult<AssetQuery>>;
+
+    async fn update_state(
+        &self,
+        id: AssetId,
+        state: AssetState,
+    ) -> Result<UpdateResult<AssetQuery>> {
+        self.update(id, AssetPatch::new().state(state)).await
+    }
 
     async fn update_features(
         &self,

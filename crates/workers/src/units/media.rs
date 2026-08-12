@@ -7,12 +7,8 @@ use std::{
 
 use chrono::Utc;
 use db::{
-    database::DatabaseProvider,
-    ops::{
-        AssetFeaturesWriteOps, AssetsMaintenanceOps, AssetsReadOps, AssetsWriteOps,
-        MediaFilesReadOps, MediaFilesWriteOps,
-    },
-    types::patch::{AssetFeaturesPatch, AssetPatch, MediaFilePatch},
+    queries::asset::AssetQuery,
+    types::patch::{AssetFeaturesPatch, MediaFilePatch},
 };
 use events::{AssetCreatedEvent, EventBus};
 use media::{
@@ -23,10 +19,10 @@ use media::{
 };
 use mimetype::{MimeKind, MimeType};
 use models::{
-    entities::{Asset, AssetState, MediaFile, MediaVariant},
+    entities::{AssetState, MediaFile, MediaVariant},
     types::{AssetId, Color, MediaId},
 };
-use result::{Result, create_error, error::ResultExt};
+use result::{ErrorKind, Result, error::ResultExt};
 use storage::{StoragePath, global::GlobalPathData};
 use tokio::io::AsyncRead;
 use tokio_util::sync::CancellationToken;
@@ -93,10 +89,9 @@ impl MediaWorkerService {
         let mut processed = 0;
 
         // Retrieves unprocessed assets as long as there are any in the database
-        let mut conn = self.ctx.db.acquire().await?;
         loop {
             // Receives unprocessed assets
-            let unprocessed = conn.get_unprocessed_assets(50).await?;
+            let unprocessed = self.ctx.db.assets.get_for_processing(50).await?;
 
             // Triggers processing for all unprocessed assets
             for a in &unprocessed {
@@ -116,12 +111,12 @@ impl MediaWorkerService {
     async fn process_asset_by_id(&self, id: &AssetId) -> Result<()> {
         // Retrieves an Asset by ID
         let asset = {
-            let mut conn = self.ctx.db.acquire().await?;
-            let Some(asset) = conn.get_asset_by_id(id).await? else {
-                // TODO: ADD TRACING!
-                return Ok(());
-            };
-            asset
+            let asset = self.ctx.db.assets.get_by_id(*id).await;
+            match asset {
+                Ok(a) => a,
+                Err(e) if matches!(e.kind(), ErrorKind::NotFound) => return Ok(()),
+                Err(e) => return Err(e),
+            }
         };
 
         // Calls processing for the asset
@@ -129,17 +124,19 @@ impl MediaWorkerService {
     }
 
     /// Executes the common media processing pipeline for the specified [`Asset`]
-    async fn process_asset_media(&self, asset: &Asset) -> Result<()> {
+    async fn process_asset_media(&self, asset: &AssetQuery) -> Result<()> {
         // Check that the received asset is not marked as being processed
-        if asset.state == AssetState::Processing {
+        if asset.inner.state == AssetState::Processing {
             return Ok(());
         }
 
         // Setting the asset status to `processing`
         {
-            let mut conn = self.ctx.db.acquire().await?;
-            if conn
-                .update_asset(&asset.id, AssetPatch::new().state(AssetState::Processing))
+            if self
+                .ctx
+                .db
+                .assets
+                .update_state(asset.inner.id, AssetState::Processing)
                 .await?
                 .no_changes()
             {
@@ -151,7 +148,7 @@ impl MediaWorkerService {
         let t0 = Instant::now();
 
         // Executes a processing pipeline suitable for the asset type
-        let res = match asset.media_type {
+        let res = match asset.inner.media_type {
             MimeKind::Image => self.process_asset_as_image(asset).await,
             MimeKind::Video => self.process_asset_as_video(asset).await,
         };
@@ -160,35 +157,40 @@ impl MediaWorkerService {
         if let Err(e) = res {
             // In the event of a processing error,
             // it sets the state to 'failed' and propagates the error
-            let mut conn = self.ctx.db.acquire().await?;
-            let patch = AssetPatch::new().state(AssetState::Failed);
-            conn.update_asset(&asset.id, patch).await?;
+            self.ctx
+                .db
+                .assets
+                .update_state(asset.inner.id, AssetState::Failed)
+                .await?;
 
             return Err(e);
         } else {
-            let mut conn = self.ctx.db.acquire().await?;
-            let patch = AssetPatch::new().state(AssetState::Ready);
-            conn.update_asset(&asset.id, patch).await?;
+            self.ctx
+                .db
+                .assets
+                .update_state(asset.inner.id, AssetState::Ready)
+                .await?
+                .no_changes()
         };
 
         tracing::info!(
-            id = ?asset.id, elapsed = t0.elapsed().as_millis(), m_type = ?asset.media_type,
+            id = ?asset.inner.id, elapsed = t0.elapsed().as_millis(), m_type = ?asset.inner.media_type,
             "MediaWorker: asset media processed"
         );
         Ok(())
     }
 
     /// Executes the media image processing pipeline for the specified [`Asset`]
-    async fn process_asset_as_image(&self, asset: &Asset) -> Result<()> {
-        tracing::info!("Processing {} as image", asset.id);
+    async fn process_asset_as_image(&self, asset: &AssetQuery) -> Result<()> {
+        tracing::info!("Processing {} as image", asset.inner.id);
 
         // Retrieves information about the original media file
-        let original = {
-            let mut conn = self.ctx.db.acquire().await?;
-            conn.get_media_variant(&asset.media_id, MediaVariant::Original)
-                .await?
-                .ok_or(create_error!(NotFound))?
-        };
+        let original = self
+            .ctx
+            .db
+            .media
+            .get_variant(&asset.inner.media_id, MediaVariant::Original)
+            .await?;
 
         // Retrieves the original file from the storage
         let path = StoragePath::from_str(&original.storage_path).to_app_err()?;
@@ -216,23 +218,26 @@ impl MediaWorkerService {
             .accent_color(Some(color));
 
         // Writes features to the database
-        let mut conn = self.ctx.db.acquire().await?;
-        conn.update_asset_features(&asset.id, patch).await?;
+        self.ctx
+            .db
+            .assets
+            .update_features(asset.inner.id, patch)
+            .await?;
 
         Ok(())
     }
 
     /// Executes the media video processing pipeline for the specified [`Asset`]
-    async fn process_asset_as_video(&self, asset: &Asset) -> Result<()> {
-        tracing::info!("Processing {} as video", asset.id);
+    async fn process_asset_as_video(&self, asset: &AssetQuery) -> Result<()> {
+        tracing::info!("Processing {} as video", asset.inner.id);
 
         // Retrieves information about the original media file
-        let original = {
-            let mut conn = self.ctx.db.acquire().await?;
-            conn.get_media_variant(&asset.media_id, MediaVariant::Original)
-                .await?
-                .ok_or(create_error!(NotFound))?
-        };
+        let original = self
+            .ctx
+            .db
+            .media
+            .get_variant(&asset.inner.media_id, MediaVariant::Original)
+            .await?;
 
         // Copies the video to a temporary directory for processing
         let path = StoragePath::from_str(&original.storage_path).to_app_err()?;
@@ -264,36 +269,27 @@ impl MediaWorkerService {
         let a_hash = featured.a_hash();
 
         // Writes features to the database
-        let mut conn = self.ctx.db.acquire().await?;
-        conn.update_asset_features(
-            &asset.id,
-            AssetFeaturesPatch::new()
-                .a_hash(Some(a_hash))
-                .p_hash(Some(p_hash))
-                .height(Some(height))
-                .width(Some(width))
-                .accent_color(Some(color)),
-        )
-        .await?;
+        let patch = AssetFeaturesPatch::new()
+            .a_hash(Some(a_hash))
+            .p_hash(Some(p_hash))
+            .height(Some(height))
+            .width(Some(width))
+            .accent_color(Some(color));
+        let f_patch = MediaFilePatch::new().duration_milis(Some(duration_milis));
 
-        let original_file = conn
-            .get_media_variant(&asset.media_id, MediaVariant::Original)
-            .await?
-            .ok_or(create_error!(NotFound))?;
-
-        conn.update_media_file(
-            &original_file.id,
-            MediaFilePatch::new().duration_milis(Some(duration_milis)),
-        )
-        .await?;
+        self.ctx
+            .db
+            .assets
+            .update_features(asset.inner.id, patch)
+            .await?;
+        self.ctx.db.media.update_file(&original.id, f_patch).await?;
 
         Ok(())
     }
 
     /// Checks which variants already exist for the specified asset
-    async fn get_exists_media_variants(&self, asset: &Asset) -> Result<HashSet<MediaVariant>> {
-        let mut conn = self.ctx.db.acquire().await?;
-        let stored_variants = conn.get_media_files_by_group(&asset.media_id).await?;
+    async fn get_exists_media_variants(&self, asset: &AssetQuery) -> Result<HashSet<MediaVariant>> {
+        let stored_variants = &asset.media;
         let mut variants = HashSet::with_capacity(stored_variants.len());
 
         for v in stored_variants {
@@ -305,7 +301,7 @@ impl MediaWorkerService {
 
     async fn generate_video_variants(
         &self,
-        asset: &Asset,
+        asset: &AssetQuery,
         video_duration_milis: i64,
         frame: &Image,
         video: &MediaInput,
@@ -318,7 +314,7 @@ impl MediaWorkerService {
                 .thumbnail(400)
                 .reader(ImageFormat::WebP { quality: 80 })?;
             self.store_variant(
-                &asset.media_id,
+                &asset.inner.media_id,
                 MimeType::Webp,
                 MediaVariant::Thumbnail,
                 thumbnail,
@@ -328,7 +324,7 @@ impl MediaWorkerService {
 
         if !variants.contains(&MediaVariant::LoopPreview) {
             let reserve = self.ctx.storage.reserve(GlobalPathData::new(
-                &asset.media_id.to_string(),
+                &asset.inner.media_id.to_string(),
                 MediaVariant::LoopPreview.as_str(),
             ));
 
@@ -354,7 +350,7 @@ impl MediaWorkerService {
 
             let variant_media_file = MediaFile {
                 id: self.ctx.flake.get_id_as(),
-                media_id: asset.media_id.clone(),
+                media_id: asset.inner.media_id.clone(),
                 variant: MediaVariant::LoopPreview,
                 storage_path: file.path.to_string(),
                 created_at: Utc::now(),
@@ -363,18 +359,17 @@ impl MediaWorkerService {
                 duration_milis: Some(duration.as_millis() as i64),
             };
 
-            let mut conn = self.ctx.db.acquire().await?;
-            conn.insert_media_file(&variant_media_file).await?;
+            self.ctx.db.media.insert_file(&variant_media_file).await?;
             tracing::info!(
                 "MediaWorker: loop preview generated and saved for media {}",
-                asset.media_id
+                asset.inner.media_id
             );
         }
 
         Ok(())
     }
 
-    async fn generate_image_variants(&self, asset: &Asset, img: &Image) -> Result<()> {
+    async fn generate_image_variants(&self, asset: &AssetQuery, img: &Image) -> Result<()> {
         // Checks which variants already exist for the specified asset
         let variants = self.get_exists_media_variants(asset).await?;
 
@@ -384,7 +379,7 @@ impl MediaWorkerService {
                 .thumbnail(400)
                 .reader(ImageFormat::WebP { quality: 80 })?;
             self.store_variant(
-                &asset.media_id,
+                &asset.inner.media_id,
                 MimeType::Webp,
                 MediaVariant::Thumbnail,
                 thumbnail,
@@ -426,9 +421,7 @@ impl MediaWorkerService {
             duration_milis: None,
         };
 
-        let mut conn = self.ctx.db.acquire().await?;
-        conn.insert_media_file(&variant_media_file).await?;
-
+        self.ctx.db.media.insert_file(&variant_media_file).await?;
         variant_file.commit().await?;
 
         tracing::info!("MediaWorker: {variant} generated and saved for media: {media}");

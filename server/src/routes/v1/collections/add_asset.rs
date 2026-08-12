@@ -1,14 +1,6 @@
 use actix_web::{HttpResponse, post, web};
 use chrono::{DateTime, Utc};
-use db::{
-    database::DatabaseProvider,
-    ops::{CollectionsReadOps, CollectionsRelationsOps},
-};
-use models::{
-    entities::CollectionAsset,
-    types::{AssetId, CollectionAssetId, CollectionId},
-};
-use result::create_error;
+use models::types::{AssetId, CollectionAssetId, CollectionId};
 use serde::{Deserialize, Serialize};
 
 use crate::{di::DataCtx, routes::ApiResult};
@@ -35,22 +27,13 @@ async fn add_collection_asset(
 ) -> ApiResult {
     let data = payload.into_inner();
 
-    let mut conn = ctx.db.acquire().await?;
+    let collection = ctx.db.collections.get_by_id(*id).await?;
 
-    let collection = conn
-        .get_collection_by_id(&id)
-        .await?
-        .ok_or(create_error!(NotFound))?;
-
-    let rel = CollectionAsset {
-        id: ctx.flake.get_id_as(),
-        asset_id: data.asset_id,
-        collection_id: collection.id,
-        added_at: Utc::now(),
-    };
-
-    conn.insert_collection_asset(&rel).await?;
-    drop(conn);
+    let rel = ctx
+        .db
+        .collections
+        .add_asset(ctx.flake.get_id_as(), collection.inner.id, data.asset_id)
+        .await?;
 
     let res = AddCollectionAssetRes {
         asset_id: rel.asset_id,

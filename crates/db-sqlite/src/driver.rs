@@ -1,13 +1,18 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
+use db_core::repos::RepositoryContext;
 use result::{Result, error::ResultExt};
 use sqlx::{
-    SqlitePool,
+    Sqlite, SqlitePool,
     migrate::Migrator,
+    pool::PoolConnection,
     sqlite::{SqliteAutoVacuum, SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
 };
 
-use crate::database::{Database, DatabaseProvider, DatabaseTransaction};
+use crate::repos::{
+    asset::SqliteAssetRepository, collection::SqliteCollectionRepository,
+    media::SqliteMediaRepository,
+};
 
 static SQLITE_MIGRATOR: Migrator = sqlx::migrate!();
 
@@ -60,41 +65,21 @@ impl SqliteDatabase {
     pub async fn migrate(&self) -> Result<()> {
         SQLITE_MIGRATOR.run(&self.pool).await.to_app_err()
     }
-}
 
-/// Active [`SqliteDatabase`] session
-pub struct SqliteSession {
-    pub(crate) conn: sqlx::pool::PoolConnection<sqlx::Sqlite>,
-}
-
-/// Opened [`SqliteDatabase`] transaction
-pub struct SqliteTransaction {
-    pub(crate) tx: sqlx::SqliteTransaction<'static>,
-}
-
-impl Database for SqliteDatabase {
-    type Session = SqliteSession;
-    type Transaction = SqliteTransaction;
-}
-
-impl DatabaseProvider for SqliteDatabase {
-    async fn acquire(&self) -> Result<Self::Session> {
-        let conn = self.pool.acquire().await.to_app_err()?;
-        Ok(SqliteSession { conn })
+    pub(crate) fn exec(&self) -> &SqlitePool {
+        &self.pool
     }
 
-    async fn begin(&self) -> Result<Self::Transaction> {
-        let tx = self.pool.begin().await.to_app_err()?;
-        Ok(SqliteTransaction { tx })
-    }
-}
-
-impl DatabaseTransaction for SqliteTransaction {
-    async fn commit(self) -> Result<()> {
-        self.tx.commit().await.to_app_err()
+    pub(crate) async fn acquire(&self) -> Result<PoolConnection<Sqlite>> {
+        self.pool.acquire().await.to_app_err()
     }
 
-    async fn rollback(self) -> Result<()> {
-        self.tx.rollback().await.to_app_err()
+    pub fn repositories(self) -> RepositoryContext {
+        let db = Arc::new(self);
+        RepositoryContext {
+            assets: Arc::new(SqliteAssetRepository { db: db.clone() }),
+            collections: Arc::new(SqliteCollectionRepository { db: db.clone() }),
+            media: Arc::new(SqliteMediaRepository { db: db.clone() }),
+        }
     }
 }

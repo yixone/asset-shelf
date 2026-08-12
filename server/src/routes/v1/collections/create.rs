@@ -1,6 +1,5 @@
 use actix_web::{HttpResponse, post, web};
 use chrono::Utc;
-use db::{database::DatabaseProvider, ops::CollectionsWriteOps};
 use models::entities::{Collection, CollectionAdditions};
 use serde::Deserialize;
 
@@ -33,9 +32,7 @@ async fn create_collection(
         assets_count: 0,
     };
 
-    ctx.db
-        .with_session(async |db| db.insert_collection(&collection).await)
-        .await?;
+    ctx.db.collections.insert(&collection).await?;
 
     let res = CollectionDtoV1::from((collection, additions));
     Ok(HttpResponse::Created().json(res))
