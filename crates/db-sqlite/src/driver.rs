@@ -3,7 +3,7 @@ use std::{path::Path, sync::Arc};
 use db_core::repos::RepositoryContext;
 use result::{Result, error::ResultExt};
 use sqlx::{
-    Sqlite, SqlitePool,
+    Sqlite, SqlitePool, SqliteTransaction,
     migrate::Migrator,
     pool::PoolConnection,
     sqlite::{SqliteAutoVacuum, SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
@@ -72,6 +72,10 @@ impl SqliteDatabase {
 
     pub(crate) async fn acquire(&self) -> Result<PoolConnection<Sqlite>> {
         self.pool.acquire().await.to_app_err()
+    }
+
+    pub(crate) async fn begin(&self) -> Result<SqliteTransaction<'_>> {
+        self.pool.begin().await.to_app_err()
     }
 
     pub fn repositories(self) -> RepositoryContext {

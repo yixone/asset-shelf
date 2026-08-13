@@ -1,23 +1,23 @@
 use std::sync::Arc;
 
 use db_core::{
+    ops::create_asset::CreateAssetOp,
     queries::asset::AssetQuery,
     repos::asset::AssetRepository,
     types::{
-        DeleteResult, InsertResult, Pagination, UpdateResult,
+        DeleteResult, Pagination, UpdateResult,
         patch::{AssetFeaturesPatch, AssetPatch},
     },
 };
 use models::{
-    entities::{Asset, AssetFeatures, AssetState},
+    entities::{AssetFeatures, AssetState},
     types::{AssetId, AssetsOrdering, Color},
 };
 use result::{Result, create_error, error::ResultExt};
 use sqlx::QueryBuilder;
 
 use crate::{
-    driver::SqliteDatabase,
-    helpers::{hydrate, queries},
+    driver::SqliteDatabase, helpers::hydrate, ops::create_asset::SqliteCreateAssetOp, queries,
 };
 
 pub struct SqliteAssetRepository {
@@ -26,59 +26,10 @@ pub struct SqliteAssetRepository {
 
 #[async_trait::async_trait]
 impl AssetRepository for SqliteAssetRepository {
-    async fn insert(&self, asset: &Asset, features: &AssetFeatures) -> Result<InsertResult> {
-        sqlx::query(
-            "
-            INSERT INTO assets (
-                id, state,
-                media_id, media_type,
-                created_at, deleted_at,
-                title, caption, source_url
-            )
-            VALUES (
-                ?, ?,
-                ?, ?,
-                ?, ?,
-                ?, ?, ?
-            )
-            ",
-        )
-        .bind(asset.id)
-        .bind(asset.state)
-        .bind(&asset.media_id)
-        .bind(asset.media_type)
-        .bind(asset.created_at)
-        .bind(asset.deleted_at)
-        .bind(&asset.title)
-        .bind(&asset.caption)
-        .bind(&asset.source_url)
-        .execute(self.db.exec())
-        .await
-        .to_app_err()?;
-
-        let res = sqlx::query(
-            "
-            INSERT INTO asset_features (
-                asset_id, p_hash, a_hash,
-                width, height, accent_color
-            )
-            VALUES (
-                ?, ?, ?,
-                ?, ?, ?
-            )
-            ",
-        )
-        .bind(features.asset_id)
-        .bind(features.p_hash)
-        .bind(features.a_hash)
-        .bind(features.width)
-        .bind(features.height)
-        .bind(features.accent_color)
-        .execute(self.db.exec())
-        .await
-        .to_app_err()?;
-
-        Ok(res.into())
+    async fn create_op<'a>(&'a self) -> Result<Box<dyn CreateAssetOp + 'a>> {
+        let tx = self.db.begin().await?;
+        let op = SqliteCreateAssetOp { tx };
+        Ok(Box::new(op))
     }
 
     async fn update(&self, id: AssetId, patch: AssetPatch) -> Result<UpdateResult<AssetQuery>> {
@@ -146,7 +97,7 @@ impl AssetRepository for SqliteAssetRepository {
     async fn get_by_ids(&self, ids: &[AssetId]) -> Result<Vec<AssetQuery>> {
         let mut conn = self.db.acquire().await?;
 
-        let assets = queries::get_assets(ids, &mut *conn).await?;
+        let assets = queries::asset::get_assets(ids, &mut *conn).await?;
 
         hydrate::hydrate_assets(assets, &mut conn).await
     }
@@ -217,7 +168,8 @@ impl AssetRepository for SqliteAssetRepository {
                 AS af
                 ON af.asset_id = a.id
             WHERE
-                a.state != ? AND 
+            (a.state != ?) AND 
+            (a.deleted_at IS null) AND
             (
                 af.accent_color IS null OR
                 af.a_hash       IS null OR

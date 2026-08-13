@@ -54,11 +54,11 @@ mod searcher {
         score: u32,
     }
 
-    const PHASH_WEIGHT: f32 = 0.80;
-    const PHASH_MAX_DISTANCE: f32 = 25.0;
+    const PHASH_WEIGHT: f32 = 0.70;
+    const PHASH_MAX_DISTANCE: f32 = 30.0;
 
     const AHASH_WEIGHT: f32 = 0.60;
-    const AHASH_MAX_DISTANCE: f32 = 15.0;
+    const AHASH_MAX_DISTANCE: f32 = 30.0;
 
     const COLOR_WEIGHT: f32 = 0.40;
 
@@ -107,6 +107,9 @@ mod searcher {
                 f.score += color;
 
                 let stage_score = f.score - init_score;
+
+                tracing::info!(color, phash, ahash, stage_score, id = ?f.feature.asset_id);
+
                 stage_score >= score_threshold
             });
         }
