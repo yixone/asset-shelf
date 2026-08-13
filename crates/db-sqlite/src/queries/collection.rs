@@ -1,74 +1,8 @@
-use models::{
-    entities::{Asset, AssetFeatures, CollectionAdditions, MediaFile},
-    types::{AssetId, CollectionId, MediaId},
-};
+use models::{entities::CollectionAdditions, types::CollectionId};
 use result::{Result, error::ResultExt};
 use sqlx::{Executor, QueryBuilder, Sqlite};
 
 use crate::helpers::rows::CollectionAdditionsRow;
-
-pub async fn get_assets_features<'a, E>(ids: &[AssetId], exec: E) -> Result<Vec<AssetFeatures>>
-where
-    E: Executor<'a, Database = Sqlite>,
-{
-    if ids.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut qb = QueryBuilder::new(
-        "
-            SELECT * FROM asset_features
-            WHERE asset_id IN
-            ",
-    );
-    qb.push_tuples(ids, |mut qb, id| {
-        qb.push_bind(id);
-    });
-
-    qb.build_query_as().fetch_all(exec).await.to_app_err()
-}
-
-pub async fn get_assets<'a, E>(ids: &[AssetId], exec: E) -> Result<Vec<Asset>>
-where
-    E: Executor<'a, Database = Sqlite>,
-{
-    if ids.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut qb = QueryBuilder::new(
-        "
-            SELECT * FROM assets
-            WHERE id IN
-            ",
-    );
-    qb.push_tuples(ids, |mut qb, id| {
-        qb.push_bind(id);
-    });
-
-    qb.build_query_as().fetch_all(exec).await.to_app_err()
-}
-
-pub async fn get_media_files<'a, E>(ids: &[MediaId], exec: E) -> Result<Vec<MediaFile>>
-where
-    E: Executor<'a, Database = Sqlite>,
-{
-    if ids.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut qb = QueryBuilder::new(
-        "
-            SELECT * FROM media_files
-            WHERE media_id IN
-            ",
-    );
-    qb.push_tuples(ids, |mut qb, id| {
-        qb.push_bind(id);
-    });
-
-    qb.build_query_as().fetch_all(exec).await.to_app_err()
-}
 
 pub async fn get_collections_additions<'a, E>(
     ids: &[CollectionId],

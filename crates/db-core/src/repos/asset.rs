@@ -1,23 +1,22 @@
 use models::{
-    entities::{Asset, AssetFeatures, AssetState},
+    entities::{AssetFeatures, AssetState},
     types::{AssetId, AssetsOrdering, Color},
 };
 use result::{Result, create_error};
 
 use crate::{
+    ops::create_asset::CreateAssetOp,
     queries::asset::AssetQuery,
     types::{
-        DeleteResult, InsertResult, Pagination, UpdateResult,
+        DeleteResult, Pagination, UpdateResult,
         patch::{AssetFeaturesPatch, AssetPatch},
     },
 };
 
-// TODO: Add create asset unit of work
-
 /// Repository for working with the [`Asset`] domain model and its relations
 #[async_trait::async_trait]
 pub trait AssetRepository: Send + Sync {
-    async fn insert(&self, asset: &Asset, features: &AssetFeatures) -> Result<InsertResult>;
+    async fn create_op<'a>(&'a self) -> Result<Box<dyn CreateAssetOp + 'a>>;
 
     async fn update(&self, id: AssetId, patch: AssetPatch) -> Result<UpdateResult<AssetQuery>>;
 

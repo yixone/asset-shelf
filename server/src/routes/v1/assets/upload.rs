@@ -145,16 +145,19 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         accent_color: None,
     };
 
-    ctx.db.media.insert(&media).await?;
-    ctx.db.media.insert_file(&media_file).await?;
-    ctx.db.assets.insert(&asset, &asset_features).await?;
+    let mut op = ctx.db.assets.create_op().await?;
 
-    file.file.commit().await?;
+    op.insert_media(&media).await?;
+    op.insert_media_file(&media_file).await?;
+    op.insert_asset(&asset).await?;
+    op.insert_features(&asset_features).await?;
 
-    // if let Err(e) = tx.commit().await {
-    //     ctx.storage.remove_safely(&file.global_path).await;
-    //     return Err(e);
-    // }
+    let file = file.file.commit().await?;
+
+    if let Err(e) = op.commit().await {
+        ctx.storage.remove_safely(&file.global_path).await;
+        return Err(e);
+    }
 
     ctx.events.publish(AssetCreatedEvent { asset: asset.id });
 
