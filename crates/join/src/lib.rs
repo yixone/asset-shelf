@@ -96,26 +96,17 @@ impl<T> JoinBuilder<T> {
         }
     }
 
-    /// Performs an **left join** for a one-to-one relationship.
-    ///
-    /// Join based on the `on.reference_key` = `ref.join_on_key` condition
-    pub fn with_option<W, F, J>(self, with: Vec<W>, on: F) -> JoinBuilder<(T, Option<W>)>
+    /// Performs a join if the condition from `cond` is `true`;
+    /// otherwise, the field will be [`None`]
+    pub fn r#if<F, J>(self, cond: bool, join: F) -> JoinBuilder<(T, Option<J>)>
     where
-        F: Fn(&T) -> &J,
-        J: Joinable<W>,
-        W: Clone,
+        F: FnOnce(Self) -> JoinBuilder<(T, J)>,
     {
-        let hash_idx = Self::build_idx(with, J::foreign_key);
-        JoinBuilder {
-            join: self
-                .join
-                .into_iter()
-                .map(|j| {
-                    let key = on(&j).key();
-                    let r = hash_idx.get(key).cloned();
-                    (j, r)
-                })
-                .collect(),
+        match cond {
+            true => join(self).transform(|(t, j)| (t, Some(j))),
+            false => JoinBuilder {
+                join: self.join.into_iter().map(|j| (j, None)).collect(),
+            },
         }
     }
 
