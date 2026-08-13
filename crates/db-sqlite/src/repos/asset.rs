@@ -214,7 +214,7 @@ impl AssetRepository for SqliteAssetRepository {
         p: Pagination,
     ) -> Result<Vec<AssetFeatures>> {
         let (red, green, blue) = color.rgb();
-        const COLOR_SHIFT: u8 = 50;
+        const COLOR_SHIFT: u8 = 40;
 
         let candidates = sqlx::query_as(
             "
