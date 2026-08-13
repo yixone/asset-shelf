@@ -96,15 +96,15 @@ impl<T> JoinBuilder<T> {
         }
     }
 
-    /// Performs a join if the condition from `cond` is `true`;
+    /// Performs a join if the condition from `cond` is [`Some`];
     /// otherwise, the field will be [`None`]
-    pub fn r#if<F, J>(self, cond: bool, join: F) -> JoinBuilder<(T, Option<J>)>
+    pub fn if_some<F, J, K>(self, cond: Option<K>, join: F) -> JoinBuilder<(T, Option<J>)>
     where
-        F: FnOnce(Self) -> JoinBuilder<(T, J)>,
+        F: FnOnce(Self, K) -> JoinBuilder<(T, J)>,
     {
         match cond {
-            true => join(self).transform(|(t, j)| (t, Some(j))),
-            false => JoinBuilder {
+            Some(k) => join(self, k).transform(|(t, j)| (t, Some(j))),
+            None => JoinBuilder {
                 join: self.join.into_iter().map(|j| (j, None)).collect(),
             },
         }
