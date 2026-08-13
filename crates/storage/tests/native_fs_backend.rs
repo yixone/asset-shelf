@@ -1,7 +1,3 @@
-// TODO!
-// - MV
-// - MV w/ conflict
-
 use bytes::Bytes;
 use storage::backend::{StorageBackend, fs::NativeFsStorageBackend, path::StoragePath};
 use tempfile::TempDir;
@@ -115,6 +111,59 @@ async fn do_not_delete_parent_dir_if_not_empty() {
                 .resolve_path(&StoragePath::new("a/b/c/d"))
                 .exists()
         );
+
+        assert!(storage_backend.exists(&path_1).await.unwrap());
+    }
+}
+
+#[tokio::test]
+async fn move_file() {
+    let storage_backend = open_storage().await;
+
+    let path_0 = StoragePath::new("a/b/c/d/file");
+    let path_1 = StoragePath::new("a/b/c/d/file2");
+
+    {
+        let mut writer = storage_backend.create(&path_0).await.unwrap();
+        writer.write(Bytes::from_static(DATA)).await.unwrap();
+        writer.flush().await.unwrap();
+    }
+
+    {
+        let moved = storage_backend.mv(&path_0, &path_1).await.unwrap();
+        assert!(moved);
+    }
+
+    {
+        assert!(!storage_backend.exists(&path_0).await.unwrap());
+
+        assert!(storage_backend.exists(&path_1).await.unwrap());
+    }
+}
+#[tokio::test]
+async fn do_not_move_file_on_conflict() {
+    let storage_backend = open_storage().await;
+
+    let path_0 = StoragePath::new("a/b/c/d/file");
+    let path_1 = StoragePath::new("a/b/c/d/file2");
+
+    {
+        let mut writer = storage_backend.create(&path_0).await.unwrap();
+        writer.write(Bytes::from_static(DATA)).await.unwrap();
+        writer.flush().await.unwrap();
+
+        let mut writer = storage_backend.create(&path_1).await.unwrap();
+        writer.write(Bytes::from_static(DATA)).await.unwrap();
+        writer.flush().await.unwrap();
+    }
+
+    {
+        let moved = storage_backend.mv(&path_0, &path_1).await.unwrap();
+        assert!(!moved);
+    }
+
+    {
+        assert!(storage_backend.exists(&path_0).await.unwrap());
 
         assert!(storage_backend.exists(&path_1).await.unwrap());
     }
