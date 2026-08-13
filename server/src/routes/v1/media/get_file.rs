@@ -18,13 +18,13 @@ use tokio_util::io::ReaderStream;
 
 use crate::{di::DataCtx, routes::ApiResult, utils};
 
-#[get("/{variant}/{id}")]
+#[get("/{id}/{variant}")]
 async fn get_media_file(
-    path: web::Path<(MediaVariant, MediaId)>,
+    path: web::Path<(MediaId, MediaVariant)>,
     request: HttpRequest,
     ctx: web::Data<DataCtx>,
 ) -> ApiResult {
-    let (variant, id) = path.into_inner();
+    let (id, variant) = path.into_inner();
 
     let media_file = ctx.db.media.get_variant(&id, variant).await?;
 

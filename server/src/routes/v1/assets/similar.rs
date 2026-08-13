@@ -54,13 +54,13 @@ mod searcher {
         score: u32,
     }
 
-    const PHASH_WEIGHT: f32 = 0.70;
-    const PHASH_MAX_DISTANCE: f32 = 30.0;
+    const PHASH_WEIGHT: f32 = 0.60;
+    const PHASH_MAX_DISTANCE: f32 = 35.0;
 
-    const AHASH_WEIGHT: f32 = 0.60;
+    const AHASH_WEIGHT: f32 = 0.75;
     const AHASH_MAX_DISTANCE: f32 = 30.0;
 
-    const COLOR_WEIGHT: f32 = 0.40;
+    const COLOR_WEIGHT: f32 = 0.35;
 
     impl SimilarSearcher {
         /// Creates a new [`SimilarSearcher`]
