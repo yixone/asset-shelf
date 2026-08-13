@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use chrono::Utc;
 use db_core::{
     ops::create_asset::CreateAssetOp,
     queries::asset::AssetQuery,
@@ -10,7 +11,7 @@ use db_core::{
     },
 };
 use models::{
-    entities::{AssetFeatures, AssetState},
+    entities::AssetFeatures,
     types::{AssetId, AssetsOrdering, Color},
 };
 use result::{Result, create_error, error::ResultExt};
@@ -41,6 +42,9 @@ impl AssetRepository for SqliteAssetRepository {
         );
 
         patch.apply_sql(&mut qb);
+
+        qb.push(", updated_at = ");
+        qb.push_bind(Utc::now());
 
         qb.push(" WHERE id = ");
         qb.push_bind(id);
@@ -167,21 +171,34 @@ impl AssetRepository for SqliteAssetRepository {
             INNER JOIN asset_features
                 AS af
                 ON af.asset_id = a.id
-            WHERE
-            (a.state != ?) AND 
-            (a.deleted_at IS null) AND
-            (
-                af.accent_color IS null OR
-                af.a_hash       IS null OR
-                af.p_hash       IS null OR
-                af.height       IS null OR
-                af.width        IS null
-            )
+            WHERE 
+                a.deleted_at IS null 
+                AND (
+                    -- The asset has not yet been processed
+                    a.state = 'Pending'
+
+                    -- The asset was not processed due to an error or hang
+                    OR (
+                        a.state IN ('Processing', 'Failed')
+                        AND a.updated_at < datetime('now', '-5 minutes')
+                    ) 
+
+                    -- The asset was processed previously but currently lacks all the necessary fields
+                    OR (
+                        a.state = 'Ready' 
+                        AND (
+                            af.accent_color IS null OR
+                            af.a_hash       IS null OR
+                            af.p_hash       IS null OR
+                            af.height       IS null OR
+                            af.width        IS null
+                        )
+                    )
+                )
             ORDER BY a.created_at ASC
             LIMIT ?
             ",
         )
-        .bind(AssetState::Processing)
         .bind(limit)
         .fetch_all(&mut *conn)
         .await
@@ -197,7 +214,7 @@ impl AssetRepository for SqliteAssetRepository {
         p: Pagination,
     ) -> Result<Vec<AssetFeatures>> {
         let (red, green, blue) = color.rgb();
-        const COLOR_SHIFT: u8 = 75;
+        const COLOR_SHIFT: u8 = 50;
 
         let candidates = sqlx::query_as(
             "
@@ -225,8 +242,8 @@ impl AssetRepository for SqliteAssetRepository {
         .bind(green.saturating_add(COLOR_SHIFT))
         .bind(blue.saturating_sub(COLOR_SHIFT))
         .bind(blue.saturating_add(COLOR_SHIFT))
-        .bind(aspect_ratio - 0.65)
-        .bind(aspect_ratio + 0.65)
+        .bind(aspect_ratio - 0.5)
+        .bind(aspect_ratio + 0.5)
         .bind(p.limit())
         .bind(p.offset())
         .fetch_all(self.db.exec())

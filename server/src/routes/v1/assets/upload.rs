@@ -4,7 +4,7 @@ use chrono::Utc;
 use events::AssetCreatedEvent;
 use futures::TryStreamExt;
 use mimetype::MimeType;
-use models::entities::{Asset, AssetFeatures, AssetState, Media, MediaFile, MediaVariant};
+use models::entities::{Asset, AssetFeatures, Media, MediaFile, MediaVariant};
 use result::{create_error, error::ResultExt};
 use storage::{files::UncommitedFile, global::GlobalPathData};
 
@@ -123,19 +123,16 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         created_at: now,
         size_bytes: file.file.size_bytes as i64,
         mimetype: file.mimetype,
-        duration_milis: None,
+        duration_ms: None,
     };
-    let asset = Asset {
-        id: ctx.flake.get_id_as(),
-        state: AssetState::Pending,
-        media_id: media.id.clone(),
-        media_type: media_file.mimetype.kind(),
-        created_at: now,
-        deleted_at: None,
-        title: upload.title,
-        caption: upload.caption,
-        source_url: upload.source_url,
-    };
+    let asset = Asset::new(
+        ctx.flake.get_id_as(),
+        media.id.clone(),
+        media_file.mimetype.kind(),
+        upload.title,
+        upload.caption,
+        upload.source_url,
+    );
     let asset_features = AssetFeatures {
         asset_id: asset.id,
         p_hash: None,

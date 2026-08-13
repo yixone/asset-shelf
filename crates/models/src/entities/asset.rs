@@ -19,6 +19,8 @@ pub struct Asset {
 
     /// Asset creation date
     pub created_at: DateTime<Utc>,
+    /// Asset update date
+    pub updated_at: DateTime<Utc>,
     /// Asset deletion date
     pub deleted_at: Option<DateTime<Utc>>,
 
@@ -28,6 +30,31 @@ pub struct Asset {
     pub caption: Option<String>,
     /// URL from which the asset was obtained
     pub source_url: Option<String>,
+}
+
+impl Asset {
+    pub fn new(
+        id: AssetId,
+        media_id: MediaId,
+        media_type: MimeKind,
+        title: Option<String>,
+        caption: Option<String>,
+        source_url: Option<String>,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id,
+            state: AssetState::Pending,
+            media_id,
+            media_type,
+            created_at: now,
+            updated_at: now,
+            deleted_at: None,
+            title,
+            caption,
+            source_url,
+        }
+    }
 }
 
 /// Asset state within its lifecycle

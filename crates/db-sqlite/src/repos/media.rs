@@ -46,7 +46,7 @@ impl MediaRepository for SqliteMediaRepository {
             INSERT INTO media_files (
                 id, storage_path, media_id,
                 variant, created_at, size_bytes, mimetype,
-                duration_milis
+                duration_ms
             )
             VALUES (
                 ?, ?, ?,
@@ -62,7 +62,7 @@ impl MediaRepository for SqliteMediaRepository {
         .bind(file.created_at)
         .bind(file.size_bytes)
         .bind(file.mimetype)
-        .bind(file.duration_milis)
+        .bind(file.duration_ms)
         .execute(self.db.exec())
         .await
         .to_app_err()?;

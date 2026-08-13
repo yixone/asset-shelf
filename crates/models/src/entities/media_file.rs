@@ -17,7 +17,7 @@ pub struct MediaFile {
     pub size_bytes: i64,
     pub mimetype: MimeType,
 
-    pub duration_milis: Option<i64>,
+    pub duration_ms: Option<i64>,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

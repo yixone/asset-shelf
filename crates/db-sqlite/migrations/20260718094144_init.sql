@@ -6,6 +6,7 @@ CREATE TABLE assets (
     media_type      VARCHAR(16)     NOT NULL,
     
     created_at      TIMESTAMPTZ     NOT NULL,
+    updated_at      TIMESTAMPTZ     NOT NULL,
     deleted_at      TIMESTAMPTZ,
 
     title           VARCHAR(255),
@@ -52,7 +53,9 @@ CREATE TABLE media_files (
     size_bytes      BIGINT          NOT NULL,
     mimetype        VARCHAR(128)    NOT NULL,
 
-    duration_milis  BIGINT,
+    duration_ms  BIGINT,
+
+    UNIQUE (media_id, variant),
 
     PRIMARY KEY (id),
     FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE    

@@ -127,6 +127,6 @@ patch_model! {
 
 patch_model! {
     MediaFilePatch {
-        duration_milis: Option<i64>
+        duration_ms: Option<i64>
     }
 }

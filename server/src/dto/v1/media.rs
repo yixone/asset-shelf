@@ -37,7 +37,7 @@ impl From<MediaFile> for MediaFileDtoV1 {
             url: build_media_url(&file.media_id, file.variant),
             size_bytes: file.size_bytes,
             mimetype: file.mimetype,
-            duration_milis: file.duration_milis,
+            duration_milis: file.duration_ms,
         }
     }
 }

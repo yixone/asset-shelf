@@ -169,8 +169,7 @@ impl MediaWorkerService {
                 .db
                 .assets
                 .update_state(asset.inner.id, AssetState::Ready)
-                .await?
-                .no_changes()
+                .await?;
         };
 
         tracing::info!(
@@ -248,7 +247,7 @@ impl MediaWorkerService {
 
         // Extracts metadata from video
         let metadata = media::video::probe_video(&video).await.to_app_err()?;
-        let duration_milis = (metadata.video.duration_secs * 1000.0) as i64;
+        let duration_ms = (metadata.video.duration_secs * 1000.0) as i64;
         let res = metadata.video.resolution;
         let (width, height) = (res.width, res.height);
 
@@ -259,7 +258,7 @@ impl MediaWorkerService {
         let frame = Image::from_dynamic(frame);
 
         // Generates video variants
-        self.generate_video_variants(asset, duration_milis, &frame, &video)
+        self.generate_video_variants(asset, duration_ms, &frame, &video)
             .await?;
 
         // Extract features from thumbnail
@@ -275,7 +274,7 @@ impl MediaWorkerService {
             .height(Some(height))
             .width(Some(width))
             .accent_color(Some(color));
-        let f_patch = MediaFilePatch::new().duration_milis(Some(duration_milis));
+        let f_patch = MediaFilePatch::new().duration_ms(Some(duration_ms));
 
         self.ctx
             .db
@@ -302,7 +301,7 @@ impl MediaWorkerService {
     async fn generate_video_variants(
         &self,
         asset: &AssetQuery,
-        video_duration_milis: i64,
+        video_duration_ms: i64,
         frame: &Image,
         video: &MediaInput,
     ) -> Result<()> {
@@ -328,7 +327,7 @@ impl MediaWorkerService {
                 MediaVariant::LoopPreview.as_str(),
             ));
 
-            let duration = Duration::from_millis((5000).min(video_duration_milis as u64));
+            let duration = Duration::from_millis((5000).min(video_duration_ms as u64));
 
             video::extract_video_fragment(
                 video,
@@ -356,7 +355,7 @@ impl MediaWorkerService {
                 created_at: Utc::now(),
                 size_bytes: file.size_bytes as i64,
                 mimetype: MimeType::Mp4,
-                duration_milis: Some(duration.as_millis() as i64),
+                duration_ms: Some(duration.as_millis() as i64),
             };
 
             self.ctx.db.media.insert_file(&variant_media_file).await?;
@@ -418,7 +417,7 @@ impl MediaWorkerService {
             created_at: Utc::now(),
             size_bytes: variant_file.size_bytes as i64,
             mimetype,
-            duration_milis: None,
+            duration_ms: None,
         };
 
         self.ctx.db.media.insert_file(&variant_media_file).await?;

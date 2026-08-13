@@ -38,7 +38,7 @@ where
             INSERT INTO media_files (
                 id, storage_path, media_id,
                 variant, created_at, size_bytes, mimetype,
-                duration_milis
+                duration_ms
             )
             VALUES (
                 ?, ?, ?,
@@ -54,7 +54,7 @@ where
     .bind(file.created_at)
     .bind(file.size_bytes)
     .bind(file.mimetype)
-    .bind(file.duration_milis)
+    .bind(file.duration_ms)
     .execute(exec)
     .await
     .to_app_err()?;

@@ -15,13 +15,13 @@ where
             INSERT INTO assets (
                 id, state,
                 media_id, media_type,
-                created_at, deleted_at,
+                created_at, updated_at, deleted_at,
                 title, caption, source_url
             )
             VALUES (
                 ?, ?,
                 ?, ?,
-                ?, ?,
+                ?, ?, ?,
                 ?, ?, ?
             )
             ",
@@ -31,6 +31,7 @@ where
     .bind(&asset.media_id)
     .bind(asset.media_type)
     .bind(asset.created_at)
+    .bind(asset.updated_at)
     .bind(asset.deleted_at)
     .bind(&asset.title)
     .bind(&asset.caption)
