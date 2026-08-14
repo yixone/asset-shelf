@@ -17,3 +17,7 @@ async-trait = { workspace = true }
 chrono = { workspace = true }
 sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }
 tracing = { workspace = true }
+
+[dev-dependencies]
+db-core = { workspace = true, features = ["tests"] }
+tokio = { workspace = true, features = ["macros"] }

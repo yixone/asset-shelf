@@ -20,7 +20,7 @@ use sqlx::QueryBuilder;
 use crate::{driver::SqliteDatabase, helpers::hydrate};
 
 pub struct SqliteCollectionRepository {
-    pub(crate) db: Arc<SqliteDatabase>,
+    pub db: Arc<SqliteDatabase>,
 }
 
 #[async_trait::async_trait]

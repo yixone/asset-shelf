@@ -73,9 +73,11 @@ impl<T> JoinBuilder<T> {
         }
     }
 
-    /// Performs an **inner join** for a one-to-many relationship.
+    /// Performs an join for a one-to-many relationship.
     ///
     /// Join based on the `on.reference_key` = `ref.join_on_key` condition
+    ///
+    /// If the `rel` component is missing from the (`on`, `rel`) pair, it returns an empty array for that pair
     pub fn with_group<W, F, J>(self, with: Vec<W>, on: F) -> JoinBuilder<(T, Vec<W>)>
     where
         F: Fn(&T) -> &J,
@@ -87,10 +89,12 @@ impl<T> JoinBuilder<T> {
             join: self
                 .join
                 .into_iter()
-                .filter_map(|j| {
+                .map(|j| {
                     let key = on(&j).key();
-                    let r = hash_idx.get(key)?.clone();
-                    Some((j, r))
+                    match hash_idx.get(key).cloned() {
+                        Some(r) => (j, r),
+                        None => (j, vec![]),
+                    }
                 })
                 .collect(),
         }

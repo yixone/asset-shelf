@@ -25,7 +25,7 @@ use crate::{
 };
 
 pub struct SqliteAssetRepository {
-    pub(crate) db: Arc<SqliteDatabase>,
+    pub db: Arc<SqliteDatabase>,
 }
 
 #[async_trait::async_trait]

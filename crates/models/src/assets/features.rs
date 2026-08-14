@@ -24,6 +24,18 @@ pub struct AssetFeatures {
 }
 
 impl AssetFeatures {
+    /// Creates a new [`AssetFeatures`]
+    pub fn new(asset_id: AssetId) -> Self {
+        Self {
+            asset_id,
+            p_hash: None,
+            a_hash: None,
+            width: None,
+            height: None,
+            accent_color: None,
+        }
+    }
+
     /// Returns `true` if all required optional fields are present.
     /// Otherwise, returns `false`
     pub fn enough_fields(&self) -> bool {

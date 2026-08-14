@@ -3,11 +3,16 @@ name = "db-core"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+tests = ["dep:flake-id", "dep:mimetype"]
+
 [dependencies]
 # Workspace
 models = { workspace = true }
 result = { workspace = true }
 join = { workspace = true }
+flake-id = { workspace = true, optional = true }
+mimetype = { workspace = true, optional = true }
 
 # External
 async-trait = { workspace = true }
