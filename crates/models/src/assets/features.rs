@@ -18,6 +18,24 @@ pub struct AssetFeatures {
     pub width: Option<u32>,
     /// Media height
     pub height: Option<u32>,
+
     /// Media file accent color
     pub accent_color: Option<Color>,
+}
+
+impl AssetFeatures {
+    /// Returns `true` if all required optional fields are present.
+    /// Otherwise, returns `false`
+    pub fn enough_fields(&self) -> bool {
+        if self.a_hash.is_none()
+            || self.accent_color.is_none()
+            || self.p_hash.is_none()
+            || self.width.is_none()
+            || self.height.is_none()
+        {
+            return false;
+        }
+
+        true
+    }
 }

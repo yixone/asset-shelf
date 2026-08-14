@@ -1,4 +1,4 @@
-use models::{entities::CollectionAdditions, types::CollectionId};
+use models::{collections::CollectionAdditions, types::CollectionId};
 use result::{Result, error::ResultExt};
 use sqlx::{Executor, QueryBuilder, Sqlite};
 

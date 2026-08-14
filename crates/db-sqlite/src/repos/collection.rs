@@ -2,12 +2,14 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use db_core::{
-    queries::collection::{CollectionItemQuery, CollectionQuery},
     repos::collection::CollectionRepository,
     types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::CollectionPatch},
 };
 use models::{
-    entities::{Collection, CollectionAsset},
+    collections::{
+        Collection, CollectionAsset,
+        view::{CollectionItemView, CollectionView},
+    },
     types::{
         AssetId, CollectionAssetId, CollectionAssetsOrdering, CollectionId, CollectionsOrdering,
     },
@@ -53,7 +55,7 @@ impl CollectionRepository for SqliteCollectionRepository {
         &self,
         id: CollectionId,
         patch: CollectionPatch,
-    ) -> Result<UpdateResult<CollectionQuery>> {
+    ) -> Result<UpdateResult<CollectionView>> {
         let mut qb = QueryBuilder::new(
             "
             UPDATE collections
@@ -97,7 +99,7 @@ impl CollectionRepository for SqliteCollectionRepository {
         id: CollectionId,
         pagination: Pagination,
         order: CollectionAssetsOrdering,
-    ) -> Result<Vec<CollectionItemQuery>> {
+    ) -> Result<Vec<CollectionItemView>> {
         if pagination.limit() == 0 {
             return Ok(Vec::new());
         }
@@ -184,7 +186,7 @@ impl CollectionRepository for SqliteCollectionRepository {
         Ok(res.into())
     }
 
-    async fn get_by_ids(&self, ids: &[CollectionId]) -> Result<Vec<CollectionQuery>> {
+    async fn get_by_ids(&self, ids: &[CollectionId]) -> Result<Vec<CollectionView>> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -214,7 +216,7 @@ impl CollectionRepository for SqliteCollectionRepository {
         &self,
         pagination: Pagination,
         order: CollectionsOrdering,
-    ) -> Result<Vec<CollectionQuery>> {
+    ) -> Result<Vec<CollectionView>> {
         if pagination.limit() == 0 {
             return Ok(Vec::new());
         }

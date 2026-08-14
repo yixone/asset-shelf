@@ -1,6 +1,6 @@
 use flake_id::str::FlakeIdStr;
 use models::{
-    entities::CollectionAdditions,
+    collections::CollectionAdditions,
     types::{CollectionId, MediaId},
 };
 use sqlx::FromRow;

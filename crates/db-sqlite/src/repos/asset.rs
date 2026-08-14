@@ -3,7 +3,6 @@ use std::sync::Arc;
 use chrono::Utc;
 use db_core::{
     ops::create_asset::CreateAssetOp,
-    queries::asset::AssetQuery,
     repos::asset::AssetRepository,
     types::{
         DeleteResult, Pagination, UpdateResult,
@@ -11,7 +10,7 @@ use db_core::{
     },
 };
 use models::{
-    entities::AssetFeatures,
+    assets::{AssetFeatures, view::AssetView},
     types::{AssetId, AssetsOrdering, Color},
 };
 use result::{Result, create_error, error::ResultExt};
@@ -33,7 +32,7 @@ impl AssetRepository for SqliteAssetRepository {
         Ok(Box::new(op))
     }
 
-    async fn update(&self, id: AssetId, patch: AssetPatch) -> Result<UpdateResult<AssetQuery>> {
+    async fn update(&self, id: AssetId, patch: AssetPatch) -> Result<UpdateResult<AssetView>> {
         let mut qb = QueryBuilder::new(
             "
             UPDATE assets
@@ -62,7 +61,7 @@ impl AssetRepository for SqliteAssetRepository {
         &self,
         id: AssetId,
         patch: AssetFeaturesPatch,
-    ) -> Result<UpdateResult<AssetQuery>> {
+    ) -> Result<UpdateResult<AssetView>> {
         let mut qb = QueryBuilder::new(
             "
             UPDATE asset_features
@@ -98,7 +97,7 @@ impl AssetRepository for SqliteAssetRepository {
         Ok(res.into())
     }
 
-    async fn get_by_ids(&self, ids: &[AssetId]) -> Result<Vec<AssetQuery>> {
+    async fn get_by_ids(&self, ids: &[AssetId]) -> Result<Vec<AssetView>> {
         let mut conn = self.db.acquire().await?;
 
         let assets = queries::asset::get_assets(ids, &mut *conn).await?;
@@ -110,7 +109,7 @@ impl AssetRepository for SqliteAssetRepository {
         &self,
         pagination: Pagination,
         order: AssetsOrdering,
-    ) -> Result<Vec<AssetQuery>> {
+    ) -> Result<Vec<AssetView>> {
         if pagination.limit() == 0 {
             return Ok(Vec::new());
         }
@@ -139,7 +138,7 @@ impl AssetRepository for SqliteAssetRepository {
         hydrate::hydrate_assets(assets, &mut conn).await
     }
 
-    async fn get_random(&self) -> Result<AssetQuery> {
+    async fn get_random(&self) -> Result<AssetView> {
         let mut conn = self.db.acquire().await?;
 
         let asset = sqlx::query_as(
@@ -161,7 +160,7 @@ impl AssetRepository for SqliteAssetRepository {
             .ok_or(create_error!(NotFound))
     }
 
-    async fn get_for_processing(&self, limit: u32) -> Result<Vec<AssetQuery>> {
+    async fn get_for_processing(&self, limit: u32) -> Result<Vec<AssetView>> {
         let mut conn = self.db.acquire().await?;
 
         let assets = sqlx::query_as(
@@ -266,7 +265,7 @@ impl AssetRepository for SqliteAssetRepository {
         .to_app_err()
     }
 
-    async fn list(&self, pagination: Pagination, order: AssetsOrdering) -> Result<Vec<AssetQuery>> {
+    async fn list(&self, pagination: Pagination, order: AssetsOrdering) -> Result<Vec<AssetView>> {
         if pagination.limit() == 0 {
             return Ok(Vec::new());
         }

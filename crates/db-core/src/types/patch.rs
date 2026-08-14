@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use models::{entities::AssetState, types::Color};
+use models::{assets::AssetState, types::Color};
 
 /// Data field for the patch
 #[derive(Debug, Default, PartialEq)]

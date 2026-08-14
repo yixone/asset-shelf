@@ -1,25 +1,3 @@
-use chrono::{DateTime, Utc};
-use mimetype::MimeType;
-
-use crate::types::{MediaFileId, MediaId};
-
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
-pub struct MediaFile {
-    pub id: MediaFileId,
-    pub media_id: MediaId,
-
-    pub variant: MediaVariant,
-    pub storage_path: String,
-
-    pub created_at: DateTime<Utc>,
-
-    pub size_bytes: i64,
-    pub mimetype: MimeType,
-
-    pub duration_ms: Option<i64>,
-}
-
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
 #[cfg_attr(

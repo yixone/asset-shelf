@@ -1,6 +1,6 @@
 use actix_web::{HttpResponse, post, web};
 use chrono::Utc;
-use models::entities::{Collection, CollectionAdditions};
+use models::collections::{Collection, CollectionAdditions};
 use serde::Deserialize;
 
 use crate::{di::DataCtx, dto::v1::collections::CollectionDtoV1, routes::ApiResult};

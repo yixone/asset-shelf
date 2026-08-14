@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use mimetype::MimeType;
-use models::entities::{MediaFile, MediaVariant};
+use models::media::{MediaFile, MediaVariant};
 use serde::Serialize;
 
 use crate::utils::url::build_media_url;

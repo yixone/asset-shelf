@@ -164,7 +164,7 @@ impl<T> JoinBuilder<T> {
 #[macro_export]
 macro_rules! impl_joinable {
     ($right:path[$($rk:ident).+] with $left:ty[$($lk:ident).+] as $keyt:ty) => {
-        impl Joinable<$right> for $left {
+        impl $crate::Joinable<$right> for $left {
             type Key = $keyt;
             fn key(&self) -> &Self::Key {
                 &self.$($lk).+
@@ -174,7 +174,7 @@ macro_rules! impl_joinable {
             }
         }
 
-        impl Joinable<$left> for $right {
+        impl $crate::Joinable<$left> for $right {
             type Key = $keyt;
             fn key(&self) -> &Self::Key {
                 &self.$($rk).+

@@ -2,7 +2,11 @@ use db_core::{
     ops::{Operation, create_asset::CreateAssetOp},
     types::InsertResult,
 };
-use models::entities::{Asset, AssetFeatures, Media, MediaFile};
+
+use models::{
+    assets::{Asset, AssetFeatures},
+    media::{Media, MediaFile},
+};
 use result::{Result, error::ResultExt};
 use sqlx::SqliteTransaction;
 

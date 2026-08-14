@@ -4,7 +4,10 @@ use chrono::Utc;
 use events::AssetCreatedEvent;
 use futures::TryStreamExt;
 use mimetype::MimeType;
-use models::entities::{Asset, AssetFeatures, Media, MediaFile, MediaVariant};
+use models::{
+    assets::{Asset, AssetFeatures},
+    media::{Media, MediaFile, MediaVariant},
+};
 use result::{create_error, error::ResultExt};
 use storage::{files::UncommitedFile, global::GlobalPathData};
 

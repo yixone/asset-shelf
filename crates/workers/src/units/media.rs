@@ -1,15 +1,11 @@
 use std::{
-    collections::HashSet,
     str::FromStr,
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use chrono::Utc;
-use db::{
-    queries::asset::AssetQuery,
-    types::patch::{AssetFeaturesPatch, MediaFilePatch},
-};
+use db::types::patch::{AssetFeaturesPatch, MediaFilePatch};
 use events::{AssetCreatedEvent, EventBus};
 use media::{
     image::{Image, ImageDecoder, ImageFormat},
@@ -19,7 +15,8 @@ use media::{
 };
 use mimetype::{MimeKind, MimeType};
 use models::{
-    entities::{AssetState, MediaFile, MediaVariant},
+    assets::{AssetState, view::AssetView},
+    media::{MediaFile, MediaVariant},
     types::{AssetId, Color, MediaId},
 };
 use result::{ErrorKind, Result, error::ResultExt};
@@ -124,9 +121,8 @@ impl MediaWorkerService {
     }
 
     /// Executes the common media processing pipeline for the specified [`Asset`]
-    async fn process_asset_media(&self, asset: &AssetQuery) -> Result<()> {
-        // Check that the received asset is not marked as being processed
-        if asset.inner.state == AssetState::Processing {
+    async fn process_asset_media(&self, asset: &AssetView) -> Result<()> {
+        if !asset.inner.need_processing(&asset.features, Utc::now()) {
             return Ok(());
         }
 
@@ -180,7 +176,7 @@ impl MediaWorkerService {
     }
 
     /// Executes the media image processing pipeline for the specified [`Asset`]
-    async fn process_asset_as_image(&self, asset: &AssetQuery) -> Result<()> {
+    async fn process_asset_as_image(&self, asset: &AssetView) -> Result<()> {
         tracing::info!("Processing {} as image", asset.inner.id);
 
         // Retrieves information about the original media file
@@ -227,7 +223,7 @@ impl MediaWorkerService {
     }
 
     /// Executes the media video processing pipeline for the specified [`Asset`]
-    async fn process_asset_as_video(&self, asset: &AssetQuery) -> Result<()> {
+    async fn process_asset_as_video(&self, asset: &AssetView) -> Result<()> {
         tracing::info!("Processing {} as video", asset.inner.id);
 
         // Retrieves information about the original media file
@@ -286,27 +282,15 @@ impl MediaWorkerService {
         Ok(())
     }
 
-    /// Checks which variants already exist for the specified asset
-    async fn get_exists_media_variants(&self, asset: &AssetQuery) -> Result<HashSet<MediaVariant>> {
-        let stored_variants = &asset.media;
-        let mut variants = HashSet::with_capacity(stored_variants.len());
-
-        for v in stored_variants {
-            variants.insert(v.variant);
-        }
-
-        Ok(variants)
-    }
-
     async fn generate_video_variants(
         &self,
-        asset: &AssetQuery,
+        asset: &AssetView,
         video_duration_ms: i64,
         frame: &Image,
         video: &MediaInput,
     ) -> Result<()> {
         // Checks which variants already exist for the specified asset
-        let variants = self.get_exists_media_variants(asset).await?;
+        let variants = asset.media_variants();
 
         if !variants.contains(&MediaVariant::Thumbnail) {
             let thumbnail = frame
@@ -368,9 +352,9 @@ impl MediaWorkerService {
         Ok(())
     }
 
-    async fn generate_image_variants(&self, asset: &AssetQuery, img: &Image) -> Result<()> {
+    async fn generate_image_variants(&self, asset: &AssetView, img: &Image) -> Result<()> {
         // Checks which variants already exist for the specified asset
-        let variants = self.get_exists_media_variants(asset).await?;
+        let variants = asset.media_variants();
 
         // Generates and saves a thumbnail
         if !variants.contains(&MediaVariant::Thumbnail) {

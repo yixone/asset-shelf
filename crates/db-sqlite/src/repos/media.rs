@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use db_core::{
-    queries::media::MediaQuery,
     repos::media::MediaRepository,
     types::{DeleteResult, InsertResult, UpdateResult, patch::MediaFilePatch},
 };
 use models::{
-    entities::{Media, MediaFile, MediaVariant},
+    media::{Media, MediaFile, MediaVariant, view::MediaView},
     types::{MediaFileId, MediaId},
 };
 use result::{Result, create_error, error::ResultExt};
@@ -146,7 +145,7 @@ impl MediaRepository for SqliteMediaRepository {
         Ok(res.into())
     }
 
-    async fn get_by_ids(&self, ids: &[MediaId]) -> Result<Vec<MediaQuery>> {
+    async fn get_by_ids(&self, ids: &[MediaId]) -> Result<Vec<MediaView>> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -171,7 +170,7 @@ impl MediaRepository for SqliteMediaRepository {
         hydrate::hydrate_media(media, &mut conn).await
     }
 
-    async fn get_orphans(&self, limit: u32) -> Result<Vec<MediaQuery>> {
+    async fn get_orphans(&self, limit: u32) -> Result<Vec<MediaView>> {
         let mut conn = self.db.acquire().await?;
 
         let orphans = sqlx::query_as(

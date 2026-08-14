@@ -1,11 +1,12 @@
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 use chrono::Utc;
-use db::{queries::media::MediaQuery, types::Pagination};
+use db::types::Pagination;
 
 use events::{AssetDeletedEvent, EventBus};
 use models::{
-    entities::{Asset, MediaFile},
+    assets::Asset,
+    media::{MediaFile, view::MediaView},
     types::{AssetsOrdering, MediaId},
 };
 use result::{Result, error::ResultExt};
@@ -148,7 +149,7 @@ impl CleanupWorkerService {
         Ok(())
     }
 
-    async fn delete_media(&self, media: MediaQuery) -> Result<()> {
+    async fn delete_media(&self, media: MediaView) -> Result<()> {
         for f in &media.files {
             self.ctx.db.media.delete_file(&f.id).await?;
             self.delete_media_file(f).await?;

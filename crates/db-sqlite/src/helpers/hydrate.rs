@@ -1,9 +1,11 @@
-use db_core::queries::{
-    asset::AssetQuery,
-    collection::{CollectionItemQuery, CollectionQuery},
-    media::MediaQuery,
+use models::{
+    assets::{Asset, view::AssetView},
+    collections::{
+        Collection, CollectionAsset,
+        view::{CollectionItemView, CollectionView},
+    },
+    media::{Media, view::MediaView},
 };
-use models::entities::{Asset, Collection, CollectionAsset, Media};
 use result::Result;
 
 use crate::queries;
@@ -11,7 +13,7 @@ use crate::queries;
 pub async fn hydrate_assets(
     assets: Vec<Asset>,
     exec: &mut sqlx::SqliteConnection,
-) -> Result<Vec<AssetQuery>> {
+) -> Result<Vec<AssetView>> {
     let features_ids = assets.iter().map(|a| a.id).collect::<Vec<_>>();
     let features = queries::asset::get_assets_features(&features_ids, &mut *exec).await?;
 
@@ -21,43 +23,39 @@ pub async fn hydrate_assets(
         .collect::<Vec<_>>();
     let media = queries::media::get_media_files(&media_ids, &mut *exec).await?;
 
-    let query = AssetQuery::from_domains(assets, features, media);
-
-    Ok(query)
+    Ok(AssetView::from_models(assets, features, media))
 }
 
 pub async fn hydrate_collections(
     collections: Vec<Collection>,
     exec: &mut sqlx::SqliteConnection,
-) -> Result<Vec<CollectionQuery>> {
+) -> Result<Vec<CollectionView>> {
     let ids = collections.iter().map(|c| c.id).collect::<Vec<_>>();
     let ca = queries::collection::get_collections_additions(&ids, exec).await?;
 
-    Ok(CollectionQuery::from_domains(collections, ca))
+    Ok(CollectionView::from_models(collections, ca))
 }
 
 pub async fn hydrate_collection_assets(
     items: Vec<CollectionAsset>,
     exec: &mut sqlx::SqliteConnection,
-) -> Result<Vec<CollectionItemQuery>> {
+) -> Result<Vec<CollectionItemView>> {
     let assets_ids = items.iter().map(|c| c.asset_id).collect::<Vec<_>>();
     // Loads the list of asset domains
     let a = queries::asset::get_assets(&assets_ids, &mut *exec).await?;
     let assets = hydrate_assets(a, exec).await?;
 
     // Assembles the model query
-    let res = CollectionItemQuery::from_domains(items, assets);
-    Ok(res)
+    Ok(CollectionItemView::from_models(items, assets))
 }
 
 pub async fn hydrate_media(
     media: Vec<Media>,
     exec: &mut sqlx::SqliteConnection,
-) -> Result<Vec<MediaQuery>> {
+) -> Result<Vec<MediaView>> {
     let media_ids = media.iter().map(|m| m.id.clone()).collect::<Vec<_>>();
 
     let files = queries::media::get_media_files(&media_ids, &mut *exec).await?;
 
-    let res = MediaQuery::from_domains(media, files);
-    Ok(res)
+    Ok(MediaView::from_models(media, files))
 }

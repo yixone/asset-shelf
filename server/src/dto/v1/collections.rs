@@ -1,6 +1,11 @@
 use chrono::{DateTime, Utc};
-use db::queries::collection::{CollectionItemQuery, CollectionQuery};
-use models::entities::{Collection, CollectionAdditions, CollectionAsset, MediaVariant};
+use models::{
+    collections::{
+        Collection, CollectionAdditions, CollectionAsset,
+        view::{CollectionItemView, CollectionView},
+    },
+    media::MediaVariant,
+};
 use serde::Serialize;
 
 use crate::{dto::v1::assets::AssetDtoV1, utils::url::build_media_url};
@@ -15,10 +20,10 @@ pub struct CollectionDtoV1 {
     created_at: DateTime<Utc>,
 }
 
-impl From<CollectionQuery> for CollectionDtoV1 {
-    fn from(q: CollectionQuery) -> Self {
+impl From<CollectionView> for CollectionDtoV1 {
+    fn from(q: CollectionView) -> Self {
         let collection = q.inner;
-        let additions = q.addition;
+        let additions = q.add;
         CollectionDtoV1::from((collection, additions))
     }
 }
@@ -47,8 +52,8 @@ pub struct CollectionAssetDtoV1 {
     asset: AssetDtoV1,
 }
 
-impl From<CollectionItemQuery> for CollectionAssetDtoV1 {
-    fn from(q: CollectionItemQuery) -> Self {
+impl From<CollectionItemView> for CollectionAssetDtoV1 {
+    fn from(q: CollectionItemView) -> Self {
         let ca = q.inner;
         let asset = q.asset;
         CollectionAssetDtoV1::from((ca, asset))

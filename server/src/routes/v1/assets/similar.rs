@@ -33,7 +33,7 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
     searcher.sort_by_score();
 
     let similar = searcher.finalize();
-    let ids = similar.iter().map(|s| s.asset_id).collect::<Vec<_>>();
+    let ids = similar.iter().map(|s| s.item.asset_id).collect::<Vec<_>>();
 
     let assets = ctx.db.assets.get_by_ids(&ids).await?;
     let res = assets.into_iter().map(AssetDtoV1::from).collect::<Vec<_>>();
@@ -42,16 +42,17 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
 }
 
 mod searcher {
-    use models::{entities::AssetFeatures, types::Color};
+    use models::{
+        assets::{
+            AssetFeatures,
+            similar::{SimilarAsset, SimilarScore},
+        },
+        types::Color,
+    };
 
     pub struct SimilarSearcher {
         reference: AssetFeatures,
-        features: Vec<ScoredFeatures>,
-    }
-
-    pub struct ScoredFeatures {
-        feature: AssetFeatures,
-        score: u32,
+        features: Vec<SimilarAsset>,
     }
 
     const PHASH_WEIGHT: f32 = 0.75;
@@ -73,15 +74,15 @@ mod searcher {
 
         pub fn filter(&mut self, score_threshold: u32) {
             self.features.retain_mut(|f| {
-                if f.feature.asset_id == self.reference.asset_id {
+                if f.item.asset_id == self.reference.asset_id {
                     return false;
                 }
 
-                let init_score = f.score;
+                let init_score = f.score.total_score();
 
                 // Adds a pHash score
                 let phash = calc_hash_score(
-                    f.feature.p_hash,
+                    f.item.p_hash,
                     self.reference.p_hash,
                     PHASH_MAX_DISTANCE,
                     PHASH_WEIGHT,
@@ -89,7 +90,7 @@ mod searcher {
 
                 // Adds a aHash score
                 let ahash = calc_hash_score(
-                    f.feature.a_hash,
+                    f.item.a_hash,
                     self.reference.a_hash,
                     AHASH_MAX_DISTANCE,
                     AHASH_WEIGHT,
@@ -97,36 +98,37 @@ mod searcher {
 
                 // Adds a color score
                 let color = calc_color_score(
-                    f.feature.accent_color,
+                    f.item.accent_color,
                     self.reference.accent_color,
                     COLOR_WEIGHT,
                 );
 
-                f.score += phash;
-                f.score += ahash;
-                f.score += color;
+                f.score.phash += phash;
+                f.score.ahash += ahash;
+                f.score.color += color;
 
-                let stage_score = f.score - init_score;
+                let stage_score = f.score.total_score() - init_score;
 
-                tracing::info!(color, phash, ahash, stage_score, id = ?f.feature.asset_id);
+                tracing::info!(color, phash, ahash, stage_score, id = ?f.item.asset_id);
 
                 stage_score >= score_threshold
             });
         }
 
         pub fn sort_by_score(&mut self) {
-            self.features.sort_by(|a, b| b.score.cmp(&a.score));
+            self.features
+                .sort_by(|a, b| b.score.total_score().cmp(&a.score.total_score()));
         }
 
-        pub fn finalize(self) -> Vec<AssetFeatures> {
-            self.features.into_iter().map(|f| f.feature).collect()
+        pub fn finalize(self) -> Vec<SimilarAsset> {
+            self.features
         }
 
         pub fn add_features(&mut self, feats: Vec<AssetFeatures>) {
             self.features
-                .extend(feats.into_iter().map(|f| ScoredFeatures {
-                    feature: f,
-                    score: 0,
+                .extend(feats.into_iter().map(|f| SimilarAsset {
+                    item: f,
+                    score: SimilarScore::new(),
                 }));
         }
     }

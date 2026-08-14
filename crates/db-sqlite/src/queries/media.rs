@@ -1,6 +1,6 @@
 use db_core::types::InsertResult;
 use models::{
-    entities::{Media, MediaFile},
+    media::{Media, MediaFile},
     types::MediaId,
 };
 use result::{Result, error::ResultExt};

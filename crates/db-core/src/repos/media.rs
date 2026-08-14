@@ -1,13 +1,10 @@
 use models::{
-    entities::{Media, MediaFile, MediaVariant},
+    media::{Media, MediaFile, MediaVariant, view::MediaView},
     types::{MediaFileId, MediaId},
 };
 use result::{Result, create_error};
 
-use crate::{
-    queries::media::MediaQuery,
-    types::{DeleteResult, InsertResult, UpdateResult, patch::MediaFilePatch},
-};
+use crate::types::{DeleteResult, InsertResult, UpdateResult, patch::MediaFilePatch};
 
 #[async_trait::async_trait]
 pub trait MediaRepository: Send + Sync {
@@ -27,12 +24,12 @@ pub trait MediaRepository: Send + Sync {
 
     async fn delete(&self, id: &MediaId) -> Result<DeleteResult>;
 
-    async fn get_by_id(&self, id: &MediaId) -> Result<MediaQuery> {
+    async fn get_by_id(&self, id: &MediaId) -> Result<MediaView> {
         let q = self.get_by_ids(std::slice::from_ref(id)).await?;
         q.into_iter().next().ok_or(create_error!(NotFound))
     }
 
-    async fn get_by_ids(&self, ids: &[MediaId]) -> Result<Vec<MediaQuery>>;
+    async fn get_by_ids(&self, ids: &[MediaId]) -> Result<Vec<MediaView>>;
 
-    async fn get_orphans(&self, limit: u32) -> Result<Vec<MediaQuery>>;
+    async fn get_orphans(&self, limit: u32) -> Result<Vec<MediaView>>;
 }

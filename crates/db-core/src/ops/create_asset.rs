@@ -1,4 +1,7 @@
-use models::entities::{Asset, AssetFeatures, Media, MediaFile};
+use models::{
+    assets::{Asset, AssetFeatures},
+    media::{Media, MediaFile},
+};
 use result::Result;
 
 use crate::{ops::Operation, types::InsertResult};

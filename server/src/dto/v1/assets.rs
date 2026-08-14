@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
-use db::queries::asset::AssetQuery;
 use mimetype::MimeKind;
-use models::entities::{Asset, AssetFeatures, AssetState};
+use models::assets::{Asset, AssetFeatures, AssetState, view::AssetView};
 use serde::Serialize;
 
 use crate::dto::v1::media::MediaGroupDtoV1;
@@ -30,8 +29,8 @@ pub struct AssetDtoV1 {
     color: Option<String>,
 }
 
-impl From<AssetQuery> for AssetDtoV1 {
-    fn from(q: AssetQuery) -> Self {
+impl From<AssetView> for AssetDtoV1 {
+    fn from(q: AssetView) -> Self {
         let asset = q.inner;
         let asset_features = q.features;
         let media = q.media;

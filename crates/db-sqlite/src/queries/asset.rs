@@ -1,6 +1,6 @@
 use db_core::types::InsertResult;
 use models::{
-    entities::{Asset, AssetFeatures},
+    assets::{Asset, AssetFeatures},
     types::AssetId,
 };
 use result::{Result, error::ResultExt};

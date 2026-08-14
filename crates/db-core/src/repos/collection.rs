@@ -1,15 +1,15 @@
 use models::{
-    entities::{Collection, CollectionAsset},
+    collections::{
+        Collection, CollectionAsset,
+        view::{CollectionItemView, CollectionView},
+    },
     types::{
         AssetId, CollectionAssetId, CollectionAssetsOrdering, CollectionId, CollectionsOrdering,
     },
 };
 use result::{Result, create_error};
 
-use crate::{
-    queries::collection::{CollectionItemQuery, CollectionQuery},
-    types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::CollectionPatch},
-};
+use crate::types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::CollectionPatch};
 
 #[async_trait::async_trait]
 pub trait CollectionRepository: Send + Sync {
@@ -19,7 +19,7 @@ pub trait CollectionRepository: Send + Sync {
         &self,
         id: CollectionId,
         patch: CollectionPatch,
-    ) -> Result<UpdateResult<CollectionQuery>>;
+    ) -> Result<UpdateResult<CollectionView>>;
 
     async fn delete(&self, id: CollectionId) -> Result<DeleteResult>;
 
@@ -28,7 +28,7 @@ pub trait CollectionRepository: Send + Sync {
         id: CollectionId,
         pagination: Pagination,
         order: CollectionAssetsOrdering,
-    ) -> Result<Vec<CollectionItemQuery>>;
+    ) -> Result<Vec<CollectionItemView>>;
 
     async fn add_asset(
         &self,
@@ -39,16 +39,16 @@ pub trait CollectionRepository: Send + Sync {
 
     async fn remove_asset(&self, id: CollectionId, rel: CollectionAssetId) -> Result<DeleteResult>;
 
-    async fn get_by_id(&self, id: CollectionId) -> Result<CollectionQuery> {
+    async fn get_by_id(&self, id: CollectionId) -> Result<CollectionView> {
         let q = self.get_by_ids(&[id]).await?;
         q.into_iter().next().ok_or(create_error!(NotFound))
     }
 
-    async fn get_by_ids(&self, ids: &[CollectionId]) -> Result<Vec<CollectionQuery>>;
+    async fn get_by_ids(&self, ids: &[CollectionId]) -> Result<Vec<CollectionView>>;
 
     async fn list(
         &self,
         pagination: Pagination,
         order: CollectionsOrdering,
-    ) -> Result<Vec<CollectionQuery>>;
+    ) -> Result<Vec<CollectionView>>;
 }

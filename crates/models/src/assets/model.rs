@@ -1,7 +1,10 @@
 use chrono::{DateTime, Utc};
 use mimetype::MimeKind;
 
-use crate::types::{AssetId, MediaId};
+use crate::{
+    assets::{AssetFeatures, AssetState},
+    types::{AssetId, MediaId},
+};
 
 /// An asset domain representing a media file in storage
 #[derive(Debug, Clone)]
@@ -33,6 +36,7 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// Creates a new [`Asset`]
     pub fn new(
         id: AssetId,
         media_id: MediaId,
@@ -55,24 +59,43 @@ impl Asset {
             source_url,
         }
     }
-}
 
-/// Asset state within its lifecycle
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-#[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(rename_all = "lowercase")
-)]
-pub enum AssetState {
-    /// The asset has only been uploaded
-    /// and has not yet been processed
-    Pending,
-    /// The asset is processed by a background worker
-    Processing,
-    /// The asset has been processed and is ready for display
-    Ready,
-    /// An error occurred while working with the asset
-    Failed,
+    /// Returns `true` if the current [`Asset`] is marked as deletet
+    pub fn is_deleted(&self) -> bool {
+        self.deleted_at.is_some()
+    }
+
+    /// Checks whether the [`Asset`] requires processing
+    pub fn need_processing(&self, feats: &AssetFeatures, now: DateTime<Utc>) -> bool {
+        let state = self.state;
+
+        // The asset has not yet been processed
+        if state == AssetState::Pending {
+            return true;
+        }
+
+        // The asset was not processed due to an error or hang
+        let need_failed_check = matches!(state, AssetState::Processing | AssetState::Failed);
+
+        if need_failed_check && ((now - self.updated_at).num_minutes() > 5) {
+            return true;
+        }
+
+        // The asset was processed previously but currently lacks all the necessary fields
+        if state == AssetState::Ready && !feats.enough_fields() {
+            return true;
+        }
+
+        false
+    }
+
+    /// Returns `true` if the current [`Asset`] is an image
+    pub fn is_image(&self) -> bool {
+        matches!(self.media_type, MimeKind::Image)
+    }
+
+    /// Returns `true` if the current [`Asset`] is a video
+    pub fn is_video(&self) -> bool {
+        matches!(self.media_type, MimeKind::Video)
+    }
 }

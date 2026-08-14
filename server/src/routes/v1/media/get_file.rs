@@ -9,7 +9,7 @@ use actix_web::{
 use events::FileDetachedEvent;
 use mimetype::MimeKind;
 use models::{
-    entities::{MediaFile, MediaVariant},
+    media::{MediaFile, MediaVariant},
     types::MediaId,
 };
 use result::{ErrorKind, Result, create_error, error::ResultExt};
