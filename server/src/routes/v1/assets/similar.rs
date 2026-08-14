@@ -4,7 +4,7 @@ use models::types::AssetId;
 
 use crate::{
     di::DataCtx,
-    dto::v1::assets::AssetDtoV1,
+    dto::v1::assets::SimilarAssetDtoV1,
     routes::{ApiResult, v1::assets::similar::searcher::SimilarSearcher},
 };
 
@@ -33,10 +33,12 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
     searcher.sort_by_score();
 
     let similar = searcher.finalize();
-    let ids = similar.iter().map(|s| s.item.asset_id).collect::<Vec<_>>();
+    let assets = ctx.db.assets.get_from_similar(similar).await?;
 
-    let assets = ctx.db.assets.get_by_ids(&ids).await?;
-    let res = assets.into_iter().map(AssetDtoV1::from).collect::<Vec<_>>();
+    let res = assets
+        .into_iter()
+        .map(SimilarAssetDtoV1::from)
+        .collect::<Vec<_>>();
 
     Ok(HttpResponse::Ok().json(res))
 }

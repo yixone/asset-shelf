@@ -1,5 +1,9 @@
 use models::{
-    assets::{Asset, view::AssetView},
+    assets::{
+        Asset,
+        similar::SimilarAsset,
+        view::{AssetView, SimilarAssetView},
+    },
     collections::{
         Collection, CollectionAsset,
         view::{CollectionItemView, CollectionView},
@@ -24,6 +28,28 @@ pub async fn hydrate_assets(
     let media = queries::media::get_media_files(&media_ids, &mut *exec).await?;
 
     Ok(AssetView::from_models(assets, features, media))
+}
+
+pub async fn hydrate_similar(
+    similar: Vec<SimilarAsset>,
+    exec: &mut sqlx::SqliteConnection,
+) -> Result<Vec<SimilarAssetView>> {
+    let assets_ids = similar.iter().map(|a| a.item.asset_id).collect::<Vec<_>>();
+    let assets = queries::asset::get_assets(&assets_ids, &mut *exec).await?;
+
+    let media_ids = assets
+        .iter()
+        .map(|a| a.media_id.clone())
+        .collect::<Vec<_>>();
+    let media = queries::media::get_media_files(&media_ids, &mut *exec).await?;
+
+    let av = AssetView::from_models(
+        assets,
+        similar.iter().map(|f| f.item.clone()).collect(),
+        media,
+    );
+
+    Ok(SimilarAssetView::from_models(av, similar))
 }
 
 pub async fn hydrate_collections(

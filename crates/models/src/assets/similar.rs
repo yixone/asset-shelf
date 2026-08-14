@@ -10,6 +10,7 @@ pub struct SimilarAsset {
 
 /// Scores for attributes [`SimilarAsset`]
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct SimilarScore {
     pub color: u32,
     pub ahash: u32,

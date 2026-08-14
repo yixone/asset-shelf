@@ -1,5 +1,9 @@
 use models::{
-    assets::{AssetFeatures, AssetState, view::AssetView},
+    assets::{
+        AssetFeatures, AssetState,
+        similar::SimilarAsset,
+        view::{AssetView, SimilarAssetView},
+    },
     types::{AssetId, AssetsOrdering, Color},
 };
 use result::{Result, create_error};
@@ -58,6 +62,8 @@ pub trait AssetRepository: Send + Sync {
         aspect_ratio: f32,
         p: Pagination,
     ) -> Result<Vec<AssetFeatures>>;
+
+    async fn get_from_similar(&self, similar: Vec<SimilarAsset>) -> Result<Vec<SimilarAssetView>>;
 
     async fn count_total(&mut self) -> Result<u64>;
 

@@ -1,6 +1,10 @@
 use chrono::{DateTime, Utc};
 use mimetype::MimeKind;
-use models::assets::{Asset, AssetFeatures, AssetState, view::AssetView};
+use models::assets::{
+    Asset, AssetFeatures, AssetState,
+    similar::SimilarScore,
+    view::{AssetView, SimilarAssetView},
+};
 use serde::Serialize;
 
 use crate::dto::v1::media::MediaGroupDtoV1;
@@ -56,6 +60,33 @@ where
             width: asset_features.width,
             height: asset_features.height,
             color: asset_features.accent_color.map(|c| c.hex()),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct SimilarAssetDtoV1 {
+    pub asset: AssetDtoV1,
+    pub score: SimilarScore,
+}
+
+impl From<SimilarAssetView> for SimilarAssetDtoV1 {
+    fn from(view: SimilarAssetView) -> Self {
+        let asset = view.asset;
+        let score = view.score.score;
+
+        SimilarAssetDtoV1::from((asset, score))
+    }
+}
+
+impl<A> From<(A, SimilarScore)> for SimilarAssetDtoV1
+where
+    A: Into<AssetDtoV1>,
+{
+    fn from((asset, score): (A, SimilarScore)) -> Self {
+        SimilarAssetDtoV1 {
+            asset: asset.into(),
+            score,
         }
     }
 }

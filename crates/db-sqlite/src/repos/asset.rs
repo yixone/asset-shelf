@@ -10,7 +10,11 @@ use db_core::{
     },
 };
 use models::{
-    assets::{AssetFeatures, view::AssetView},
+    assets::{
+        AssetFeatures,
+        similar::SimilarAsset,
+        view::{AssetView, SimilarAssetView},
+    },
     types::{AssetId, AssetsOrdering, Color},
 };
 use result::{Result, create_error, error::ResultExt};
@@ -250,6 +254,11 @@ impl AssetRepository for SqliteAssetRepository {
         .to_app_err()?;
 
         Ok(candidates)
+    }
+
+    async fn get_from_similar(&self, similar: Vec<SimilarAsset>) -> Result<Vec<SimilarAssetView>> {
+        let mut pool = self.db.acquire().await?;
+        hydrate::hydrate_similar(similar, &mut pool).await
     }
 
     async fn count_total(&mut self) -> Result<u64> {
