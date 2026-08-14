@@ -10,8 +10,10 @@ use crate::{
 
 #[get("/{id}/similar")]
 async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiResult {
-    let asset = ctx.db.assets.get_by_id(*id).await?;
-    let reference = asset.features;
+    let reference = {
+        let asset = ctx.db.assets.get_by_id(*id).await?;
+        asset.features
+    };
 
     let Some(color) = reference.accent_color else {
         return Ok(HttpResponse::NoContent().finish());
@@ -28,6 +30,7 @@ async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> A
         .await?;
 
     let mut searcher = SimilarSearcher::new(reference);
+
     searcher.add_features(candidates);
     searcher.filter(40);
     searcher.sort_by_score();
@@ -60,10 +63,10 @@ mod searcher {
     const PHASH_WEIGHT: f32 = 0.75;
     const PHASH_MAX_DISTANCE: f32 = 35.0;
 
-    const AHASH_WEIGHT: f32 = 0.75;
+    const AHASH_WEIGHT: f32 = 0.8;
     const AHASH_MAX_DISTANCE: f32 = 30.0;
 
-    const COLOR_WEIGHT: f32 = 0.35;
+    const COLOR_WEIGHT: f32 = 0.3;
 
     impl SimilarSearcher {
         /// Creates a new [`SimilarSearcher`]

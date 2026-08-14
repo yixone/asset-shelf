@@ -67,6 +67,7 @@ where
 #[derive(Debug, Serialize)]
 pub struct SimilarAssetDtoV1 {
     pub asset: AssetDtoV1,
+
     pub score: SimilarScore,
 }
 
@@ -86,6 +87,7 @@ where
     fn from((asset, score): (A, SimilarScore)) -> Self {
         SimilarAssetDtoV1 {
             asset: asset.into(),
+
             score,
         }
     }
