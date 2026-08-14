@@ -31,7 +31,7 @@ const SEQUENCE_MASK: u16 = u16::MAX >> 2;
 /// let generator = FlakeIdGenerator::new(1);
 ///
 /// // Flake ID Generation
-/// let id = generator.generate();
+/// let id = generator.get_id();
 /// ```
 pub struct FlakeIdGenerator {
     base_epoch: i64,

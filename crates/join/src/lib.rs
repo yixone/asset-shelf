@@ -146,7 +146,7 @@ impl<T> JoinBuilder<T> {
 ///
 /// ### Example
 /// ```
-/// use joiner::{impl_joinable, Joinable};
+/// use join::{impl_joinable, Joinable};
 ///
 /// #[derive(Clone)]
 /// struct A {
