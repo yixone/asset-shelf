@@ -68,6 +68,8 @@ where
     retrieval::list_ordered(repo().await).await?;
     retrieval::list_with_pagination(repo().await).await?;
 
+    retrieval::count_assets(repo().await).await?;
+
     Ok(())
 }
 

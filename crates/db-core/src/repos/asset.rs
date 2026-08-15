@@ -65,7 +65,7 @@ pub trait AssetRepository: Send + Sync {
 
     async fn get_from_similar(&self, similar: Vec<SimilarAsset>) -> Result<Vec<SimilarAssetView>>;
 
-    async fn count_total(&mut self) -> Result<u64>;
+    async fn count_total(&self) -> Result<u64>;
 
     async fn list(&self, pagination: Pagination, order: AssetsOrdering) -> Result<Vec<AssetView>>;
 }

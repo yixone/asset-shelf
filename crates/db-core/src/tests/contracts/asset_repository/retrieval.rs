@@ -96,51 +96,53 @@ pub async fn list_empty<R: AssetRepository>(repo: R) -> Result<()> {
     Ok(())
 }
 
+/// Tests retrieving a list of assets in different orders:
+/// - [`AssetsOrdering::Newest`]
+/// - [`AssetsOrdering::Oldest`]
 pub async fn list_ordered<R: AssetRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
 
     let first = insert_asset(&repo, "foo", &flake).await?;
     let second = insert_asset(&repo, "bar", &flake).await?;
 
-    {
-        let list = repo
-            .list(Pagination::new(50, 0), AssetsOrdering::Newest)
-            .await?;
+    // Checks receipt in order: newest first
+    let list_newest = repo
+        .list(Pagination::new(50, 0), AssetsOrdering::Newest)
+        .await?;
 
-        assert_eq!(
-            list[0].id(),
-            second.id,
-            "The last inserted asset should be returned first"
-        );
+    assert_eq!(
+        list_newest[0].id(),
+        second.id,
+        "The last inserted asset should be returned first"
+    );
 
-        assert_eq!(
-            list[1].id(),
-            first.id,
-            "The second item returned should be the second-to-last asset inserted"
-        );
-    }
+    assert_eq!(
+        list_newest[1].id(),
+        first.id,
+        "The second item returned should be the second-to-last asset inserted"
+    );
 
-    {
-        let list = repo
-            .list(Pagination::new(50, 0), AssetsOrdering::Oldest)
-            .await?;
+    // Checks receipt in order: oldest first
+    let list_oldest = repo
+        .list(Pagination::new(50, 0), AssetsOrdering::Oldest)
+        .await?;
 
-        assert_eq!(
-            list[0].id(),
-            first.id,
-            "The first inserted asset should be returned first"
-        );
+    assert_eq!(
+        list_oldest[0].id(),
+        first.id,
+        "The first inserted asset should be returned first"
+    );
 
-        assert_eq!(
-            list[1].id(),
-            second.id,
-            "The second item returned should be the second asset inserted"
-        );
-    }
+    assert_eq!(
+        list_oldest[1].id(),
+        second.id,
+        "The second item returned should be the second asset inserted"
+    );
 
     Ok(())
 }
 
+/// Tests getting a list of assets with [`Pagination`]
 pub async fn list_with_pagination<R: AssetRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
 
@@ -181,6 +183,23 @@ pub async fn list_with_pagination<R: AssetRepository>(repo: R) -> Result<()> {
             "The second item returned should be the second-to-last asset inserted"
         );
     }
+
+    Ok(())
+}
+
+/// Tests the counting of the total number of assets
+pub async fn count_assets<R: AssetRepository>(repo: R) -> Result<()> {
+    let flake = FlakeIdGenerator::new(0);
+    let mut assets = Vec::new();
+
+    assets.push(insert_asset(&repo, "foo", &flake).await?);
+    assets.push(insert_asset(&repo, "bar", &flake).await?);
+    assets.push(insert_asset(&repo, "bazz", &flake).await?);
+    assets.push(insert_asset(&repo, "42", &flake).await?);
+
+    let count = repo.count_total().await?;
+
+    assert_eq!(count, assets.len() as u64);
 
     Ok(())
 }

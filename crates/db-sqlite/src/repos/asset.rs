@@ -263,7 +263,7 @@ impl AssetRepository for SqliteAssetRepository {
         hydrate::hydrate_similar(similar, &mut pool).await
     }
 
-    async fn count_total(&mut self) -> Result<u64> {
+    async fn count_total(&self) -> Result<u64> {
         sqlx::query_scalar(
             "
             SELECT COUNT(id)
