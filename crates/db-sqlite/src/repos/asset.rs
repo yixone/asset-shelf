@@ -126,8 +126,8 @@ impl AssetRepository for SqliteAssetRepository {
         );
 
         match order {
-            AssetsOrdering::Newest => qb.push("ORDER BY a.created_at DESC"),
-            AssetsOrdering::Oldest => qb.push("ORDER BY a.created_at ASC"),
+            AssetsOrdering::Newest => qb.push("ORDER BY a.deleted_at DESC"),
+            AssetsOrdering::Oldest => qb.push("ORDER BY a.deleted_at ASC"),
         };
         pagination.apply_sql(&mut qb);
 
