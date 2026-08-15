@@ -11,7 +11,7 @@ use db_core::{
 };
 use models::{
     assets::{
-        AssetFeatures,
+        Asset, AssetFeatures,
         similar::SimilarAsset,
         view::{AssetView, SimilarAssetView},
     },
@@ -183,7 +183,7 @@ impl AssetRepository for SqliteAssetRepository {
                     -- The asset was not processed due to an error or hang
                     OR (
                         a.state IN ('Processing', 'Failed')
-                        AND a.updated_at < datetime('now', '-5 minutes')
+                        AND (unixepoch('now') - unixepoch(a.updated_at)) >= ?
                     ) 
 
                     -- The asset was processed previously but currently lacks all the necessary fields
@@ -202,6 +202,7 @@ impl AssetRepository for SqliteAssetRepository {
             LIMIT ?
             ",
         )
+        .bind(Asset::TIME_BEFORE_REPROCESSING.num_seconds())
         .bind(limit)
         .fetch_all(&mut *conn)
         .await

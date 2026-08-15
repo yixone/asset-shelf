@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use mimetype::MimeKind;
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// An asset domain representing a media file in storage
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Asset {
     /// Unique numeric asset ID
@@ -65,6 +65,10 @@ impl Asset {
         self.deleted_at.is_some()
     }
 
+    /// The time that must elapse before another attempt
+    /// can be made to process the asset following a failed attempt
+    pub const TIME_BEFORE_REPROCESSING: Duration = Duration::minutes(5);
+
     /// Checks whether the [`Asset`] requires processing
     pub fn need_processing(&self, feats: &AssetFeatures, now: DateTime<Utc>) -> bool {
         let state = self.state;
@@ -77,7 +81,7 @@ impl Asset {
         // The asset was not processed due to an error or hang
         let need_failed_check = matches!(state, AssetState::Processing | AssetState::Failed);
 
-        if need_failed_check && ((now - self.updated_at).num_minutes() > 5) {
+        if need_failed_check && ((now - self.updated_at).num_minutes() >= 5) {
             return true;
         }
 
