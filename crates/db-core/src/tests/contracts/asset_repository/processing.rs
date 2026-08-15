@@ -3,11 +3,21 @@ use models::{assets::AssetState, types::Color};
 
 use super::*;
 
-pub async fn with_states<R: AssetRepository>(repo: R) -> Result<()> {
+/// Ensures that only suitable [`Asset`] are returned for processing
+///
+/// Performs a check for all asset states:
+/// - Newly created asset ([`AssetState::Pending`])
+/// - Asset taken for processing ([`AssetState::Processing`] + Recently updated)
+/// - Processing is broken without changing state ([`AssetState::Processing`] + Modified long ago)
+/// - The asset is processed and ready ([`AssetState::Ready`] + All fields is [`Some`])
+/// - The asset was processed earlier, but now it does not have all the fields ([`AssetState::Ready`] + Not all fields are [`Some`])
+/// - Processing failed recently ([`AssetState::Failed`] + Recently updated)
+/// - Processing ended with an error long ago ([`AssetState::Failed`] + Modified long ago)
+pub async fn get_for_processing<R: AssetRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
-
     let now = Utc::now();
 
+    // Creates assets that implement all possible states
     let pending = {
         let (m, a, af) = prepare_asset(&flake, "pending");
         insert_full_asset((&m, &a, &af), &repo).await?;
@@ -98,8 +108,10 @@ pub async fn with_states<R: AssetRepository>(repo: R) -> Result<()> {
         a
     };
 
+    // Gets a list of assets to process
     let for_processing = repo.get_for_processing(50).await?;
 
+    // Checks the received list
     assert_eq!(for_processing.len(), 4);
 
     assert_eq!(for_processing[0].inner, pending);
