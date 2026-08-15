@@ -218,36 +218,37 @@ impl AssetRepository for SqliteAssetRepository {
         p: Pagination,
     ) -> Result<Vec<AssetFeatures>> {
         let (red, green, blue) = color.rgb();
-        const COLOR_SHIFT: u8 = 40;
 
         let candidates = sqlx::query_as(
             "
             SELECT af.*
             FROM asset_features AS af
             INNER JOIN assets AS a ON a.id = af.asset_id
-            WHERE (
-                -- RED
-                ((af.accent_color >> 16) BETWEEN ? AND ?) OR
-                -- GREEN
-                ((af.accent_color >> 8 & 0xFF) BETWEEN ? AND ?) OR
-                -- BLUE
-                ((af.accent_color & 0xFF) BETWEEN ? AND ?) OR
-                -- ASPECT RATIO
-                ((af.width / af.height) BETWEEN ? AND ?)
-            )
+            WHERE 
+                a.deleted_at IS null 
+                AND (
+                    -- RED
+                    ((af.accent_color >> 16) BETWEEN ? AND ?) OR
+                    -- GREEN
+                    ((af.accent_color >> 8 & 0xFF) BETWEEN ? AND ?) OR
+                    -- BLUE
+                    ((af.accent_color & 0xFF) BETWEEN ? AND ?) OR
+                    -- ASPECT RATIO
+                    ((af.width / af.height) BETWEEN ? AND ?)
+                )
             ORDER BY a.created_at DESC
             LIMIT ?
             OFFSET ?
             ",
         )
-        .bind(red.saturating_sub(COLOR_SHIFT))
-        .bind(red.saturating_add(COLOR_SHIFT))
-        .bind(green.saturating_sub(COLOR_SHIFT))
-        .bind(green.saturating_add(COLOR_SHIFT))
-        .bind(blue.saturating_sub(COLOR_SHIFT))
-        .bind(blue.saturating_add(COLOR_SHIFT))
-        .bind(aspect_ratio - 0.5)
-        .bind(aspect_ratio + 0.5)
+        .bind(red.saturating_sub(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(red.saturating_add(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(green.saturating_sub(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(green.saturating_add(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(blue.saturating_sub(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(blue.saturating_add(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(aspect_ratio - AssetFeatures::SIMILARITY_ASPECT_SHIFT)
+        .bind(aspect_ratio + AssetFeatures::SIMILARITY_ASPECT_SHIFT)
         .bind(p.limit())
         .bind(p.offset())
         .fetch_all(self.db.exec())

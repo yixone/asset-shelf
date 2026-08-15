@@ -2,14 +2,14 @@ use crate::assets::AssetFeatures;
 
 /// A model containing data for ranking and searching
 /// for similar assets within the service
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SimilarAsset {
     pub item: AssetFeatures,
     pub score: SimilarScore,
 }
 
 /// Scores for attributes [`SimilarAsset`]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct SimilarScore {
     pub color: u32,

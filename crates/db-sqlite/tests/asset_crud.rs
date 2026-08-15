@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use db_core::tests::asset::{delete, get_by_id, get_deleted, get_for_processing, list, update};
+use db_core::tests::asset::{
+    create_op, delete, get_by_id, get_deleted, get_for_processing, get_from_similar,
+    get_similar_candidates, list, update,
+};
 use db_sqlite::{SqliteDatabase, repos::asset::SqliteAssetRepository};
 
 async fn repo() -> SqliteAssetRepository {
@@ -53,4 +56,27 @@ async fn asset_delete() {
 #[tokio::test]
 async fn asset_get_for_processing() {
     get_for_processing::with_states(repo().await).await.unwrap();
+}
+
+#[tokio::test]
+async fn asset_get_similar_candidates() {
+    get_similar_candidates::return_valid_canditates(repo().await)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn asset_get_from_similar() {
+    get_from_similar::from_similar_searcher_results(repo().await)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn asset_create_op() {
+    create_op::commit(repo().await).await.unwrap();
+
+    create_op::rollback(repo().await).await.unwrap();
+
+    create_op::rollback_on_error(repo().await).await.unwrap();
 }

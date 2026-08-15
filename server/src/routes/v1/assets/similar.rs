@@ -60,7 +60,7 @@ mod searcher {
         features: Vec<SimilarAsset>,
     }
 
-    const PHASH_WEIGHT: f32 = 0.75;
+    const PHASH_WEIGHT: f32 = 0.65;
     const PHASH_MAX_DISTANCE: f32 = 35.0;
 
     const AHASH_WEIGHT: f32 = 0.8;
@@ -80,6 +80,10 @@ mod searcher {
         pub fn filter(&mut self, score_threshold: u32) {
             self.features.retain_mut(|f| {
                 if f.item.asset_id == self.reference.asset_id {
+                    return false;
+                }
+
+                if !self.reference.is_similar_candidate_for(&f.item) {
                     return false;
                 }
 

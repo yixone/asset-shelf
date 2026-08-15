@@ -1,23 +1,12 @@
 //! Tests for the `Asset` domain CRUD operations
-//!
-//! ## TODO
-//! ### Get Similar Candidates
-//! - [`get_similar_candidates::return_valid_canditates`]
-//! - [`get_similar_candidates::excludes_deleted`]
-//! - [`get_similar_candidates::on_empty_candidates_list`]
-//!
-//! ### Get From Similar
-//! - [`get_from_similar::with_valid_ordering`]
-//!
-//! ### Create Asset Op:
-//! - [`create_op::commit`]
-//! - [`create_op::rollback`]
-//! - [`create_op::rollback_on_error`]
 
+pub mod create_op;
 pub mod delete;
 pub mod get_by_id;
 pub mod get_deleted;
 pub mod get_for_processing;
+pub mod get_from_similar;
+pub mod get_similar_candidates;
 pub mod list;
 pub mod update;
 
