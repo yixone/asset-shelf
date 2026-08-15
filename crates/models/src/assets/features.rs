@@ -3,7 +3,7 @@ use crate::types::{AssetId, Color};
 /// Computable features of the asset's media file
 ///
 /// Used for the function of searching for similar assets in the collection
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct AssetFeatures {
     /// Identifier of the asset to which the feature set is linked
@@ -34,6 +34,46 @@ impl AssetFeatures {
             height: None,
             accent_color: None,
         }
+    }
+
+    pub const SIMILARITY_COLOR_SHIFT: u8 = 45;
+    pub const SIMILARITY_ASPECT_SHIFT: f32 = 0.5;
+
+    /// Returns `True` if `rhs` is a suitable candidate for finding assets similar to `self`
+    pub fn is_similar_candidate_for(&self, rhs: &AssetFeatures) -> bool {
+        fn resolve_color(f: &AssetFeatures) -> Option<[u8; 3]> {
+            let (r, g, b) = f.accent_color.map(|c| c.rgb())?;
+            Some([r, g, b])
+        }
+
+        fn resolve_aspect(f: &AssetFeatures) -> Option<f32> {
+            let (Some(w), Some(h)) = (f.width, f.height) else {
+                return None;
+            };
+            Some(w as f32 / h as f32)
+        }
+
+        let (Some(color), Some(rhs_color)) = (resolve_color(self), resolve_color(rhs)) else {
+            return false;
+        };
+
+        if color
+            .into_iter()
+            .zip(rhs_color)
+            .any(|(s, f)| s.abs_diff(f) <= Self::SIMILARITY_COLOR_SHIFT)
+        {
+            return true;
+        }
+
+        let (Some(aspect), Some(rhs_aspect)) = (resolve_aspect(self), resolve_aspect(rhs)) else {
+            return false;
+        };
+
+        if (aspect - rhs_aspect).abs() <= Self::SIMILARITY_ASPECT_SHIFT {
+            return true;
+        }
+
+        false
     }
 
     /// Returns `true` if all required optional fields are present.

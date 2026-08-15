@@ -49,7 +49,7 @@ pub async fn hydrate_similar(
         media,
     );
 
-    Ok(SimilarAssetView::from_models(av, similar))
+    Ok(SimilarAssetView::from_models(similar, av))
 }
 
 pub async fn hydrate_collections(

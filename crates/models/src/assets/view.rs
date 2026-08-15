@@ -74,15 +74,15 @@ impl_joinable!(SimilarAsset[item.asset_id] with AssetView[inner.id] as AssetId);
 
 impl SimilarAssetView {
     /// Assembles the [`SimilarAssetView`] from models
-    pub fn from_models(a: Vec<AssetView>, s: Vec<SimilarAsset>) -> Vec<SimilarAssetView> {
-        JoinBuilder::new(a)
-            .with(s, |a| a)
+    pub fn from_models(s: Vec<SimilarAsset>, a: Vec<AssetView>) -> Vec<SimilarAssetView> {
+        JoinBuilder::new(s)
+            .with(a, |s| s)
             .build_as(SimilarAssetView::from)
     }
 }
 
-impl From<(AssetView, SimilarAsset)> for SimilarAssetView {
-    fn from((a, s): (AssetView, SimilarAsset)) -> Self {
+impl From<(SimilarAsset, AssetView)> for SimilarAssetView {
+    fn from((s, a): (SimilarAsset, AssetView)) -> Self {
         SimilarAssetView { asset: a, score: s }
     }
 }

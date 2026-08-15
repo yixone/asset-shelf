@@ -1,3 +1,4 @@
 //! Database tests helpers
 
-pub mod asset;
+pub mod contracts;
+pub mod mocks;

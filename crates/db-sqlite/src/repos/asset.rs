@@ -11,7 +11,7 @@ use db_core::{
 };
 use models::{
     assets::{
-        AssetFeatures,
+        Asset, AssetFeatures,
         similar::SimilarAsset,
         view::{AssetView, SimilarAssetView},
     },
@@ -126,8 +126,8 @@ impl AssetRepository for SqliteAssetRepository {
         );
 
         match order {
-            AssetsOrdering::Newest => qb.push("ORDER BY a.created_at DESC"),
-            AssetsOrdering::Oldest => qb.push("ORDER BY a.created_at ASC"),
+            AssetsOrdering::Newest => qb.push("ORDER BY a.deleted_at DESC"),
+            AssetsOrdering::Oldest => qb.push("ORDER BY a.deleted_at ASC"),
         };
         pagination.apply_sql(&mut qb);
 
@@ -183,7 +183,7 @@ impl AssetRepository for SqliteAssetRepository {
                     -- The asset was not processed due to an error or hang
                     OR (
                         a.state IN ('Processing', 'Failed')
-                        AND a.updated_at < datetime('now', '-5 minutes')
+                        AND (unixepoch('now') - unixepoch(a.updated_at)) >= ?
                     ) 
 
                     -- The asset was processed previously but currently lacks all the necessary fields
@@ -202,6 +202,7 @@ impl AssetRepository for SqliteAssetRepository {
             LIMIT ?
             ",
         )
+        .bind(Asset::TIME_BEFORE_REPROCESSING.num_seconds())
         .bind(limit)
         .fetch_all(&mut *conn)
         .await
@@ -217,36 +218,37 @@ impl AssetRepository for SqliteAssetRepository {
         p: Pagination,
     ) -> Result<Vec<AssetFeatures>> {
         let (red, green, blue) = color.rgb();
-        const COLOR_SHIFT: u8 = 40;
 
         let candidates = sqlx::query_as(
             "
             SELECT af.*
             FROM asset_features AS af
             INNER JOIN assets AS a ON a.id = af.asset_id
-            WHERE (
-                -- RED
-                ((af.accent_color >> 16) BETWEEN ? AND ?) OR
-                -- GREEN
-                ((af.accent_color >> 8 & 0xFF) BETWEEN ? AND ?) OR
-                -- BLUE
-                ((af.accent_color & 0xFF) BETWEEN ? AND ?) OR
-                -- ASPECT RATIO
-                ((af.width / af.height) BETWEEN ? AND ?)
-            )
+            WHERE 
+                a.deleted_at IS null 
+                AND (
+                    -- RED
+                    ((af.accent_color >> 16) BETWEEN ? AND ?) OR
+                    -- GREEN
+                    ((af.accent_color >> 8 & 0xFF) BETWEEN ? AND ?) OR
+                    -- BLUE
+                    ((af.accent_color & 0xFF) BETWEEN ? AND ?) OR
+                    -- ASPECT RATIO
+                    ((af.width / af.height) BETWEEN ? AND ?)
+                )
             ORDER BY a.created_at DESC
             LIMIT ?
             OFFSET ?
             ",
         )
-        .bind(red.saturating_sub(COLOR_SHIFT))
-        .bind(red.saturating_add(COLOR_SHIFT))
-        .bind(green.saturating_sub(COLOR_SHIFT))
-        .bind(green.saturating_add(COLOR_SHIFT))
-        .bind(blue.saturating_sub(COLOR_SHIFT))
-        .bind(blue.saturating_add(COLOR_SHIFT))
-        .bind(aspect_ratio - 0.5)
-        .bind(aspect_ratio + 0.5)
+        .bind(red.saturating_sub(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(red.saturating_add(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(green.saturating_sub(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(green.saturating_add(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(blue.saturating_sub(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(blue.saturating_add(AssetFeatures::SIMILARITY_COLOR_SHIFT))
+        .bind(aspect_ratio - AssetFeatures::SIMILARITY_ASPECT_SHIFT)
+        .bind(aspect_ratio + AssetFeatures::SIMILARITY_ASPECT_SHIFT)
         .bind(p.limit())
         .bind(p.offset())
         .fetch_all(self.db.exec())
@@ -261,7 +263,7 @@ impl AssetRepository for SqliteAssetRepository {
         hydrate::hydrate_similar(similar, &mut pool).await
     }
 
-    async fn count_total(&mut self) -> Result<u64> {
+    async fn count_total(&self) -> Result<u64> {
         sqlx::query_scalar(
             "
             SELECT COUNT(id)

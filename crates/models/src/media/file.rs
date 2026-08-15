@@ -6,7 +6,7 @@ use crate::{
     types::{MediaFileId, MediaId},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct MediaFile {
     pub id: MediaFileId,
