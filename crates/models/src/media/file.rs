@@ -22,3 +22,27 @@ pub struct MediaFile {
 
     pub duration_ms: Option<i64>,
 }
+
+impl MediaFile {
+    /// Creates a new [`MediaFile`]
+    pub fn new(
+        id: MediaFileId,
+        media_id: MediaId,
+        variant: MediaVariant,
+        storage_path: String,
+        size_bytes: i64,
+        mimetype: MimeType,
+        duration_ms: Option<i64>,
+    ) -> Self {
+        Self {
+            id,
+            media_id,
+            variant,
+            storage_path,
+            created_at: Utc::now(),
+            size_bytes,
+            mimetype,
+            duration_ms,
+        }
+    }
+}

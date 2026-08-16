@@ -367,16 +367,15 @@ impl MediaWorkerService {
 
             let file = reserve.publish().await?;
 
-            let variant_media_file = MediaFile {
-                id: self.ctx.flake.get_id_as(),
-                media_id: asset.inner.media_id.clone(),
-                variant: MediaVariant::LoopPreview,
-                storage_path: file.path.to_string(),
-                created_at: Utc::now(),
-                size_bytes: file.size_bytes as i64,
-                mimetype: MimeType::Mp4,
-                duration_ms: Some(fragment_duration.as_millis() as i64),
-            };
+            let variant_media_file = MediaFile::new(
+                self.ctx.flake.get_id_as(),
+                asset.inner.media_id.clone(),
+                MediaVariant::LoopPreview,
+                file.path.to_string(),
+                file.size_bytes as i64,
+                MimeType::Mp4,
+                Some(fragment_duration.as_millis() as i64),
+            );
 
             self.ctx.db.media.insert_file(&variant_media_file).await?;
             tracing::info!(
@@ -429,16 +428,15 @@ impl MediaWorkerService {
             )
             .await?;
 
-        let variant_media_file = MediaFile {
-            id: self.ctx.flake.get_id_as(),
-            media_id: media.clone(),
-            variant: MediaVariant::Thumbnail,
-            storage_path: variant_file.global_path().to_string(),
-            created_at: Utc::now(),
-            size_bytes: variant_file.size_bytes as i64,
+        let variant_media_file = MediaFile::new(
+            self.ctx.flake.get_id_as(),
+            media.clone(),
+            variant,
+            variant_file.global_path().to_string(),
+            variant_file.size_bytes as i64,
             mimetype,
-            duration_ms: None,
-        };
+            None,
+        );
 
         self.ctx.db.media.insert_file(&variant_media_file).await?;
         variant_file.commit().await?;

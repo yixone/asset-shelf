@@ -1,6 +1,5 @@
 use actix_multipart::Multipart;
 use actix_web::{HttpResponse, post, web};
-use chrono::Utc;
 use events::AssetCreatedEvent;
 use futures::TryStreamExt;
 use mimetype::MimeType;
@@ -42,11 +41,7 @@ struct UploadFile<'a> {
 async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
     let mut upload = UploadingContext::default();
 
-    let now = Utc::now();
-    let media = Media {
-        id: ctx.flake.get_id_as(),
-        created_at: now,
-    };
+    let media = Media::new(ctx.flake.get_id_as());
 
     while let Some(mut field) = payload
         .try_next()
@@ -118,16 +113,15 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         return Err(create_error!(MalformedPayload));
     };
 
-    let media_file = MediaFile {
-        id: ctx.flake.get_id_as(),
-        media_id: media.id.clone(),
-        variant: DEFAULT_VARIANT,
-        storage_path: file.file.global_path().to_string(),
-        created_at: now,
-        size_bytes: file.file.size_bytes as i64,
-        mimetype: file.mimetype,
-        duration_ms: None,
-    };
+    let media_file = MediaFile::new(
+        ctx.flake.get_id_as(),
+        media.id.clone(),
+        DEFAULT_VARIANT,
+        file.file.global_path().to_string(),
+        file.file.size_bytes as i64,
+        file.mimetype,
+        None,
+    );
     let asset = Asset::new(
         ctx.flake.get_id_as(),
         media.id.clone(),
@@ -136,14 +130,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         upload.caption,
         upload.source_url,
     );
-    let asset_features = AssetFeatures {
-        asset_id: asset.id,
-        p_hash: None,
-        a_hash: None,
-        width: None,
-        height: None,
-        accent_color: None,
-    };
+    let asset_features = AssetFeatures::new(asset.id);
 
     let mut op = ctx.db.assets.create_op().await?;
 
