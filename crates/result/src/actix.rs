@@ -27,6 +27,7 @@ impl ResponseError for Error {
             ErrorKind::EntityDeleted => StatusCode::FORBIDDEN,
             ErrorKind::NotFound => StatusCode::NOT_FOUND,
             ErrorKind::AlreadyExists => StatusCode::CONFLICT,
+            ErrorKind::ProcessingTimeout => StatusCode::INTERNAL_SERVER_ERROR,
             ErrorKind::Internal { .. } => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
