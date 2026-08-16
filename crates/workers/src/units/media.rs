@@ -357,7 +357,6 @@ impl MediaWorkerService {
             .await
             {
                 Ok(f) => {
-                    tracing::info!("Video processed!");
                     f.to_app_err()?;
                 }
                 Err(_) => {
