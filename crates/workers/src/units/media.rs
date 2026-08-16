@@ -10,7 +10,8 @@ use events::{AssetCreatedEvent, EventBus};
 use media::{
     image::{Image, ImageDecoder, ImageFormat},
     video::{
-        self, ExtractVideoFragmentParams, FragmentParams, input::MediaInput, types::AudioMode,
+        self, ExtractVideoFragmentParams, FragmentParams, ResizeParams, input::MediaInput,
+        types::AudioMode,
     },
 };
 use mimetype::{MimeKind, MimeType};
@@ -301,6 +302,8 @@ impl MediaWorkerService {
             .await?;
         self.ctx.db.media.update_file(&original.id, f_patch).await?;
 
+        drop(original_video);
+
         Ok(())
     }
 
@@ -347,13 +350,16 @@ impl MediaWorkerService {
                         },
                         frame_rate: None,
                         audio: AudioMode::Disabled,
-                        output_resolution: Some((1280, 720)),
+                        output_resolution: ResizeParams::ForceWidth { w: 720 },
                     },
                 ),
             )
             .await
             {
-                Ok(_) => {}
+                Ok(f) => {
+                    tracing::info!("Video processed!");
+                    f.to_app_err()?;
+                }
                 Err(_) => {
                     tracing::warn!(media = ?asset.media_id(), "Video frame extraction timeout");
                     return Err(create_error!(ProcessingTimeout));
