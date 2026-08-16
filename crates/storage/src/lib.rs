@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use flake_id::FlakeIdGenerator;
 use futures::TryStreamExt;
@@ -37,7 +37,7 @@ impl Storage {
     /// Creates a new [`Storage`]
     pub async fn new<B: StorageBackend + 'static>(
         backend: B,
-        id_gen: FlakeIdGenerator,
+        id_gen: Arc<FlakeIdGenerator>,
         temp_dir: PathBuf,
     ) -> Result<Storage> {
         Ok(Storage {

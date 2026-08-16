@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use flake_id::{FlakeIdGenerator, str::FlakeIdStr};
 
@@ -9,7 +9,7 @@ pub(crate) struct TempSection {
     /// Backend for the temporary file storage section
     pub backend: NativeFsStorageBackend,
     /// Identifier generator for temporary files
-    pub temp_id_generator: FlakeIdGenerator,
+    pub temp_id_generator: Arc<FlakeIdGenerator>,
 }
 
 impl TempSection {
