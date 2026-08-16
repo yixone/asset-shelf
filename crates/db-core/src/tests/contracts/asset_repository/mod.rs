@@ -23,6 +23,8 @@ where
     mutation::update_existing(repo().await).await?;
     mutation::return_not_found_when_updating_non_existent(repo().await).await?;
 
+    mutation::update_existing_features(repo().await).await?;
+
     mutation::delete_existing(repo().await).await?;
     mutation::return_no_changes_when_deleting_non_existent(repo().await).await?;
 
