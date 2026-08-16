@@ -18,6 +18,6 @@ join = { workspace = true }
 # External
 async-trait = { workspace = true }
 chrono = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "time", "rt-multi-thread"] }
 tokio-util = { workspace = true, features = ["io"] }
 tracing = { workspace = true }

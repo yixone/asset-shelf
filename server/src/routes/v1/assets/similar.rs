@@ -60,10 +60,10 @@ mod searcher {
         features: Vec<SimilarAsset>,
     }
 
-    const PHASH_WEIGHT: f32 = 0.65;
+    const PHASH_WEIGHT: f32 = 0.60;
     const PHASH_MAX_DISTANCE: f32 = 35.0;
 
-    const AHASH_WEIGHT: f32 = 0.8;
+    const AHASH_WEIGHT: f32 = 0.65;
     const AHASH_MAX_DISTANCE: f32 = 30.0;
 
     const COLOR_WEIGHT: f32 = 0.3;

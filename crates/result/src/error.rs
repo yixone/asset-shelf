@@ -70,6 +70,9 @@ pub enum ErrorKind {
     /// Entity already exists
     AlreadyExists,
 
+    /// Processing timed out
+    ProcessingTimeout,
+
     /// Internal application error
     Internal {
         #[cfg_attr(feature = "serde", serde(skip))]

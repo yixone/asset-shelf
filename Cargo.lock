@@ -531,7 +531,7 @@ dependencies = [
 [[package]]
 name = "cassette"
 version = "0.1.0"
-source = "git+https://github.com/yixone/cassette?branch=master#5c3e7cee4606292ab7be047c0f353e529849c68c"
+source = "git+https://github.com/yixone/cassette?branch=master#c8a0fe15a7da1dd32f76dd3f4cd19588e301679a"
 dependencies = [
  "bytes",
  "image",

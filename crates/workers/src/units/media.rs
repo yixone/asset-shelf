@@ -10,7 +10,8 @@ use events::{AssetCreatedEvent, EventBus};
 use media::{
     image::{Image, ImageDecoder, ImageFormat},
     video::{
-        self, ExtractVideoFragmentParams, FragmentParams, input::MediaInput, types::AudioMode,
+        self, ExtractVideoFragmentParams, FragmentParams, ResizeParams, input::MediaInput,
+        types::AudioMode,
     },
 };
 use mimetype::{MimeKind, MimeType};
@@ -19,15 +20,19 @@ use models::{
     media::{MediaFile, MediaVariant},
     types::{AssetId, Color, MediaId},
 };
-use result::{ErrorKind, Result, error::ResultExt};
+use result::{ErrorKind, Result, create_error, error::ResultExt};
 use storage::{StoragePath, global::GlobalPathData};
-use tokio::io::AsyncRead;
+use tokio::{io::AsyncRead, time::timeout};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
     WorkerContext,
     worker::{AbstractWorker, WorkerConfig},
 };
+
+const PROBE_TIMEOUT: Duration = Duration::from_mins(10);
+const EXTRACT_FRAME_TIMEOUT: Duration = Duration::from_mins(2);
+const TRANSCODINIG_TIMEOUT: Duration = Duration::from_mins(5);
 
 /// Background media worker
 pub struct MediaWorker {
@@ -242,16 +247,34 @@ impl MediaWorkerService {
         let video = video::input::MediaInput::try_new(original_video.path()).to_app_err()?;
 
         // Extracts metadata from video
-        let metadata = media::video::probe_video(&video).await.to_app_err()?;
+        let metadata = match timeout(PROBE_TIMEOUT, media::video::probe_video(&video)).await {
+            Ok(p) => p.to_app_err()?,
+            Err(_) => {
+                tracing::warn!(media = ?original.media_id, "Probe video timeout");
+                return Err(create_error!(ProcessingTimeout));
+            }
+        };
+
         let duration_ms = (metadata.video.duration_secs * 1000.0) as i64;
         let res = metadata.video.resolution;
         let (width, height) = (res.width, res.height);
 
         // Extract frame and generates thumbnail
-        let frame = media::video::extract_frame(Duration::from_secs(0), &video)
-            .await
-            .to_app_err()?;
-        let frame = Image::from_dynamic(frame);
+        let frame = match timeout(
+            EXTRACT_FRAME_TIMEOUT * (metadata.video.duration_secs.round() as u32).max(1),
+            media::video::extract_frame(Duration::from_secs(0), &video),
+        )
+        .await
+        {
+            Ok(f) => {
+                let f = f.to_app_err()?;
+                Image::from_dynamic(f)
+            }
+            Err(_) => {
+                tracing::warn!(media = ?original.media_id, "Video frame extraction timeout");
+                return Err(create_error!(ProcessingTimeout));
+            }
+        };
 
         // Generates video variants
         self.generate_video_variants(asset, duration_ms, &frame, &video)
@@ -278,6 +301,8 @@ impl MediaWorkerService {
             .update_features(asset.inner.id, patch)
             .await?;
         self.ctx.db.media.update_file(&original.id, f_patch).await?;
+
+        drop(original_video);
 
         Ok(())
     }
@@ -311,23 +336,34 @@ impl MediaWorkerService {
                 MediaVariant::LoopPreview.as_str(),
             ));
 
-            let duration = Duration::from_millis((5000).min(video_duration_ms as u64));
+            let fragment_duration = Duration::from_millis((5000).min(video_duration_ms as u64));
 
-            video::extract_video_fragment(
-                video,
-                reserve.path(),
-                ExtractVideoFragmentParams {
-                    fragment: FragmentParams {
-                        start: Duration::from_millis(0),
-                        duration,
+            match timeout(
+                TRANSCODINIG_TIMEOUT * (video_duration_ms / 1000).max(1) as u32,
+                video::extract_video_fragment(
+                    video,
+                    reserve.path(),
+                    ExtractVideoFragmentParams {
+                        fragment: FragmentParams {
+                            start: Duration::from_millis(0),
+                            duration: fragment_duration,
+                        },
+                        frame_rate: None,
+                        audio: AudioMode::Disabled,
+                        output_resolution: ResizeParams::ForceWidth { w: 720 },
                     },
-                    frame_rate: None,
-                    audio: AudioMode::Disabled,
-                    output_resolution: Some((1280, 720)),
-                },
+                ),
             )
             .await
-            .to_app_err()?;
+            {
+                Ok(f) => {
+                    f.to_app_err()?;
+                }
+                Err(_) => {
+                    tracing::warn!(media = ?asset.media_id(), "Video frame extraction timeout");
+                    return Err(create_error!(ProcessingTimeout));
+                }
+            }
 
             let file = reserve.publish().await?;
 
@@ -339,7 +375,7 @@ impl MediaWorkerService {
                 created_at: Utc::now(),
                 size_bytes: file.size_bytes as i64,
                 mimetype: MimeType::Mp4,
-                duration_ms: Some(duration.as_millis() as i64),
+                duration_ms: Some(fragment_duration.as_millis() as i64),
             };
 
             self.ctx.db.media.insert_file(&variant_media_file).await?;
