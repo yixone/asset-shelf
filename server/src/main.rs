@@ -12,8 +12,9 @@ use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
     WorkerContext,
+    media::MediaWorker,
     supervisor::{SupervisorHandle, WorkersSupervisor},
-    units::{cleanup::CleanupWorker, media::MediaWorker},
+    units::cleanup::CleanupWorker,
 };
 
 const HOST_ADDR: &str = "0.0.0.0:8080";

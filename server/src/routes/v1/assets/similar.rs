@@ -118,8 +118,6 @@ mod searcher {
 
                 let stage_score = f.score.total_score() - init_score;
 
-                tracing::info!(color, phash, ahash, stage_score, id = ?f.item.asset_id);
-
                 stage_score >= score_threshold
             });
         }

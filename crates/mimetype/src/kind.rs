@@ -11,3 +11,18 @@ pub enum MimeKind {
     Image,
     Video,
 }
+
+impl MimeKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MimeKind::Image => "image",
+            MimeKind::Video => "video",
+        }
+    }
+}
+
+impl std::fmt::Display for MimeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}

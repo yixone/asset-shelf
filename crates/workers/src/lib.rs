@@ -10,6 +10,9 @@ pub mod worker;
 
 pub mod units;
 
+pub mod cleanup;
+pub mod media;
+
 #[derive(Clone)]
 pub struct WorkerContext {
     pub db: Arc<RepositoryContext>,

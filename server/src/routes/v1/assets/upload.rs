@@ -159,7 +159,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         return Err(e);
     }
 
-    ctx.events.publish(AssetCreatedEvent { asset: asset.id });
+    ctx.events.publish(AssetCreatedEvent { asset_id: asset.id });
 
     let res = AssetDtoV1::from((asset, asset_features, vec![media_file]));
     Ok(HttpResponse::Created().json(res))
