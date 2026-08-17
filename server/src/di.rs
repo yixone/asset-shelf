@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use config::ApplicationConfig;
 use db::RepositoryContext;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
@@ -10,4 +11,6 @@ pub struct DataCtx {
     pub storage: Arc<Storage>,
     pub flake: Arc<FlakeIdGenerator>,
     pub events: Arc<EventBus>,
+
+    pub config: Arc<ApplicationConfig>,
 }

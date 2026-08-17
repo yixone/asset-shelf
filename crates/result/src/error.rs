@@ -73,6 +73,9 @@ pub enum ErrorKind {
     /// Processing timed out
     ProcessingTimeout,
 
+    /// Video support is disabled for this instance
+    VideoSupportDisabled,
+
     /// Internal application error
     Internal {
         #[cfg_attr(feature = "serde", serde(skip))]

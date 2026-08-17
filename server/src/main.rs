@@ -1,7 +1,8 @@
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
+use config::ApplicationConfig;
 use db::sqlite::driver::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
@@ -16,59 +17,57 @@ use workers::{
     units::{cleanup::CleanupWorker, media::MediaWorker},
 };
 
-const HOST_ADDR: &str = "0.0.0.0:8080";
+const CONFIG_PATH: &str = "storage/config.toml";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     init_tracing();
     print_header();
 
+    tracing::info!("Reading config");
+    let cfg = Arc::new(ApplicationConfig::try_load(CONFIG_PATH, true).to_app_err()?);
+
     tracing::info!("Opening database");
-    let db = SqliteDatabase::open("storage/data.db").await?;
+    let db = SqliteDatabase::open(cfg.database.path()).await?;
     db.migrate().await?;
 
     let db = Arc::new(db.repositories());
 
+    let flake = Arc::new(FlakeIdGenerator::new(cfg.instance.node_id()));
+
     tracing::info!("Opening storage");
-    let storage_backend = NativeFsStorageBackend::new("storage/global").await?;
-    let storage = Arc::new(
-        Storage::new(
-            storage_backend,
-            FlakeIdGenerator::new(1),
-            PathBuf::from("storage").join("temp"),
-        )
-        .await?,
-    );
+    let storage_backend = NativeFsStorageBackend::new(cfg.storage.root()).await?;
+    let storage = Arc::new(Storage::new(storage_backend, flake.clone(), cfg.storage.temp()).await?);
 
     tracing::info!("Initializing event bus");
     let events = Arc::new(EventBus::new(1024));
     let cancel = CancellationToken::new();
 
-    let flake = Arc::new(FlakeIdGenerator::new(2));
     let ctx = DataCtx {
         db,
         storage,
         flake,
         events,
+        config: cfg.clone(),
     };
 
     tracing::info!("Initializing background worker supervisor");
     let supervisor = init_workers(&ctx);
     let workers_handle = supervisor.run(cancel.clone());
 
-    let server = configure_server(ctx)?;
+    let server = configure_server(ctx, &cfg.host.listen_addr())?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);
 
-    tracing::info!("Server started on http://{HOST_ADDR}!");
+    tracing::info!("Server started on http://{}!", cfg.host.listen_addr());
     server.await.to_app_err()?;
 
     tracing::info!("Server closed!");
     Ok(())
 }
 
-fn configure_server(ctx: DataCtx) -> Result<actix_web::dev::Server> {
+fn configure_server(ctx: DataCtx, host_addr: &str) -> Result<actix_web::dev::Server> {
     let ctx = web::Data::new(ctx);
 
     Ok(HttpServer::new(move || {
@@ -77,7 +76,7 @@ fn configure_server(ctx: DataCtx) -> Result<actix_web::dev::Server> {
             .app_data(ctx.clone())
             .configure(routes::cfg)
     })
-    .bind(HOST_ADDR)
+    .bind(host_addr)
     .to_app_err()?
     .run())
 }
