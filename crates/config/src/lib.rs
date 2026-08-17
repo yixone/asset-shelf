@@ -6,6 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+pub mod database;
 pub mod host;
 pub mod instance;
 pub mod storage;
@@ -16,6 +17,7 @@ pub struct ApplicationConfig {
     pub instance: instance::InstanceConfig,
     pub host: host::HostConfig,
     pub storage: storage::StorageConfig,
+    pub database: database::DatabaseConfig,
 }
 
 impl ApplicationConfig {

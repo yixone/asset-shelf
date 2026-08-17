@@ -17,8 +17,6 @@ use crate::{
     utils::multipart::{FieldExt, MultipartParseError},
 };
 
-const MAX_SIZE: usize = 1024 * 1024 * 1024;
-
 const DEFAULT_VARIANT: MediaVariant = MediaVariant::Original;
 
 /// Asset uploading context
@@ -71,10 +69,10 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
                         |chunk| {
                             size_bytes += chunk.len();
 
-                            if size_bytes > MAX_SIZE {
+                            if size_bytes > ctx.config.storage.max_size_bytes() {
                                 return Err(create_error!(FileTooLarge {
                                     received: size_bytes,
-                                    max_size: MAX_SIZE
+                                    max_size: ctx.config.storage.max_size_bytes()
                                 }));
                             }
 
@@ -96,6 +94,10 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
                         return Err(create_error!(UnsupportedFileType));
                     }
                 };
+
+                if mimetype.is_video() && !ctx.config.instance.allow_video() {
+                    return Err(create_error!(VideoSupportDisabled));
+                }
 
                 upload.upload = Some(UploadFile {
                     file: temp_stored,

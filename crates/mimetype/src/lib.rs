@@ -92,6 +92,11 @@ impl MimeType {
             MimeType::Mp4 | MimeType::Avi | MimeType::Webm => MimeKind::Video,
         }
     }
+
+    pub fn is_video(&self) -> bool {
+        let kind = self.kind();
+        kind == MimeKind::Video
+    }
 }
 
 #[derive(Debug)]

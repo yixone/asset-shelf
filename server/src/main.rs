@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
     let cfg = Arc::new(ApplicationConfig::try_load(CONFIG_PATH, true).to_app_err()?);
 
     tracing::info!("Opening database");
-    let db = SqliteDatabase::open("storage/data.db").await?;
+    let db = SqliteDatabase::open(cfg.database.path()).await?;
     db.migrate().await?;
 
     let db = Arc::new(db.repositories());
@@ -48,13 +48,14 @@ async fn main() -> Result<()> {
         storage,
         flake,
         events,
+        config: cfg.clone(),
     };
 
     tracing::info!("Initializing background worker supervisor");
     let supervisor = init_workers(&ctx);
     let workers_handle = supervisor.run(cancel.clone());
 
-    let server = configure_server(ctx, cfg.host.listen_addr())?;
+    let server = configure_server(ctx, &cfg.host.listen_addr())?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);

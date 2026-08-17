@@ -28,6 +28,7 @@ impl ResponseError for Error {
             ErrorKind::NotFound => StatusCode::NOT_FOUND,
             ErrorKind::AlreadyExists => StatusCode::CONFLICT,
             ErrorKind::ProcessingTimeout => StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorKind::VideoSupportDisabled => StatusCode::BAD_REQUEST,
             ErrorKind::Internal { .. } => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
