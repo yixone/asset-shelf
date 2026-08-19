@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use flake_id::FlakeIdGenerator;
 use storage::{Storage, backend::fs::NativeFsStorageBackend, global::GlobalPathData};
 use tempfile::TempDir;
@@ -8,7 +10,7 @@ const DATA: &[u8] = &[0xFF, 0xD8, 0xFF, 0xDB, 0x67, 0x42, 0x52, 0x0, 0x0, 0x1, 0
 async fn open_storage() -> Storage {
     let temp = TempDir::new().unwrap();
     let host = NativeFsStorageBackend::new(temp.path()).await.unwrap();
-    let flake = FlakeIdGenerator::new(0);
+    let flake = Arc::new(FlakeIdGenerator::new(0));
     Storage::new(host, flake, temp.path().join("temp"))
         .await
         .unwrap()

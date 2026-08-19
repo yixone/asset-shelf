@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # Workspace
+config = { workspace = true }
 db = { workspace = true }
 events = { workspace = true }
 flake-id = { workspace = true }

@@ -1,6 +1,5 @@
 use actix_multipart::Multipart;
 use actix_web::{HttpResponse, post, web};
-use chrono::Utc;
 use events::AssetCreatedEvent;
 use futures::TryStreamExt;
 use mimetype::MimeType;
@@ -17,8 +16,6 @@ use crate::{
     routes::ApiResult,
     utils::multipart::{FieldExt, MultipartParseError},
 };
-
-const MAX_SIZE: usize = 1024 * 1024 * 1024;
 
 const DEFAULT_VARIANT: MediaVariant = MediaVariant::Original;
 
@@ -42,11 +39,7 @@ struct UploadFile<'a> {
 async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
     let mut upload = UploadingContext::default();
 
-    let now = Utc::now();
-    let media = Media {
-        id: ctx.flake.get_id_as(),
-        created_at: now,
-    };
+    let media = Media::new(ctx.flake.get_id_as());
 
     while let Some(mut field) = payload
         .try_next()
@@ -76,10 +69,10 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
                         |chunk| {
                             size_bytes += chunk.len();
 
-                            if size_bytes > MAX_SIZE {
+                            if size_bytes > ctx.config.storage.max_size_bytes() {
                                 return Err(create_error!(FileTooLarge {
                                     received: size_bytes,
-                                    max_size: MAX_SIZE
+                                    max_size: ctx.config.storage.max_size_bytes()
                                 }));
                             }
 
@@ -102,6 +95,10 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
                     }
                 };
 
+                if mimetype.is_video() && !ctx.config.instance.allow_video() {
+                    return Err(create_error!(VideoSupportDisabled));
+                }
+
                 upload.upload = Some(UploadFile {
                     file: temp_stored,
                     mimetype,
@@ -118,16 +115,15 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         return Err(create_error!(MalformedPayload));
     };
 
-    let media_file = MediaFile {
-        id: ctx.flake.get_id_as(),
-        media_id: media.id.clone(),
-        variant: DEFAULT_VARIANT,
-        storage_path: file.file.global_path().to_string(),
-        created_at: now,
-        size_bytes: file.file.size_bytes as i64,
-        mimetype: file.mimetype,
-        duration_ms: None,
-    };
+    let media_file = MediaFile::new(
+        ctx.flake.get_id_as(),
+        media.id.clone(),
+        DEFAULT_VARIANT,
+        file.file.global_path().to_string(),
+        file.file.size_bytes as i64,
+        file.mimetype,
+        None,
+    );
     let asset = Asset::new(
         ctx.flake.get_id_as(),
         media.id.clone(),
@@ -136,14 +132,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         upload.caption,
         upload.source_url,
     );
-    let asset_features = AssetFeatures {
-        asset_id: asset.id,
-        p_hash: None,
-        a_hash: None,
-        width: None,
-        height: None,
-        accent_color: None,
-    };
+    let asset_features = AssetFeatures::new(asset.id);
 
     let mut op = ctx.db.assets.create_op().await?;
 
