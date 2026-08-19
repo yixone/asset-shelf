@@ -18,7 +18,7 @@ use routing::EventRoutingError;
 #[derive(Debug, Clone)]
 pub struct AssetCreatedEvent {
     /// New asset ID
-    pub asset: AssetId,
+    pub asset_id: AssetId,
 }
 
 /// Asset deletion event

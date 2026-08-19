@@ -1,2 +1,2 @@
 pub mod cleanup;
-pub mod media;
+pub mod remove;

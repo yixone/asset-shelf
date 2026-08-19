@@ -12,9 +12,9 @@ use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
-    WorkerContext,
-    supervisor::{SupervisorHandle, WorkersSupervisor},
-    units::{cleanup::CleanupWorker, media::MediaWorker},
+    cleanup::CleanupWorker,
+    media::MediaWorker,
+    runtime::{SupervisorHandle, WorkerContext, WorkersSupervisor},
 };
 
 const CONFIG_PATH: &str = "storage/config.toml";

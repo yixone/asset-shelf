@@ -1,7 +1,7 @@
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
-use crate::worker::AbstractWorker;
+use crate::runtime::AbstractWorker;
 
 pub struct WorkersSupervisor {
     workers: Vec<Box<dyn AbstractWorker + Send>>,
