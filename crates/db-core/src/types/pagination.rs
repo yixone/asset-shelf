@@ -9,7 +9,7 @@ pub struct Pagination {
 
 impl Pagination {
     /// Creates a new [`Pagination`]
-    pub fn new(limit: u32, offset: u32) -> Self {
+    pub const fn new(limit: u32, offset: u32) -> Self {
         Self { limit, offset }
     }
 

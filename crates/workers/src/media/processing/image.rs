@@ -1,15 +1,20 @@
-use media::image::{Image, ImageDecoder, ImageFormat};
+use media::image::{Image, ImageDecoder, ImageFormat, ImageReader};
 use mimetype::MimeType;
 use models::{media::MediaVariant, types::Color};
 use result::Result;
 use tokio::io::AsyncRead;
 
-use crate::media::extracted::{ExtractedFeatures, GeneratedImageVariant};
+use super::ExtractedFeatures;
 
 const THUMBNAIL_WIDTH: u32 = 400;
 const THUMBNAIL_QUALITY: usize = 80;
 
-/// Image processor entity
+pub struct GeneratedImageVariant {
+    pub variant: MediaVariant,
+    pub mimetype: MimeType,
+    pub reader: ImageReader,
+}
+
 pub struct ImageProcessor {
     image: Image,
 }
@@ -57,7 +62,7 @@ impl ImageProcessor {
         Ok(GeneratedImageVariant {
             variant: MediaVariant::Thumbnail,
             mimetype: MimeType::Webp,
-            img: thumbnail,
+            reader: thumbnail,
         })
     }
 }

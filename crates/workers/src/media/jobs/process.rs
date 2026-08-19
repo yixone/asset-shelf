@@ -16,11 +16,11 @@ use storage::{StoragePath, global::GlobalPathData};
 use tokio::time::Instant;
 
 use crate::{
-    WorkerContext,
     media::{
-        extracted::{GeneratedImageVariant, GeneratedVideoVariant},
-        processing::{ImageProcessor, VideoProcessor},
+        processing::{image::ImageProcessor, video::VideoProcessor},
+        store::{store_image_variant, store_video_variant},
     },
+    runtime::WorkerContext,
 };
 
 /// Processes media of pending assets or assets lacking certain features
@@ -62,7 +62,7 @@ pub async fn process_asset_by_id(ctx: &WorkerContext, id: AssetId) -> Result<()>
     process_asset_media(ctx, &asset).await
 }
 
-async fn process_asset_media(ctx: &WorkerContext, asset: &AssetView) -> Result<()> {
+pub async fn process_asset_media(ctx: &WorkerContext, asset: &AssetView) -> Result<()> {
     if !asset.inner.need_processing(&asset.features, Utc::now()) {
         return Ok(());
     }
@@ -200,67 +200,4 @@ async fn change_asset_state(
 
 async fn get_original(ctx: &WorkerContext, id: &MediaId) -> Result<MediaFile> {
     ctx.db.media.get_variant(id, MediaVariant::Original).await
-}
-
-async fn store_image_variant(
-    ctx: &WorkerContext,
-    variant: GeneratedImageVariant,
-    media_group_id: &MediaId,
-) -> Result<()> {
-    let file = ctx
-        .storage
-        .upload(
-            GlobalPathData::new(&media_group_id.to_string(), variant.mimetype.as_str()),
-            variant.img,
-            |_| Ok(()),
-        )
-        .await?;
-
-    let media_file = MediaFile {
-        id: ctx.flake.get_id_as(),
-        media_id: media_group_id.clone(),
-        variant: MediaVariant::Thumbnail,
-        storage_path: file.global_path().to_string(),
-        created_at: Utc::now(),
-        size_bytes: file.size_bytes as i64,
-        mimetype: variant.mimetype,
-        duration_ms: None,
-    };
-
-    file.commit().await?;
-    ctx.db.media.insert_file(&media_file).await?;
-
-    tracing::info!(
-        "MediaWorker: {} generated and saved for media: {}",
-        variant.variant,
-        media_group_id
-    );
-    Ok(())
-}
-
-async fn store_video_variant<'a>(
-    ctx: &WorkerContext,
-    variant: GeneratedVideoVariant<'a>,
-    media_group_id: &MediaId,
-) -> Result<()> {
-    let file = variant.reserve.publish().await?;
-
-    let variant_media_file = MediaFile {
-        id: ctx.flake.get_id_as(),
-        media_id: media_group_id.clone(),
-        variant: MediaVariant::LoopPreview,
-        storage_path: file.path.to_string(),
-        created_at: Utc::now(),
-        size_bytes: file.size_bytes as i64,
-        mimetype: variant.mimetype,
-        duration_ms: Some(variant.duration_milis as i64),
-    };
-
-    ctx.db.media.insert_file(&variant_media_file).await?;
-    tracing::info!(
-        "MediaWorker: {} generated and saved for media: {}",
-        variant.variant,
-        media_group_id
-    );
-    Ok(())
 }

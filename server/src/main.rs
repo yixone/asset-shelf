@@ -11,10 +11,9 @@ use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
-    WorkerContext,
+    cleanup::CleanupWorker,
     media::MediaWorker,
-    supervisor::{SupervisorHandle, WorkersSupervisor},
-    units::cleanup::CleanupWorker,
+    runtime::{SupervisorHandle, WorkerContext, WorkersSupervisor},
 };
 
 const HOST_ADDR: &str = "0.0.0.0:8080";

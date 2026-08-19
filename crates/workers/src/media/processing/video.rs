@@ -14,10 +14,8 @@ use result::{Result, create_error, error::ResultExt};
 use storage::files::ReservedFile;
 use tokio::time::timeout;
 
-use crate::media::{
-    extracted::{ExtractedFeatures, GeneratedImageVariant, GeneratedVideoVariant},
-    processing::image::ImageProcessor,
-};
+use super::ExtractedFeatures;
+use crate::media::processing::image::{GeneratedImageVariant, ImageProcessor};
 
 const PROBE_TIMEOUT: Duration = Duration::from_mins(10);
 const EXTRACT_FRAME_TIMEOUT: Duration = Duration::from_mins(2);
@@ -26,7 +24,13 @@ const TRANSCODINIG_TIMEOUT: Duration = Duration::from_mins(5);
 const LOOP_PREVIEW_FRAGMENT_DURATION_MS: u64 = 5000;
 const LOOP_PREVIEW_WIDTH: u32 = 600;
 
-/// Video processor entity
+pub struct GeneratedVideoVariant<'a> {
+    pub variant: MediaVariant,
+    pub mimetype: MimeType,
+    pub duration_milis: u64,
+    pub reserve: ReservedFile<'a>,
+}
+
 pub struct VideoProcessor {
     video: MediaInput,
     meta: VideoMetadata,
