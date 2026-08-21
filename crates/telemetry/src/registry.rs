@@ -1,5 +1,6 @@
 use prometheus::{Registry, core::Collector, proto::MetricFamily};
 
+/// Application metrics registry
 pub struct MetricsRegistry {
     inner: Registry,
 }

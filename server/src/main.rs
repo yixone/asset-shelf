@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
     print_header();
 
     let metrics_reg = MetricsRegistry::new();
-    let server_metrics = ServerMetrics::new(&metrics_reg);
+    let server_metrics = ServerMetrics::try_new(&metrics_reg)?;
 
     let metrics_ctx = MetricsCtx {
         registry: metrics_reg,

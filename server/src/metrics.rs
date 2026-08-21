@@ -1,15 +1,18 @@
 use std::time::Duration;
 
+use result::{Result, error::ResultExt};
 use telemetry::{HistogramOpts, HistogramVec, MetricsRegistry};
 
-const HTTP_SERVER_DURATION: &str = "http_server_duration";
+const HTTP_SERVER_DURATION: &str = "http_server_duration_seconds";
 
+/// Server metrics
 pub struct ServerMetrics {
-    http_server_duration: HistogramVec,
+    /// HTTP request duration metric (in seconds)
+    http_server_duration_seconds: HistogramVec,
 }
 
 impl ServerMetrics {
-    pub fn new(reg: &MetricsRegistry) -> Self {
+    pub fn try_new(reg: &MetricsRegistry) -> Result<Self> {
         let http_server_duration = HistogramVec::new(
             HistogramOpts::new(
                 HTTP_SERVER_DURATION,
@@ -17,16 +20,17 @@ impl ServerMetrics {
             ),
             &["method", "route"],
         )
-        .expect("");
-        reg.register(&http_server_duration).expect("");
+        .to_app_err()?;
+        reg.register(&http_server_duration).to_app_err()?;
 
-        Self {
-            http_server_duration,
-        }
+        Ok(Self {
+            http_server_duration_seconds: http_server_duration,
+        })
     }
 
-    pub fn request_finished(&self, elapsed: Duration, method: &str, route: &str) {
-        self.http_server_duration
+    /// Publishes metrics based on the results of an HTTP request execution
+    pub fn http_request_finished(&self, elapsed: Duration, method: &str, route: &str) {
+        self.http_server_duration_seconds
             .with_label_values(&[method, route])
             .observe(elapsed.as_secs_f64());
     }

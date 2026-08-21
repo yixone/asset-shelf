@@ -31,7 +31,7 @@ pub async fn requests_metric_mw(
 
     metrics
         .server
-        .request_finished(start.elapsed(), &method, &route);
+        .http_request_finished(start.elapsed(), &method, &route);
 
     Ok(res)
 }

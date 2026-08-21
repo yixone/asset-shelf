@@ -1,6 +1,6 @@
 use actix_web::{HttpResponse, get, web};
 use result::error::ResultExt;
-use telemetry::JsonEncoder;
+use telemetry::ApiTelemetryAdapter;
 
 use crate::{di::MetricsCtx, routes::ApiResult};
 
@@ -8,8 +8,8 @@ use crate::{di::MetricsCtx, routes::ApiResult};
 async fn get_metrics(ctx: web::Data<MetricsCtx>) -> ApiResult {
     let collected = ctx.registry.gather();
 
-    let encoder = JsonEncoder::new();
-    let json = encoder.encode_struct(&collected).to_app_err()?;
+    let adapter = ApiTelemetryAdapter::new();
+    let json = adapter.to_api(&collected).to_app_err()?;
 
     Ok(HttpResponse::Ok().json(json))
 }
