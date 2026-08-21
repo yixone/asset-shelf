@@ -7,8 +7,14 @@ use db::sqlite::driver::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
-use server::{SERVER_VERSION, di::DataCtx, routes};
+use server::{
+    SERVER_VERSION,
+    di::{DataCtx, MetricsCtx},
+    metrics::ServerMetrics,
+    middleware, routes,
+};
 use storage::{Storage, backend::fs::NativeFsStorageBackend};
+use telemetry::MetricsRegistry;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
@@ -23,6 +29,14 @@ const CONFIG_PATH: &str = "storage/config.toml";
 async fn main() -> Result<()> {
     init_tracing();
     print_header();
+
+    let metrics_reg = MetricsRegistry::new();
+    let server_metrics = ServerMetrics::new(&metrics_reg);
+
+    let metrics_ctx = MetricsCtx {
+        registry: metrics_reg,
+        server: server_metrics,
+    };
 
     tracing::info!("Reading config");
     let cfg = Arc::new(ApplicationConfig::try_load(CONFIG_PATH, true).to_app_err()?);
@@ -55,7 +69,7 @@ async fn main() -> Result<()> {
     let supervisor = init_workers(&ctx);
     let workers_handle = supervisor.run(cancel.clone());
 
-    let server = configure_server(ctx, &cfg.host.listen_addr())?;
+    let server = configure_server(ctx, metrics_ctx, &cfg.host.listen_addr())?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);
@@ -67,14 +81,23 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn configure_server(ctx: DataCtx, host_addr: &str) -> Result<actix_web::dev::Server> {
+fn configure_server(
+    ctx: DataCtx,
+    metrics: MetricsCtx,
+    host_addr: &str,
+) -> Result<actix_web::dev::Server> {
     let ctx = web::Data::new(ctx);
+    let metrics = web::Data::new(metrics);
 
     Ok(HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
             .app_data(ctx.clone())
+            .app_data(metrics.clone())
             .configure(routes::cfg)
+            .wrap(actix_web::middleware::from_fn(
+                middleware::v1::requests_metric_mw,
+            ))
     })
     .bind(host_addr)
     .to_app_err()?
