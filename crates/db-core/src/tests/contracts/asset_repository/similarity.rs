@@ -10,6 +10,8 @@ use crate::types::Pagination;
 
 use super::*;
 
+/// Checks that the given [`AssetRepository`] returns suitable candidates
+/// for searching similar assets and does not receive unnecessary ones
 pub async fn return_candidates_for_similar_search<R: AssetRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
 
@@ -103,6 +105,8 @@ pub async fn return_candidates_for_similar_search<R: AssetRepository>(repo: R) -
     Ok(())
 }
 
+/// Checks that this [`AssetRepository`] correctly retrieves a list of assets
+/// in the correct order based on similarity search results
 pub async fn list_from_similar_search_results<R: AssetRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
 

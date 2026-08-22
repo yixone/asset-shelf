@@ -4,7 +4,10 @@ use flake_id::FlakeId;
 use models::types::AssetId;
 use result::ErrorKind;
 
-use crate::types::{DeleteResult, UpdateResult, patch::AssetPatch};
+use crate::types::{
+    DeleteResult, UpdateResult,
+    patch::{AssetFeaturesPatch, AssetPatch},
+};
 
 use super::*;
 
@@ -24,6 +27,27 @@ pub async fn update_existing<R: AssetRepository>(repo: R) -> Result<()> {
         asset.inner.title,
         Some("bar".to_string()),
         "After the update, the asset name should change"
+    );
+
+    Ok(())
+}
+
+/// Checks that the given [`AssetRepository`] correctly updates
+/// [`AssetFeatures`] for the given [`Asset`]
+pub async fn update_existing_features<R: AssetRepository>(repo: R) -> Result<()> {
+    let flake = FlakeIdGenerator::new(0);
+    let asset = insert_asset(&repo, "foo", &flake).await?;
+
+    let patch = AssetFeaturesPatch::new().height(Some(1920));
+    let res = repo.update_features(asset.id, patch).await?;
+
+    assert!(!res.no_changes());
+
+    let asset = repo.get_by_id(asset.id).await?;
+    assert_eq!(
+        asset.features.height,
+        Some(1920),
+        "After the update, the asset features should change"
     );
 
     Ok(())
