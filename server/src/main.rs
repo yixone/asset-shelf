@@ -118,10 +118,9 @@ fn spawn_shutdown_handler(
 }
 
 fn print_header() {
-    tracing::info!("{}", "=".repeat(18));
-    tracing::info!("Asset shelf server");
-    tracing::info!("Version: {SERVER_VERSION}");
-    tracing::info!("{}", "=".repeat(18));
+    tracing::info!("{}", "=".repeat(26));
+    tracing::info!("Asset shelf server ({SERVER_VERSION})");
+    tracing::info!("{}", "=".repeat(26));
 }
 
 fn init_tracing() {

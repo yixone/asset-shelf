@@ -3079,7 +3079,6 @@ dependencies = [
  "prometheus",
  "result",
  "serde",
- "serde_json",
  "tracing",
 ]
 
