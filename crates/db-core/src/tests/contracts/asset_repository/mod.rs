@@ -1,8 +1,8 @@
-pub mod mutation;
-pub mod operation;
-pub mod processing;
-pub mod retrieval;
-pub mod similarity;
+mod mutation;
+mod operation;
+mod processing;
+mod retrieval;
+mod similarity;
 
 use flake_id::FlakeIdGenerator;
 use mimetype::MimeKind;
@@ -120,7 +120,7 @@ pub(crate) fn prepare_asset(
     (media, asset, features)
 }
 
-pub async fn insert_full_asset<R: AssetRepository>(
+pub(crate) async fn insert_full_asset<R: AssetRepository>(
     (m, a, af): (&Media, &Asset, &AssetFeatures),
     repo: &R,
 ) -> Result<()> {

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
 use config::ApplicationConfig;
-use db::sqlite::driver::SqliteDatabase;
+use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};

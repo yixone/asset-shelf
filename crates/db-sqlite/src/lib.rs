@@ -4,6 +4,6 @@ pub(crate) mod queries;
 pub mod ops;
 pub mod repos;
 
-pub mod driver;
+mod driver;
 
 pub use driver::SqliteDatabase;
