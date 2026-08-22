@@ -73,8 +73,10 @@ pub enum ErrorKind {
     /// Processing timed out
     ProcessingTimeout,
 
-    /// Video support is disabled for this instance
+    /// Video support is disabled
     VideoSupportDisabled,
+    /// Telemetriy support is disabled
+    TelemetryDisabled,
 
     /// Internal application error
     Internal {

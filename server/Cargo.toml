@@ -15,6 +15,7 @@ models = { workspace = true, features = ["serde"] }
 result = { workspace = true, features = ["actix"] }
 storage = { workspace = true }
 join = { workspace = true }
+telemetry = { workspace = true }
 workers = { workspace = true }
 
 # External

@@ -14,6 +14,7 @@ members = [
     "crates/models",
     "crates/result",
     "crates/storage",
+    "crates/telemetry",
     "crates/workers",
 
     # Binary crates
@@ -34,6 +35,7 @@ mimetype = { path = "crates/mimetype" }
 models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
+telemetry = { path = "crates/telemetry" }
 workers = { path = "crates/workers" }
 
 
@@ -47,8 +49,10 @@ cassette = { git = "https://github.com/yixone/cassette", branch = "master" }
 chrono = "0.4.42"
 futures = "0.3.32"
 image = { version = "0.25.10", default-features = false }
+prometheus = "0.14.0"
 rand = "0.10.1"
 serde = "1.0.219"
+serde_json = "1.0.151"
 sqlx = "0.8.5"
 tempfile = "3.27.0"
 tokio = "1.47.1"

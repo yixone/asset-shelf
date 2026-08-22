@@ -7,8 +7,13 @@ use db::sqlite::driver::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
 use result::{Result, error::ResultExt};
-use server::{SERVER_VERSION, di::DataCtx, routes};
+use server::{
+    SERVER_VERSION,
+    di::{DataCtx, MetricsCtx},
+    routes,
+};
 use storage::{Storage, backend::fs::NativeFsStorageBackend};
+use telemetry::MetricsRegistry;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
@@ -26,6 +31,9 @@ async fn main() -> Result<()> {
 
     tracing::info!("Reading config");
     let cfg = Arc::new(ApplicationConfig::try_load(CONFIG_PATH, true).to_app_err()?);
+
+    let metrics_reg = MetricsRegistry::new(cfg.instance.allow_metrics());
+    let metrics_ctx = MetricsCtx::try_new(metrics_reg)?;
 
     tracing::info!("Opening database");
     let db = SqliteDatabase::open(cfg.database.path()).await?;
@@ -55,7 +63,7 @@ async fn main() -> Result<()> {
     let supervisor = init_workers(&ctx);
     let workers_handle = supervisor.run(cancel.clone());
 
-    let server = configure_server(ctx, &cfg.host.listen_addr())?;
+    let server = configure_server(ctx, metrics_ctx, &cfg.host.listen_addr())?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);
@@ -67,13 +75,19 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn configure_server(ctx: DataCtx, host_addr: &str) -> Result<actix_web::dev::Server> {
+fn configure_server(
+    ctx: DataCtx,
+    metrics: MetricsCtx,
+    host_addr: &str,
+) -> Result<actix_web::dev::Server> {
     let ctx = web::Data::new(ctx);
+    let metrics = web::Data::new(metrics);
 
     Ok(HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
             .app_data(ctx.clone())
+            .app_data(metrics.clone())
             .configure(routes::cfg)
     })
     .bind(host_addr)
