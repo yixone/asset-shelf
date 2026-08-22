@@ -11,7 +11,7 @@ use result::{create_error, error::ResultExt};
 use storage::{files::UncommitedFile, global::GlobalPathData};
 
 use crate::{
-    di::DataCtx,
+    di::{DataCtx, MetricsCtx},
     dto::v1::assets::AssetDtoV1,
     routes::ApiResult,
     utils::multipart::{FieldExt, MultipartParseError},
@@ -36,7 +36,11 @@ struct UploadFile<'a> {
 
 /// Uploads an asset with a media file
 #[post("/upload")]
-async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiResult {
+async fn upload_asset(
+    mut payload: Multipart,
+    ctx: web::Data<DataCtx>,
+    metrics: web::Data<MetricsCtx>,
+) -> ApiResult {
     let mut upload = UploadingContext::default();
 
     let media = Media::new(ctx.flake.get_id_as());
@@ -148,6 +152,7 @@ async fn upload_asset(mut payload: Multipart, ctx: web::Data<DataCtx>) -> ApiRes
         return Err(e);
     }
 
+    metrics.server.file_uploaded(&media_file.mimetype.kind());
     ctx.events.publish(AssetCreatedEvent { asset_id: asset.id });
 
     let res = AssetDtoV1::from((asset, asset_features, vec![media_file]));

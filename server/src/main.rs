@@ -10,7 +10,6 @@ use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
     di::{DataCtx, MetricsCtx},
-    metrics::ServerMetrics,
     middleware, routes,
 };
 use storage::{Storage, backend::fs::NativeFsStorageBackend};
@@ -30,13 +29,8 @@ async fn main() -> Result<()> {
     init_tracing();
     print_header();
 
-    let metrics_reg = MetricsRegistry::new();
-    let server_metrics = ServerMetrics::try_new(&metrics_reg)?;
-
-    let metrics_ctx = MetricsCtx {
-        registry: metrics_reg,
-        server: server_metrics,
-    };
+    let metrics_reg = MetricsRegistry::new(true);
+    let metrics_ctx = MetricsCtx::try_new(metrics_reg)?;
 
     tracing::info!("Reading config");
     let cfg = Arc::new(ApplicationConfig::try_load(CONFIG_PATH, true).to_app_err()?);
