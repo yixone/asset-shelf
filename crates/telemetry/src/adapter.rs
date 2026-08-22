@@ -89,7 +89,7 @@ impl ApiTelemetryAdapter {
                         let sum = h.get_sample_sum();
                         let count = h.get_sample_count();
 
-                        item.push_metric(metric.histogram(buckets, sum, count));
+                        item.push_metric(metric.histogram_pretty(buckets, sum, count));
                     }
                 }
             }

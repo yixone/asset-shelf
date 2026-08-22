@@ -10,7 +10,7 @@ use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
     di::{DataCtx, MetricsCtx},
-    middleware, routes,
+    routes,
 };
 use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use telemetry::MetricsRegistry;
@@ -29,11 +29,11 @@ async fn main() -> Result<()> {
     init_tracing();
     print_header();
 
-    let metrics_reg = MetricsRegistry::new(true);
-    let metrics_ctx = MetricsCtx::try_new(metrics_reg)?;
-
     tracing::info!("Reading config");
     let cfg = Arc::new(ApplicationConfig::try_load(CONFIG_PATH, true).to_app_err()?);
+
+    let metrics_reg = MetricsRegistry::new(cfg.instance.allow_metrics());
+    let metrics_ctx = MetricsCtx::try_new(metrics_reg)?;
 
     tracing::info!("Opening database");
     let db = SqliteDatabase::open(cfg.database.path()).await?;
@@ -89,9 +89,6 @@ fn configure_server(
             .app_data(ctx.clone())
             .app_data(metrics.clone())
             .configure(routes::cfg)
-            .wrap(actix_web::middleware::from_fn(
-                middleware::v1::requests_metric_mw,
-            ))
     })
     .bind(host_addr)
     .to_app_err()?

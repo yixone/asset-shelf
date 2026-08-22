@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::helpers;
+
 /// API representation of a metric
 #[derive(Debug, Serialize)]
 pub struct MetricApi {
@@ -114,24 +116,53 @@ impl MetricDataBuilder<true> {
 
     /// Builds a [`MetricData`] as `SUMMARY` metric data
     pub fn summary(self, quantiles: Vec<SummaryQuantile>, sum: f64, count: u64) -> MetricData {
+        let mean = sum / count as f64;
         MetricData {
             labels: self.labels,
             value: MetricValue::Summary {
                 quantiles,
                 sum,
                 count,
+                mean,
             },
         }
     }
 
     /// Builds a [`MetricData`] as `HISTOGRAM` metric data
     pub fn histogram(self, buckets: Vec<HistogramBucket>, sum: f64, count: u64) -> MetricData {
+        let mean = sum / count as f64;
         MetricData {
             labels: self.labels,
             value: MetricValue::Histogram {
                 buckets,
                 sum,
                 count,
+                mean,
+            },
+        }
+    }
+
+    /// Builds a [`MetricData`] as pretty formatted `HISTOGRAM` metric data
+    pub fn histogram_pretty(
+        self,
+        buckets: Vec<HistogramBucket>,
+        sum: f64,
+        count: u64,
+    ) -> MetricData {
+        let mean = sum / count as f64;
+        let p50 = helpers::calc_buckets_percentile(0.5, count, &buckets);
+        let p90 = helpers::calc_buckets_percentile(0.9, count, &buckets);
+        let p99 = helpers::calc_buckets_percentile(0.99, count, &buckets);
+
+        MetricData {
+            labels: self.labels,
+            value: MetricValue::HistogramPretty {
+                p50,
+                p90,
+                p99,
+                sum,
+                count,
+                mean,
             },
         }
     }
@@ -178,6 +209,9 @@ pub enum MetricValue {
 
         /// The total number of values ​​recorded in the metric
         count: u64,
+
+        /// Average summary value
+        mean: f64,
     },
 
     /// Histogram metric value
@@ -190,6 +224,26 @@ pub enum MetricValue {
 
         /// The total number of values ​​recorded in the metric
         count: u64,
+
+        /// Average histogram value
+        mean: f64,
+    },
+
+    /// Pretty histogram presentation
+    HistogramPretty {
+        /// Percentiles
+        p50: HistogramBucketBound,
+        p90: HistogramBucketBound,
+        p99: HistogramBucketBound,
+
+        /// The sum of all values ​​recorded in the metric
+        sum: f64,
+
+        /// The total number of values ​​recorded in the metric
+        count: u64,
+
+        /// Average histogram value
+        mean: f64,
     },
 }
 
@@ -212,7 +266,7 @@ pub struct HistogramBucket {
 }
 
 /// Histogram bucket boundary
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub enum HistogramBucketBound {
     /// Equivalent to [`f64::INFINITY`]
     #[serde(rename = "inf")]

@@ -1,6 +1,7 @@
-use prometheus::{
-    CounterVec, HistogramOpts, HistogramVec, Opts, Registry, core::Collector, proto::MetricFamily,
-};
+use prometheus::{HistogramOpts, Opts, Registry, core::Collector, proto::MetricFamily};
+use result::{Result, error::ResultExt};
+
+use crate::{CounterVec, HistogramVec};
 
 /// Application metrics registry
 pub struct MetricsRegistry {
@@ -24,13 +25,12 @@ impl MetricsRegistry {
     }
 
     /// Registers a new [`Collector`] to be included in metrics collection
-    pub fn register<C>(&self, collector: C) -> prometheus::Result<C>
+    pub fn register<C>(&self, collector: &C) -> prometheus::Result<()>
     where
         C: Collector + Clone + 'static,
     {
         let boxed = Box::new(collector.clone());
-        self.inner.register(boxed)?;
-        Ok(collector)
+        self.inner.register(boxed)
     }
 
     /// Registers a [`HistogramVec`] metric for the current registry.
@@ -38,19 +38,13 @@ impl MetricsRegistry {
         &self,
         opts: HistogramOpts,
         label_names: &[&str],
-    ) -> prometheus::Result<HistogramVec> {
-        let histogram = HistogramVec::new(opts, label_names)?;
-        self.register(histogram)
+    ) -> Result<HistogramVec> {
+        HistogramVec::create(opts, label_names, self).to_app_err()
     }
 
     /// Registers a [`CounterVec`] metric for the current registry
-    pub fn reg_counter_vec(
-        &self,
-        opts: Opts,
-        label_names: &[&str],
-    ) -> prometheus::Result<CounterVec> {
-        let counter = CounterVec::new(opts, label_names)?;
-        self.register(counter)
+    pub fn reg_counter_vec(&self, opts: Opts, label_names: &[&str]) -> Result<CounterVec> {
+        CounterVec::create(opts, label_names, self).to_app_err()
     }
 
     pub fn metrics_enabled(&self) -> bool {
