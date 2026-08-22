@@ -3080,6 +3080,7 @@ dependencies = [
  "result",
  "serde",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]
