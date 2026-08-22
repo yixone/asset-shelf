@@ -17,7 +17,7 @@ impl CounterVec {
     /// Creates a new [`CounterVec`]
     pub fn create(opts: Opts, labels: &[&str], reg: &MetricsRegistry) -> prometheus::Result<Self> {
         // Creates a noop tool if metric collection is disabled at the provider level
-        if !reg.metrics_enabled() {
+        if !reg.is_metrics_enabled() {
             return Ok(Self::Noop);
         }
 
@@ -31,8 +31,8 @@ impl CounterVec {
     /// Increments the value of the current counter
     pub fn inc(&self, labels: &[&str]) {
         match self {
-            CounterVec::Prometheus(metric_vec) => {
-                metric_vec.with_label_values(labels).inc();
+            CounterVec::Prometheus(metric) => {
+                metric.with_label_values(labels).inc();
             }
             CounterVec::Noop => (),
         }
@@ -56,7 +56,7 @@ impl HistogramVec {
         reg: &MetricsRegistry,
     ) -> prometheus::Result<Self> {
         // Creates a noop tool if metric collection is disabled at the provider level
-        if !reg.metrics_enabled() {
+        if !reg.is_metrics_enabled() {
             return Ok(Self::Noop);
         }
 
@@ -70,10 +70,81 @@ impl HistogramVec {
     /// Add a single observation to the [`HistogramVec`]
     pub fn observe(&self, value: f64, labels: &[&str]) {
         match self {
-            HistogramVec::Prometheus(metric_vec) => {
-                metric_vec.with_label_values(labels).observe(value);
+            HistogramVec::Prometheus(metric) => {
+                metric.with_label_values(labels).observe(value);
             }
             HistogramVec::Noop => (),
+        }
+    }
+}
+
+/// An instrument that records independent values
+#[derive(Clone)]
+pub enum GaugeVec {
+    /// [`prometheus`] gauge
+    Prometheus(prometheus::GaugeVec),
+    /// Noop gauge
+    Noop,
+}
+
+impl GaugeVec {
+    /// Creates a new [`GaugeVec`]
+    pub fn create(
+        opts: Opts,
+        label_names: &[&str],
+        reg: &MetricsRegistry,
+    ) -> prometheus::Result<Self> {
+        // Creates a noop tool if metric collection is disabled at the provider level
+        if !reg.is_metrics_enabled() {
+            return Ok(Self::Noop);
+        }
+
+        // Returns the Prometheus gauge
+        let gauge = prometheus::GaugeVec::new(opts, label_names)?;
+        reg.register(&gauge)?;
+
+        Ok(GaugeVec::Prometheus(gauge))
+    }
+
+    /// Increase the gauge by 1
+    pub fn inc(&self, labels: &[&str]) {
+        match self {
+            GaugeVec::Prometheus(metric) => {
+                metric.with_label_values(labels).inc();
+            }
+            GaugeVec::Noop => (),
+        }
+    }
+
+    /// Decrease the gauge by 1
+    pub fn dec(&self, labels: &[&str]) {
+        match self {
+            GaugeVec::Prometheus(metric) => {
+                metric.with_label_values(labels).dec();
+            }
+            GaugeVec::Noop => (),
+        }
+    }
+
+    /// Add the given value to the gauge
+    /// (The value can be negative, resulting in a decrement of the gauge)
+    pub fn add(&self, value: f64, labels: &[&str]) {
+        match self {
+            GaugeVec::Prometheus(metric) => {
+                metric.with_label_values(labels).add(value);
+            }
+            GaugeVec::Noop => (),
+        }
+    }
+
+    /// Subtract the given value from the gauge
+    /// (The value can be negative, resulting in an increment of the gauge)
+    pub fn sub(&self, value: f64, labels: &[&str]) {
+        match self {
+            GaugeVec::Prometheus(metric) => {
+                metric.with_label_values(labels).sub(value);
+            }
+            GaugeVec::Noop => (),
         }
     }
 }
