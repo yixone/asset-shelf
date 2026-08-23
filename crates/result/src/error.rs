@@ -39,6 +39,10 @@ impl Error {
     pub fn is_internal(&self) -> bool {
         matches!(self.kind, ErrorKind::Internal { .. })
     }
+
+    pub fn is_not_found(&self) -> bool {
+        matches!(self.kind, ErrorKind::NotFound)
+    }
 }
 
 #[derive(Debug)]
