@@ -1,6 +1,6 @@
 use actix_web::web;
 
-use crate::middleware;
+use crate::middlewares;
 
 pub mod assets;
 pub mod collections;
@@ -17,7 +17,7 @@ pub fn cfg(cfg: &mut web::ServiceConfig) {
             .configure(collections::cfg)
             .service(metrics::get_metrics)
             .wrap(actix_web::middleware::from_fn(
-                middleware::v1::requests_metric_mw,
+                middlewares::v1::requests_metric_mw,
             )),
     );
 }

@@ -4,7 +4,7 @@ use config::ApplicationConfig;
 use result::{Result, error::ResultExt};
 
 pub mod dto;
-pub mod middleware;
+pub mod middlewares;
 pub mod routes;
 pub mod utils;
 
