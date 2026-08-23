@@ -1,12 +1,6 @@
-use flake_id::FlakeIdGenerator;
-use models::media::MediaVariant;
-use result::Result;
+use crate::types::patch::MediaFilePatch;
 
-use crate::{
-    repos::media::MediaRepository,
-    tests::contracts::media_repo::{prepare_media, prepare_media_file},
-    types::{UpdateResult, patch::MediaFilePatch},
-};
+use super::*;
 
 pub async fn update_existing_file<R: MediaRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
@@ -43,7 +37,7 @@ pub async fn return_not_found_when_updating_non_existent_file<R: MediaRepository
         )
         .await?;
 
-    assert!(matches!(res, UpdateResult::NotFound));
+    assert!(res.no_changes());
 
     Ok(())
 }

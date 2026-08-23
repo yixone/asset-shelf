@@ -1,4 +1,4 @@
-use result::{ErrorKind, create_error};
+use result::create_error;
 
 use super::*;
 
@@ -39,7 +39,7 @@ pub async fn insert_with_related_and_rollback<R: AssetRepository>(repo: R) -> Re
     let err = repo.get_by_id(a.id).await.expect_err(
         "After a rollback in `create_op`, the asset should not be added to the database",
     );
-    assert!(matches!(err.kind(), ErrorKind::NotFound));
+    assert!(err.is_not_found());
 
     Ok(())
 }
@@ -65,7 +65,7 @@ pub async fn rollback_creation_after_error<R: AssetRepository>(repo: R) -> Resul
         "After a rollback in `create_op`, the asset should not be added to the database",
     );
 
-    assert!(matches!(err.kind(), ErrorKind::NotFound));
+    assert!(err.is_not_found());
 
     Ok(())
 }

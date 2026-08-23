@@ -1,13 +1,6 @@
-use flake_id::FlakeIdGenerator;
-use result::Result;
+use crate::tests::contracts::asset_repo::{insert_full_asset, prepare_asset};
 
-use crate::{
-    repos::{asset::AssetRepository, media::MediaRepository},
-    tests::contracts::{
-        asset_repo::{insert_full_asset, prepare_asset},
-        media_repo::prepare_media,
-    },
-};
+use super::*;
 
 /// Testing the return of an orphaned media group
 pub async fn get_orphans<R: MediaRepository>(repo: R) -> Result<()> {

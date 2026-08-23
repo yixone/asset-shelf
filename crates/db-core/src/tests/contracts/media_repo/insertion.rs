@@ -1,11 +1,6 @@
-use flake_id::FlakeIdGenerator;
-use models::media::MediaVariant;
-use result::{ErrorKind, Result};
+use result::ErrorKind;
 
-use crate::{
-    repos::media::MediaRepository,
-    tests::contracts::media_repo::{prepare_media, prepare_media_file},
-};
+use super::*;
 
 /// Tests [`Media`] insertion with various [`MediaFile`]
 pub async fn insert_media_with_files<R: MediaRepository>(repo: R) -> Result<()> {

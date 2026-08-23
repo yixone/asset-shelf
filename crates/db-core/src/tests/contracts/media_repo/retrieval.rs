@@ -1,11 +1,4 @@
-use flake_id::FlakeIdGenerator;
-use models::media::MediaVariant;
-use result::Result;
-
-use crate::{
-    repos::media::MediaRepository,
-    tests::contracts::media_repo::{prepare_media, prepare_media_file},
-};
+use super::*;
 
 /// Tests getting media variant
 pub async fn get_media_variant<R: MediaRepository>(repo: R) -> Result<()> {

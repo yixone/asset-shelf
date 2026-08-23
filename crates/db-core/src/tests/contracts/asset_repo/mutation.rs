@@ -2,12 +2,8 @@
 
 use flake_id::FlakeId;
 use models::types::AssetId;
-use result::ErrorKind;
 
-use crate::types::{
-    DeleteResult, UpdateResult,
-    patch::{AssetFeaturesPatch, AssetPatch},
-};
+use crate::types::patch::{AssetFeaturesPatch, AssetPatch};
 
 use super::*;
 
@@ -20,7 +16,7 @@ pub async fn update_existing<R: AssetRepository>(repo: R) -> Result<()> {
     let patch = AssetPatch::new().title(Some("bar".to_string()));
     let res = repo.update(asset.id, patch).await?;
 
-    assert!(!res.no_changes());
+    assert!(res.has_changes());
 
     let asset = repo.get_by_id(asset.id).await?;
     assert_eq!(
@@ -41,7 +37,7 @@ pub async fn update_existing_features<R: AssetRepository>(repo: R) -> Result<()>
     let patch = AssetFeaturesPatch::new().height(Some(1920));
     let res = repo.update_features(asset.id, patch).await?;
 
-    assert!(!res.no_changes());
+    assert!(res.has_changes());
 
     let asset = repo.get_by_id(asset.id).await?;
     assert_eq!(
@@ -61,10 +57,7 @@ pub async fn return_not_found_when_updating_non_existent<R: AssetRepository>(
     let patch = AssetPatch::new().title(Some("bar".to_string()));
     let res = repo.update(AssetId(FlakeId(0)), patch).await?;
 
-    assert!(
-        matches!(res, UpdateResult::NotFound),
-        "An attempt to update a non-existent asset must return `UpdateResult::NotFound`"
-    );
+    assert!(res.no_changes());
 
     Ok(())
 }
@@ -77,13 +70,14 @@ pub async fn delete_existing<R: AssetRepository>(repo: R) -> Result<()> {
 
     let res = repo.delete(asset.id).await?;
 
-    assert!(!res.no_changes());
+    assert!(res.has_changes());
 
     let err = repo
         .get_by_id(asset.id)
         .await
         .expect_err("A `get_by_id` for a non-existent asset should return an error");
-    assert!(matches!(err.kind(), ErrorKind::NotFound));
+
+    assert!(err.is_not_found());
 
     Ok(())
 }
@@ -94,8 +88,7 @@ pub async fn return_no_changes_when_deleting_non_existent<R: AssetRepository>(
     repo: R,
 ) -> Result<()> {
     let res = repo.delete(AssetId::from(FlakeId(0))).await?;
-
-    assert!(matches!(res, DeleteResult::NoChanges));
+    assert!(res.no_changes());
 
     Ok(())
 }

@@ -1,7 +1,6 @@
 use chrono::{Duration, Utc};
 use flake_id::FlakeId;
 use models::types::{AssetId, AssetsOrdering};
-use result::ErrorKind;
 
 use crate::types::{Pagination, patch::AssetPatch};
 
@@ -37,10 +36,7 @@ pub async fn return_not_found_when_getting_a_non_existent_asset<R: AssetReposito
         .await
         .expect_err("A `get_by_id` request for a non-existent asset should return an error");
 
-    assert!(
-        matches!(err.kind(), ErrorKind::NotFound),
-        "A `NotFound` error should be returned for a `get_by_id` on a non-existent asset"
-    );
+    assert!(err.is_not_found());
 
     Ok(())
 }
