@@ -43,6 +43,10 @@ impl Error {
     pub fn is_not_found(&self) -> bool {
         matches!(self.kind, ErrorKind::NotFound)
     }
+
+    pub fn is_conflict(&self) -> bool {
+        matches!(self.kind, ErrorKind::AlreadyExists)
+    }
 }
 
 #[derive(Debug)]

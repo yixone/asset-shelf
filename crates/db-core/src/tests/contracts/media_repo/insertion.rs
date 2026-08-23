@@ -1,5 +1,3 @@
-use result::ErrorKind;
-
 use super::*;
 
 /// Tests [`Media`] insertion with various [`MediaFile`]
@@ -39,23 +37,18 @@ pub async fn insert_media_with_same_files_variants<R: MediaRepository>(repo: R) 
     let original_2 = prepare_media_file(&flake, &media, MediaVariant::Original);
 
     repo.insert(&media).await?;
-
     repo.insert_file(&original).await?;
-    {
-        let res = repo.insert_file(&original_2).await.expect_err(
-            "The repository should return an error when inserting two files with the same variants",
-        );
 
-        assert!(matches!(res.kind(), ErrorKind::AlreadyExists));
+    {
+        let err = repo.insert_file(&original_2).await.unwrap_err();
+        assert!(err.is_conflict());
     }
 
     {
         let retrieved = repo.get_by_id(&media.id).await?;
-
         assert_eq!(retrieved.files.len(), 1);
 
         let variants = retrieved.media_variants();
-
         assert!(variants.contains(&MediaVariant::Original));
         assert!(!variants.contains(&MediaVariant::Thumbnail));
     }

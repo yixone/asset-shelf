@@ -19,7 +19,6 @@ pub async fn update_existing_file<R: MediaRepository>(repo: R) -> Result<()> {
         .await?;
 
     let file = repo.get_variant(&media.id, MediaVariant::Original).await?;
-
     assert_eq!(file.duration_ms, Some(50));
 
     Ok(())
