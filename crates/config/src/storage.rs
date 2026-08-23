@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-const DEFAULT_STORAGE_PATH: &str = "storage/global";
+const DEFAULT_STORAGE_DIR: &str = "storage/global";
 const DEFAULT_STORAGE_TEMP: &str = "storage/temp";
 
 const DEFAULT_MAX_SIZE_MB: usize = 1024;
@@ -10,14 +10,15 @@ const DEFAULT_MAX_SIZE_MB: usize = 1024;
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct StorageConfig {
-    storage_root: String,
+    storage_dir: String,
     temp_dir: String,
+
     max_size_mb: usize,
 }
 
 impl StorageConfig {
-    pub fn root(&self) -> PathBuf {
-        PathBuf::from(&self.storage_root)
+    pub fn dir(&self) -> PathBuf {
+        PathBuf::from(&self.storage_dir)
     }
 
     pub fn temp(&self) -> PathBuf {
@@ -32,7 +33,7 @@ impl StorageConfig {
 impl Default for StorageConfig {
     fn default() -> Self {
         StorageConfig {
-            storage_root: DEFAULT_STORAGE_PATH.into(),
+            storage_dir: DEFAULT_STORAGE_DIR.into(),
             temp_dir: DEFAULT_STORAGE_TEMP.into(),
             max_size_mb: DEFAULT_MAX_SIZE_MB,
         }

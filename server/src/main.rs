@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
-use config::ApplicationConfig;
 use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
@@ -10,7 +9,7 @@ use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
     di::{DataCtx, MetricsCtx},
-    routes,
+    load_config, routes,
 };
 use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use telemetry::MetricsRegistry;
@@ -22,15 +21,12 @@ use workers::{
     runtime::{SupervisorHandle, WorkerContext, WorkersSupervisor},
 };
 
-const CONFIG_PATH: &str = "storage/config.toml";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     init_tracing();
     print_header();
 
-    tracing::info!("Reading config");
-    let cfg = Arc::new(ApplicationConfig::try_load(CONFIG_PATH, true).to_app_err()?);
+    let cfg = load_config()?;
 
     let metrics_reg = MetricsRegistry::new(cfg.instance.allow_metrics());
     let metrics_ctx = MetricsCtx::try_new(metrics_reg)?;
@@ -44,7 +40,7 @@ async fn main() -> Result<()> {
     let flake = Arc::new(FlakeIdGenerator::new(cfg.instance.node_id()));
 
     tracing::info!("Opening storage");
-    let storage_backend = NativeFsStorageBackend::new(cfg.storage.root()).await?;
+    let storage_backend = NativeFsStorageBackend::new(cfg.storage.dir()).await?;
     let storage = Arc::new(Storage::new(storage_backend, flake.clone(), cfg.storage.temp()).await?);
 
     tracing::info!("Initializing event bus");
@@ -63,12 +59,12 @@ async fn main() -> Result<()> {
     let supervisor = init_workers(&ctx);
     let workers_handle = supervisor.run(cancel.clone());
 
-    let server = configure_server(ctx, metrics_ctx, &cfg.host.listen_addr())?;
+    let server = configure_server(ctx, metrics_ctx, &cfg.server.listen_addr())?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);
 
-    tracing::info!("Server started on http://{}!", cfg.host.listen_addr());
+    tracing::info!("Server started on http://{}!", cfg.server.listen_addr());
     server.await.to_app_err()?;
 
     tracing::info!("Server closed!");

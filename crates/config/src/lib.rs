@@ -7,27 +7,28 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 pub mod database;
-pub mod host;
 pub mod instance;
+pub mod server;
 pub mod storage;
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(default)]
 pub struct ApplicationConfig {
     pub instance: instance::InstanceConfig,
-    pub host: host::HostConfig,
+    pub server: server::ServerConfig,
     pub storage: storage::StorageConfig,
     pub database: database::DatabaseConfig,
 }
 
 impl ApplicationConfig {
     pub fn deserialize(data: &[u8]) -> Result<Self, ConfigError> {
-        let deserialized = toml::from_slice(data).map_err(ConfigError::DeserializingFailed)?;
+        let deserialized = toml::from_slice(data).map_err(|_| ConfigError::DeserializingFailed)?;
         Ok(deserialized)
     }
 
     pub fn serialize(&self) -> Result<String, ConfigError> {
-        let serialized = toml::to_string_pretty(&self).map_err(ConfigError::SerializingFailed)?;
+        let serialized =
+            toml::to_string_pretty(&self).map_err(|_| ConfigError::SerializingFailed)?;
         Ok(serialized)
     }
 
@@ -35,10 +36,13 @@ impl ApplicationConfig {
         let path = path.as_ref();
 
         match std::fs::read(path) {
-            Ok(buf) => {
-                let reader = ApplicationConfig::deserialize(&buf)?;
-                Ok(reader)
-            }
+            Ok(buf) => match ApplicationConfig::deserialize(&buf) {
+                Ok(cfg) => Ok(cfg),
+                Err(e) => {
+                    tracing::error!("Failed to deserialize config! Application launch aborted!");
+                    Err(e)
+                }
+            },
             Err(e) if e.kind() == ErrorKind::NotFound => {
                 if !create_if_missing {
                     return Err(ConfigError::FileDoesNotExist);
@@ -60,8 +64,8 @@ impl ApplicationConfig {
 
 #[derive(Debug)]
 pub enum ConfigError {
-    DeserializingFailed(toml::de::Error),
-    SerializingFailed(toml::ser::Error),
+    DeserializingFailed,
+    SerializingFailed,
     FileDoesNotExist,
     IoError(std::io::Error),
 }
