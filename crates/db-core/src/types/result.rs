@@ -1,18 +1,21 @@
 use sqlx::sqlite::SqliteQueryResult;
 
 /// Result of insertion into the database
+#[derive(Debug)]
 pub enum InsertResult {
     Inserted,
     NoChanges,
 }
 
 /// Result of updating records in the database
+#[derive(Debug)]
 pub enum UpdateResult<T> {
     Updated(T),
     NotFound,
 }
 
 /// Result of deleting records from the database
+#[derive(Debug)]
 pub enum DeleteResult {
     Deleted(u64),
     NoChanges,

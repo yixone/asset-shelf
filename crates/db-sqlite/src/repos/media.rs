@@ -11,7 +11,7 @@ use models::{
 use result::{Result, create_error, error::ResultExt};
 use sqlx::QueryBuilder;
 
-use crate::{driver::SqliteDatabase, helpers::hydrate};
+use crate::{driver::SqliteDatabase, helpers::hydrate, queries};
 
 pub struct SqliteMediaRepository {
     pub db: Arc<SqliteDatabase>,
@@ -20,53 +20,11 @@ pub struct SqliteMediaRepository {
 #[async_trait::async_trait]
 impl MediaRepository for SqliteMediaRepository {
     async fn insert(&self, media: &Media) -> Result<InsertResult> {
-        let res = sqlx::query(
-            "
-            INSERT INTO media (
-                id, created_at
-            )
-            VALUES (
-                ?, ?
-            )
-            ",
-        )
-        .bind(&media.id)
-        .bind(media.created_at)
-        .execute(self.db.exec())
-        .await
-        .to_app_err()?;
-
-        Ok(res.into())
+        queries::media::insert_media(media, self.db.exec()).await
     }
 
     async fn insert_file(&self, file: &MediaFile) -> Result<InsertResult> {
-        let res = sqlx::query(
-            "
-            INSERT INTO media_files (
-                id, storage_path, media_id,
-                variant, created_at, size_bytes, mimetype,
-                duration_ms
-            )
-            VALUES (
-                ?, ?, ?,
-                ?, ?, ?, ?,
-                ?
-            )
-            ",
-        )
-        .bind(&file.id)
-        .bind(&file.storage_path)
-        .bind(&file.media_id)
-        .bind(file.variant)
-        .bind(file.created_at)
-        .bind(file.size_bytes)
-        .bind(file.mimetype)
-        .bind(file.duration_ms)
-        .execute(self.db.exec())
-        .await
-        .to_app_err()?;
-
-        Ok(res.into())
+        queries::media::insert_media_file(file, self.db.exec()).await
     }
 
     async fn update_file(

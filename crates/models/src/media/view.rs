@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use join::JoinBuilder;
 
-use crate::media::{Media, MediaFile};
+use crate::media::{Media, MediaFile, MediaVariant};
 
 #[derive(Debug, Clone)]
 pub struct MediaView {
@@ -14,6 +16,15 @@ impl MediaView {
         JoinBuilder::new(media)
             .with_group(files, |m| m)
             .build_as(MediaView::from)
+    }
+
+    /// Returns the variants that have already been generated for the given [`MediaView`]
+    pub fn media_variants(&self) -> HashSet<MediaVariant> {
+        let mut variants = HashSet::with_capacity(self.files.len());
+        for v in &self.files {
+            variants.insert(v.variant);
+        }
+        variants
     }
 }
 
