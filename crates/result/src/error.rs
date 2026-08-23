@@ -1,5 +1,7 @@
 use std::panic::Location;
 
+use crate::create_error;
+
 type BoxDynError = Box<dyn std::error::Error + Send + Sync + 'static>;
 type StaticLocation = &'static Location<'static>;
 
@@ -106,6 +108,9 @@ where
 {
     #[track_caller]
     fn to_app_err(self) -> Result<T, Error> {
-        self.map_err(Error::internal)
+        match self {
+            Ok(t) => Ok(t),
+            Err(e) => Err(create_error!(source = e)),
+        }
     }
 }
