@@ -4,7 +4,7 @@ use result::{ErrorKind, Result};
 
 use crate::{
     repos::media::MediaRepository,
-    tests::contracts::media_repository::{prepare_media, prepare_media_file},
+    tests::contracts::media_repo::{prepare_media, prepare_media_file},
 };
 
 /// Tests [`Media`] insertion with various [`MediaFile`]

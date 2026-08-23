@@ -4,8 +4,8 @@ use result::Result;
 use crate::{
     repos::{asset::AssetRepository, media::MediaRepository},
     tests::contracts::{
-        asset_repository::{insert_full_asset, prepare_asset},
-        media_repository::prepare_media,
+        asset_repo::{insert_full_asset, prepare_asset},
+        media_repo::prepare_media,
     },
 };
 

@@ -11,35 +11,35 @@ async fn repo() -> SqliteAssetRepository {
 
 #[tokio::test]
 async fn asset_mutation() {
-    contracts::asset_repository::test_asset_mutation(repo)
+    contracts::asset_repo::test_asset_mutation(repo)
         .await
         .unwrap();
 }
 
 #[tokio::test]
 async fn asset_operations() {
-    contracts::asset_repository::test_asset_operation(repo)
+    contracts::asset_repo::test_asset_operation(repo)
         .await
         .unwrap();
 }
 
 #[tokio::test]
 async fn asset_processing() {
-    contracts::asset_repository::test_asset_processing(repo)
+    contracts::asset_repo::test_asset_processing(repo)
         .await
         .unwrap();
 }
 
 #[tokio::test]
 async fn asset_retrieval() {
-    contracts::asset_repository::test_asset_retrieval(repo)
+    contracts::asset_repo::test_asset_retrieval(repo)
         .await
         .unwrap();
 }
 
 #[tokio::test]
 async fn asset_similarity() {
-    contracts::asset_repository::test_asset_similarity(repo)
+    contracts::asset_repo::test_asset_similarity(repo)
         .await
         .unwrap();
 }

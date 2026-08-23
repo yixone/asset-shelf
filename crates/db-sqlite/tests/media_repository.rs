@@ -23,28 +23,28 @@ async fn repo_with_assets() -> (SqliteMediaRepository, SqliteAssetRepository) {
 
 #[tokio::test]
 async fn media_insertion() {
-    contracts::media_repository::test_media_insertion(repo)
+    contracts::media_repo::test_media_insertion(repo)
         .await
         .unwrap();
 }
 
 #[tokio::test]
 async fn media_mutation() {
-    contracts::media_repository::test_media_mutation(repo)
+    contracts::media_repo::test_media_mutation(repo)
         .await
         .unwrap();
 }
 
 #[tokio::test]
 async fn media_relations() {
-    contracts::media_repository::test_media_relations(repo_with_assets)
+    contracts::media_repo::test_media_relations(repo_with_assets)
         .await
         .unwrap();
 }
 
 #[tokio::test]
 async fn media_retrieval() {
-    contracts::media_repository::test_media_retrieval(repo)
+    contracts::media_repo::test_media_retrieval(repo)
         .await
         .unwrap();
 }
