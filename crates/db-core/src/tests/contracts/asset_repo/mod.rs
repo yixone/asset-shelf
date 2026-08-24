@@ -8,7 +8,7 @@ use flake_id::FlakeIdGenerator;
 use mimetype::MimeKind;
 use models::{
     assets::{Asset, AssetFeatures},
-    media::Media,
+    media::{Media, MediaVariant},
 };
 use result::Result;
 

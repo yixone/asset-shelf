@@ -7,8 +7,8 @@ pub async fn update_existing_file<R: MediaRepository>(repo: R) -> Result<()> {
 
     let media = prepare_media(&flake);
 
-    let original = prepare_media_file(&flake, &media, MediaVariant::Original);
-    let thumb = prepare_media_file(&flake, &media, MediaVariant::Thumbnail);
+    let original = prepare_media_file(&flake, &media.id, MediaVariant::Original);
+    let thumb = prepare_media_file(&flake, &media.id, MediaVariant::Thumbnail);
 
     repo.insert(&media).await?;
 
@@ -46,7 +46,7 @@ pub async fn delete_existing<R: MediaRepository>(repo: R) -> Result<()> {
 
     let media = prepare_media(&flake);
 
-    let original = prepare_media_file(&flake, &media, MediaVariant::Original);
+    let original = prepare_media_file(&flake, &media.id, MediaVariant::Original);
 
     repo.insert(&media).await?;
     repo.insert_file(&original).await?;
@@ -80,7 +80,7 @@ pub async fn delete_existing_file<R: MediaRepository>(repo: R) -> Result<()> {
 
     let media = prepare_media(&flake);
 
-    let original = prepare_media_file(&flake, &media, MediaVariant::Original);
+    let original = prepare_media_file(&flake, &media.id, MediaVariant::Original);
 
     repo.insert(&media).await?;
     repo.insert_file(&original).await?;

@@ -6,8 +6,8 @@ pub async fn get_media_variant<R: MediaRepository>(repo: R) -> Result<()> {
 
     let media = prepare_media(&flake);
 
-    let original = prepare_media_file(&flake, &media, MediaVariant::Original);
-    let thumb = prepare_media_file(&flake, &media, MediaVariant::Thumbnail);
+    let original = prepare_media_file(&flake, &media.id, MediaVariant::Original);
+    let thumb = prepare_media_file(&flake, &media.id, MediaVariant::Thumbnail);
 
     repo.insert(&media).await?;
 
@@ -28,7 +28,7 @@ pub async fn return_error_for_non_existent_variant<R: MediaRepository>(repo: R) 
 
     let media = prepare_media(&flake);
 
-    let thumb = prepare_media_file(&flake, &media, MediaVariant::Thumbnail);
+    let thumb = prepare_media_file(&flake, &media.id, MediaVariant::Thumbnail);
 
     repo.insert(&media).await?;
 

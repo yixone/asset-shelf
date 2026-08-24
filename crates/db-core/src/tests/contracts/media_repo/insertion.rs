@@ -6,8 +6,8 @@ pub async fn insert_media_with_same_files_variants<R: MediaRepository>(repo: R) 
     let flake = FlakeIdGenerator::new(0);
     let media = prepare_media(&flake);
 
-    let original = prepare_media_file(&flake, &media, MediaVariant::Original);
-    let original_2 = prepare_media_file(&flake, &media, MediaVariant::Original);
+    let original = prepare_media_file(&flake, &media.id, MediaVariant::Original);
+    let original_2 = prepare_media_file(&flake, &media.id, MediaVariant::Original);
 
     repo.insert(&media).await?;
     repo.insert_file(&original).await?;

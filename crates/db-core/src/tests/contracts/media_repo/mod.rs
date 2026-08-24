@@ -1,9 +1,16 @@
 use flake_id::FlakeIdGenerator;
 use mimetype::MimeType;
-use models::media::{Media, MediaFile, MediaVariant};
+use models::{
+    assets::view::AssetView,
+    media::{Media, MediaFile, MediaVariant},
+    types::MediaId,
+};
 use result::Result;
 
-use crate::repos::{asset::AssetRepository, media::MediaRepository};
+use crate::{
+    repos::{asset::AssetRepository, media::MediaRepository},
+    tests::contracts::asset_repo::prepare_asset,
+};
 
 mod insertion;
 mod mutation;
@@ -75,6 +82,32 @@ where
     Ok(())
 }
 
+/// Creates a test [`Asset`] and inserts it with related files using the test [`AssetRepository`]
+pub(crate) async fn insert_asset_with_files<R: AssetRepository>(
+    repo: &R,
+    title: &str,
+    variants: &[MediaVariant],
+    flake: &FlakeIdGenerator,
+) -> Result<AssetView> {
+    let (media, asset, asset_features) = prepare_asset(flake, title);
+    let files = variants
+        .iter()
+        .map(|v| prepare_media_file(flake, &media.id, *v))
+        .collect::<Vec<_>>();
+
+    let mut op = repo.create_op().await?;
+    op.insert_media(&media).await?;
+    for f in &files {
+        op.insert_media_file(f).await?;
+    }
+    op.insert_asset(&asset).await?;
+    op.insert_features(&asset_features).await?;
+
+    op.commit().await?;
+
+    Ok(AssetView::from((asset, asset_features, files)))
+}
+
 /// Prepares [`Media`] for testing
 pub(crate) fn prepare_media(flake: &FlakeIdGenerator) -> Media {
     Media::new(flake.get_id_as())
@@ -83,12 +116,12 @@ pub(crate) fn prepare_media(flake: &FlakeIdGenerator) -> Media {
 /// Prepares [`MediaFile`] for testing
 pub(crate) fn prepare_media_file(
     flake: &FlakeIdGenerator,
-    media: &Media,
+    media: &MediaId,
     variant: MediaVariant,
 ) -> MediaFile {
     MediaFile::new(
         flake.get_id_as(),
-        media.id.clone(),
+        media.clone(),
         variant,
         "NONE".to_string(),
         0,
