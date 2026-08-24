@@ -21,3 +21,10 @@ async fn collection_retrieval() {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn collection_relations() {
+    contracts::collection_repo::test_collection_relations(repo_with_assets)
+        .await
+        .unwrap();
+}
