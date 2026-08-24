@@ -24,7 +24,7 @@ pub async fn update_existing_file<R: MediaRepository>(repo: R) -> Result<()> {
     Ok(())
 }
 
-pub async fn return_not_found_when_updating_non_existent_file<R: MediaRepository>(
+pub async fn return_no_changes_when_updating_non_existent_file<R: MediaRepository>(
     repo: R,
 ) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);

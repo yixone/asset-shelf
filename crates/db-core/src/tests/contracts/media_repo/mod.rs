@@ -16,7 +16,7 @@ where
     F: AsyncFn() -> R,
     R: MediaRepository,
 {
-    insertion::insert_media_with_files(repo().await).await?;
+    // Tests inserting two media files with the same variant into one parent media
     insertion::insert_media_with_same_files_variants(repo().await).await?;
 
     Ok(())
@@ -28,12 +28,15 @@ where
     F: AsyncFn() -> R,
     R: MediaRepository,
 {
+    // Testing media file update
     mutation::update_existing_file(repo().await).await?;
-    mutation::return_not_found_when_updating_non_existent_file(repo().await).await?;
+    mutation::return_no_changes_when_updating_non_existent_file(repo().await).await?;
 
+    // Testing media removal
     mutation::delete_existing(repo().await).await?;
     mutation::return_no_changes_when_deleting_non_existent(repo().await).await?;
 
+    // Tests deleting a media file
     mutation::delete_existing_file(repo().await).await?;
 
     Ok(())
@@ -46,11 +49,11 @@ where
     MR: MediaRepository,
     AR: AssetRepository,
 {
+    // Tests retrieving orphaned media
     {
         let (mr, _) = repo().await;
         relations::get_orphans(mr).await?;
     }
-
     {
         let (mr, ar) = repo().await;
         relations::get_empty_for_no_orphans(ar, mr).await?;
@@ -65,6 +68,7 @@ where
     F: AsyncFn() -> R,
     R: MediaRepository,
 {
+    // Tests getting media variant
     retrieval::get_media_variant(repo().await).await?;
     retrieval::return_error_for_non_existent_variant(repo().await).await?;
 

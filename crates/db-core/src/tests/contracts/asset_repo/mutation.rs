@@ -41,9 +41,9 @@ pub async fn update_existing_features<R: AssetRepository>(repo: R) -> Result<()>
     Ok(())
 }
 
-/// Tests returning [`UpdateResult::NotFound`]
+/// Tests returning no_changes
 /// when attempting to update a non-existent [`Asset`]
-pub async fn return_not_found_when_updating_non_existent<R: AssetRepository>(
+pub async fn return_no_changes_when_updating_non_existent<R: AssetRepository>(
     repo: R,
 ) -> Result<()> {
     let res = repo
@@ -73,7 +73,7 @@ pub async fn delete_existing<R: AssetRepository>(repo: R) -> Result<()> {
     Ok(())
 }
 
-/// Tests returning [`DeleteResult::NoChanges`]
+/// Tests returning no_changes
 /// when attempting to delete a non-existent [`Asset`]
 pub async fn return_no_changes_when_deleting_non_existent<R: AssetRepository>(
     repo: R,
