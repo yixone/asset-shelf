@@ -11,14 +11,14 @@ use crate::{
 ///
 /// ### Usage
 /// ``` no_run
-/// use telemetry::{ApiTelemetryAdapter, MetricsRegistry};
+/// use telemetry::{ApiTelemetryAdapter, MetricsRegistry, MetricApi};
 ///
 /// fn to_api_metrics(reg: &MetricsRegistry) -> Vec<MetricApi> {
 ///     // Retrieves metrics from the registry
 ///     let collected = reg.gather();
 ///
 ///     // Creates a new adapter
-///     let adapter = ApiTelemetryAdapter::new()
+///     let adapter = ApiTelemetryAdapter::new();
 ///     
 ///     // Adapts collected metrics for MetricApi
 ///     adapter.to_api(&collected).unwrap()
