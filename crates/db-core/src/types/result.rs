@@ -22,26 +22,32 @@ pub enum DeleteResult {
 }
 
 impl InsertResult {
-    /// Returns `true` if rows were inserted into the database;
-    /// otherwise, returns `false`
     pub fn no_changes(&self) -> bool {
         matches!(self, Self::NoChanges)
+    }
+
+    pub fn has_changes(&self) -> bool {
+        matches!(self, Self::Inserted)
     }
 }
 
 impl<T> UpdateResult<T> {
-    /// Returns `true` if database records were updated;
-    /// otherwise, returns `false`
     pub fn no_changes(&self) -> bool {
         matches!(self, Self::NotFound)
+    }
+
+    pub fn has_changes(&self) -> bool {
+        matches!(self, Self::Updated(_))
     }
 }
 
 impl DeleteResult {
-    /// Returns `true` if records were deleted from the database;
-    /// otherwise, returns `false`.
     pub fn no_changes(&self) -> bool {
         matches!(self, Self::NoChanges)
+    }
+
+    pub fn has_changes(&self) -> bool {
+        matches!(self, Self::Deleted(_))
     }
 }
 

@@ -1,4 +1,4 @@
-use result::{ErrorKind, create_error};
+use result::create_error;
 
 use super::*;
 
@@ -36,10 +36,8 @@ pub async fn insert_with_related_and_rollback<R: AssetRepository>(repo: R) -> Re
     op.rollback().await?;
 
     // Checks that the asset was not inserted into the database after a rollback
-    let err = repo.get_by_id(a.id).await.expect_err(
-        "After a rollback in `create_op`, the asset should not be added to the database",
-    );
-    assert!(matches!(err.kind(), ErrorKind::NotFound));
+    let err = repo.get_by_id(a.id).await.unwrap_err();
+    assert!(err.is_not_found());
 
     Ok(())
 }
@@ -48,7 +46,6 @@ pub async fn insert_with_related_and_rollback<R: AssetRepository>(repo: R) -> Re
 /// if an error occurs before commit
 pub async fn rollback_creation_after_error<R: AssetRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
-
     let (m, a, af) = prepare_asset(&flake, "foo");
 
     let _: Result<()> = {
@@ -61,11 +58,8 @@ pub async fn rollback_creation_after_error<R: AssetRepository>(repo: R) -> Resul
         Err(create_error!(NotFound))
     };
 
-    let err = repo.get_by_id(a.id).await.expect_err(
-        "After a rollback in `create_op`, the asset should not be added to the database",
-    );
-
-    assert!(matches!(err.kind(), ErrorKind::NotFound));
+    let err = repo.get_by_id(a.id).await.unwrap_err();
+    assert!(err.is_not_found());
 
     Ok(())
 }

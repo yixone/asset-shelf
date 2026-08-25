@@ -1,2 +1,3 @@
-pub mod asset_repository;
-pub mod media_repository;
+pub mod asset_repo;
+pub mod collection_repo;
+pub mod media_repo;

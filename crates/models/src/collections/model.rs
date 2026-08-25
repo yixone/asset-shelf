@@ -17,3 +17,15 @@ pub struct Collection {
     /// Collection creation date
     pub created_at: DateTime<Utc>,
 }
+
+impl Collection {
+    /// Creates a new [`Collection`]
+    pub fn new(id: CollectionId, name: String, description: Option<String>) -> Self {
+        Self {
+            id,
+            name,
+            description,
+            created_at: Utc::now(),
+        }
+    }
+}

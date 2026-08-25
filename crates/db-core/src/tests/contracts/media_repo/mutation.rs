@@ -1,20 +1,14 @@
-use flake_id::FlakeIdGenerator;
-use models::media::MediaVariant;
-use result::Result;
+use crate::types::patch::MediaFilePatch;
 
-use crate::{
-    repos::media::MediaRepository,
-    tests::contracts::media_repository::{prepare_media, prepare_media_file},
-    types::{UpdateResult, patch::MediaFilePatch},
-};
+use super::*;
 
 pub async fn update_existing_file<R: MediaRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
 
     let media = prepare_media(&flake);
 
-    let original = prepare_media_file(&flake, &media, MediaVariant::Original);
-    let thumb = prepare_media_file(&flake, &media, MediaVariant::Thumbnail);
+    let original = prepare_media_file(&flake, &media.id, MediaVariant::Original);
+    let thumb = prepare_media_file(&flake, &media.id, MediaVariant::Thumbnail);
 
     repo.insert(&media).await?;
 
@@ -25,13 +19,12 @@ pub async fn update_existing_file<R: MediaRepository>(repo: R) -> Result<()> {
         .await?;
 
     let file = repo.get_variant(&media.id, MediaVariant::Original).await?;
-
     assert_eq!(file.duration_ms, Some(50));
 
     Ok(())
 }
 
-pub async fn return_not_found_when_updating_non_existent_file<R: MediaRepository>(
+pub async fn return_no_changes_when_updating_non_existent_file<R: MediaRepository>(
     repo: R,
 ) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
@@ -43,7 +36,7 @@ pub async fn return_not_found_when_updating_non_existent_file<R: MediaRepository
         )
         .await?;
 
-    assert!(matches!(res, UpdateResult::NotFound));
+    assert!(res.no_changes());
 
     Ok(())
 }
@@ -53,7 +46,7 @@ pub async fn delete_existing<R: MediaRepository>(repo: R) -> Result<()> {
 
     let media = prepare_media(&flake);
 
-    let original = prepare_media_file(&flake, &media, MediaVariant::Original);
+    let original = prepare_media_file(&flake, &media.id, MediaVariant::Original);
 
     repo.insert(&media).await?;
     repo.insert_file(&original).await?;
@@ -87,7 +80,7 @@ pub async fn delete_existing_file<R: MediaRepository>(repo: R) -> Result<()> {
 
     let media = prepare_media(&flake);
 
-    let original = prepare_media_file(&flake, &media, MediaVariant::Original);
+    let original = prepare_media_file(&flake, &media.id, MediaVariant::Original);
 
     repo.insert(&media).await?;
     repo.insert_file(&original).await?;
