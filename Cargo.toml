@@ -8,6 +8,7 @@ members = [
     "crates/db-sqlite",
     "crates/events",
     "crates/flake-id",
+    "crates/instance",
     "crates/join",
     "crates/media",
     "crates/mimetype",
@@ -29,6 +30,7 @@ db-core = { path = "crates/db-core" }
 db-sqlite = { path = "crates/db-sqlite" }
 events = { path = "crates/events" }
 flake-id = { path = "crates/flake-id" }
+instance = { path = "crates/instance" }
 join = { path = "crates/join" }
 media = { path = "crates/media" }
 mimetype = { path = "crates/mimetype" }

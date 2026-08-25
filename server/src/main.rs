@@ -9,7 +9,7 @@ use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
     di::{DataCtx, MetricsCtx},
-    load_config, routes,
+    load_config, load_library, routes,
 };
 use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use telemetry::MetricsRegistry;
@@ -23,10 +23,14 @@ use workers::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let (lib_path, lib) = load_library()?;
+
     init_tracing();
     print_header();
 
-    let cfg = load_config()?;
+    tracing::info!(path = ?lib_path, "Library loaded");
+
+    let cfg = load_config(lib_path.join(lib.config_path()))?;
 
     let metrics_reg = MetricsRegistry::new(cfg.instance.allow_metrics());
     let metrics_ctx = MetricsCtx::try_new(metrics_reg)?;
@@ -37,7 +41,7 @@ async fn main() -> Result<()> {
 
     let db = Arc::new(db.repositories());
 
-    let flake = Arc::new(FlakeIdGenerator::new(cfg.instance.node_id()));
+    let flake = Arc::new(FlakeIdGenerator::new(lib.lib_id()));
 
     tracing::info!("Opening storage");
     let storage_backend = NativeFsStorageBackend::new(cfg.storage.dir()).await?;

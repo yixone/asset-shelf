@@ -1591,6 +1591,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "instance"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml",
+ "tracing",
+]
+
+[[package]]
 name = "interpolate_name"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2651,6 +2660,7 @@ dependencies = [
  "events",
  "flake-id",
  "futures",
+ "instance",
  "join",
  "media",
  "mimetype",
