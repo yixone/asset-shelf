@@ -1,26 +1,36 @@
-use std::path::PathBuf;
-
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_DATABASE_PATH: &str = "storage/data.db";
 
+/// Application database configuration
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct DatabaseConfig {
-    database_path: String,
+    /// Database driver configuration
+    driver: DatabaseDriverConfig,
 }
 
 impl DatabaseConfig {
-    /// Returns the database path of this [`DatabaseConfig`]
-    pub fn path(&self) -> PathBuf {
-        PathBuf::from(&self.database_path)
+    /// Returns a reference to the driver of this [`DatabaseConfig`]
+    pub fn driver(&self) -> &DatabaseDriverConfig {
+        &self.driver
     }
+}
+
+/// Database driver configuration
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DatabaseDriverConfig {
+    /// Sqlite driver
+    Sqlite { path: String },
 }
 
 impl Default for DatabaseConfig {
     fn default() -> Self {
         DatabaseConfig {
-            database_path: DEFAULT_DATABASE_PATH.to_string(),
+            driver: DatabaseDriverConfig::Sqlite {
+                path: DEFAULT_DATABASE_PATH.to_string(),
+            },
         }
     }
 }

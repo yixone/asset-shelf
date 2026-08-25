@@ -1,6 +1,7 @@
 use actix_web::{HttpResponse, get, web};
 use db::types::Pagination;
 use models::types::AssetId;
+use result::create_error;
 
 use crate::{
     di::DataCtx,
@@ -10,6 +11,12 @@ use crate::{
 
 #[get("/{id}/similar")]
 async fn get_similar_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiResult {
+    if !ctx.config.instance.features.similar_search_enabled() {
+        return Err(create_error!(FeatureDisabled {
+            feature: "similar_search"
+        }));
+    }
+
     let reference = {
         let asset = ctx.db.assets.get_by_id(*id).await?;
         asset.features
