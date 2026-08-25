@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use config::ApplicationConfig;
 use db::RepositoryContext;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
+use instance::{config::AppConfig, library::Library};
 use result::Result;
 use storage::Storage;
 use telemetry::MetricsRegistry;
@@ -16,7 +16,13 @@ pub struct DataCtx {
     pub flake: Arc<FlakeIdGenerator>,
     pub events: Arc<EventBus>,
 
-    pub config: Arc<ApplicationConfig>,
+    pub config: Arc<AppConfig>,
+}
+
+/// Library context
+pub struct LibraryCtx {
+    pub active: Library,
+    pub available: Vec<Library>,
 }
 
 /// Application metrics context

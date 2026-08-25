@@ -9,7 +9,7 @@ use crate::{
 
 #[get("/metrics")]
 async fn get_metrics(ctx: web::Data<DataCtx>, metrics: web::Data<MetricsCtx>) -> ApiResult {
-    if !ctx.config.instance.allow_metrics() {
+    if !ctx.config.telemetry_enabled() {
         return Err(create_error!(TelemetryDisabled));
     }
 

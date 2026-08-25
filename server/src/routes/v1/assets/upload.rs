@@ -73,10 +73,10 @@ async fn upload_asset(
                         |chunk| {
                             size_bytes += chunk.len();
 
-                            if size_bytes > ctx.config.storage.max_size_bytes() {
+                            if size_bytes > ctx.config.max_file_size_bytes() {
                                 return Err(create_error!(FileTooLarge {
                                     received: size_bytes,
-                                    max_size: ctx.config.storage.max_size_bytes()
+                                    max_size: ctx.config.max_file_size_bytes()
                                 }));
                             }
 
@@ -99,7 +99,7 @@ async fn upload_asset(
                     }
                 };
 
-                if mimetype.is_video() && !ctx.config.instance.allow_video() {
+                if mimetype.is_video() && !ctx.config.video_enabled() {
                     return Err(create_error!(VideoSupportDisabled));
                 }
 

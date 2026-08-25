@@ -600,15 +600,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "config"
-version = "0.1.0"
-dependencies = [
- "serde",
- "toml",
- "tracing",
-]
-
-[[package]]
 name = "const-oid"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2655,7 +2646,6 @@ dependencies = [
  "actix-multipart",
  "actix-web",
  "chrono",
- "config",
  "db",
  "events",
  "flake-id",

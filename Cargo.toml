@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     # Application crates
-    "crates/config",
     "crates/db",
     "crates/db-core",
     "crates/db-sqlite",
@@ -24,7 +23,6 @@ members = [
 
 [workspace.dependencies]
 # Workspace crates
-config = { path = "crates/config" }
 db = { path = "crates/db" }
 db-core = { path = "crates/db-core" }
 db-sqlite = { path = "crates/db-sqlite" }

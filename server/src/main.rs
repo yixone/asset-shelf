@@ -5,14 +5,17 @@ use actix_web::{App, HttpServer, dev::ServerHandle, web};
 use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
+use instance::{
+    config::AppConfig,
+    library::{LibDatabase, LibStorage},
+};
 use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
-    di::{DataCtx, MetricsCtx},
-    load_config, load_library, routes,
+    di::{DataCtx, LibraryCtx, MetricsCtx},
+    init_metrics, load_library, routes,
 };
 use storage::{Storage, backend::fs::NativeFsStorageBackend};
-use telemetry::MetricsRegistry;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use workers::{
@@ -23,29 +26,50 @@ use workers::{
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let (lib_path, lib) = load_library()?;
+    let mut cfg = AppConfig::load("config.toml").to_app_err()?;
+    let (lib, libs) = load_library(&cfg)?;
+
+    if cfg.selected_lib_path().is_none() {
+        cfg.set_selected_lib_path(lib.dir.display().to_string());
+        cfg.write("config.toml").to_app_err()?;
+    }
+
+    let cfg = Arc::new(cfg);
 
     init_tracing();
     print_header();
 
-    tracing::info!(path = ?lib_path, "Library loaded");
+    tracing::info!(path = ?lib.dir, name = ?lib.manifest.name(), "Library loaded:");
 
-    let cfg = load_config(lib_path.join(lib.config_path()))?;
+    let metrics_ctx = init_metrics(cfg.telemetry_enabled())?;
 
-    let metrics_reg = MetricsRegistry::new(cfg.instance.allow_metrics());
-    let metrics_ctx = MetricsCtx::try_new(metrics_reg)?;
+    let node_id = lib.manifest.lib_id();
+    let flake = Arc::new(FlakeIdGenerator::new(node_id));
 
-    tracing::info!("Opening database");
-    let db = SqliteDatabase::open(cfg.database.path()).await?;
-    db.migrate().await?;
+    let db = match lib.manifest.database() {
+        LibDatabase::Sqlite { path } => {
+            let path = lib.dir.join(path);
 
-    let db = Arc::new(db.repositories());
+            tracing::info!(path = ?path, "Using sqlite database:");
 
-    let flake = Arc::new(FlakeIdGenerator::new(lib.lib_id()));
+            let db = SqliteDatabase::open(&path).await?;
+            db.migrate().await?;
 
-    tracing::info!("Opening storage");
-    let storage_backend = NativeFsStorageBackend::new(cfg.storage.dir()).await?;
-    let storage = Arc::new(Storage::new(storage_backend, flake.clone(), cfg.storage.temp()).await?);
+            Arc::new(db.repositories())
+        }
+    };
+
+    let storage = match lib.manifest.storage() {
+        LibStorage::Native { dir, temp } => {
+            let dir = lib.dir.join(dir);
+            let temp = lib.dir.join(temp);
+
+            tracing::info!(dir = ?dir, "Using native storage:");
+
+            let storage_backend = NativeFsStorageBackend::new(dir).await?;
+            Arc::new(Storage::new(storage_backend, flake.clone(), temp).await?)
+        }
+    };
 
     tracing::info!("Initializing event bus");
     let events = Arc::new(EventBus::new(1024));
@@ -59,35 +83,46 @@ async fn main() -> Result<()> {
         config: cfg.clone(),
     };
 
+    let libs = LibraryCtx {
+        active: lib,
+        available: libs,
+    };
+
     tracing::info!("Initializing background worker supervisor");
     let supervisor = init_workers(&ctx);
     let workers_handle = supervisor.run(cancel.clone());
 
-    let server = configure_server(ctx, metrics_ctx, &cfg.server.listen_addr())?;
+    let addr = format!("0.0.0.0:{}", cfg.listen_port());
+
+    let server = configure_server(ctx, metrics_ctx, libs, &addr)?;
     let handle = server.handle();
 
     spawn_shutdown_handler(cancel, handle, workers_handle);
 
-    tracing::info!("Server started on http://{}!", cfg.server.listen_addr());
+    tracing::info!("Server started on http://{}!", addr);
     server.await.to_app_err()?;
 
     tracing::info!("Server closed!");
+
     Ok(())
 }
 
 fn configure_server(
     ctx: DataCtx,
     metrics: MetricsCtx,
+    libs: LibraryCtx,
     host_addr: &str,
 ) -> Result<actix_web::dev::Server> {
     let ctx = web::Data::new(ctx);
     let metrics = web::Data::new(metrics);
+    let libs = web::Data::new(libs);
 
     Ok(HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
             .app_data(ctx.clone())
             .app_data(metrics.clone())
+            .app_data(libs.clone())
             .configure(routes::cfg)
     })
     .bind(host_addr)
