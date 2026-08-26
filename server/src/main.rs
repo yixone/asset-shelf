@@ -25,7 +25,7 @@ use workers::{
 #[tokio::main]
 async fn main() -> Result<()> {
     init_tracing();
-    print_header();
+    tracing::info!(version = SERVER_VERSION, "Starting the server:");
 
     let cfg = load_config()?;
 
@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
     let supervisor = init_workers(&ctx);
     let workers_handle = supervisor.run(cancel.clone());
 
-    tracing::info!("Preparing the server");
+    tracing::info!("Server configuration...");
     let server = configure_server(ctx, metrics_ctx, &cfg.server.listen_addr())?;
     let handle = server.handle();
 
@@ -128,12 +128,6 @@ fn spawn_shutdown_handler(
         cancel.cancel();
         workers_handle.stop().await;
     });
-}
-
-fn print_header() {
-    tracing::info!("{}", "=".repeat(26));
-    tracing::info!("Asset shelf server ({SERVER_VERSION})");
-    tracing::info!("{}", "=".repeat(26));
 }
 
 fn init_tracing() {

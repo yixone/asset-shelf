@@ -14,9 +14,11 @@ mod storage;
 pub use database::{DatabaseConfig, DatabaseDriverConfig};
 pub use storage::{StorageBackendConfig, StorageConfig};
 
+/// Configuration file header with additional information
 const CONFIG_FILE_HEADER: &str =
-    "# Read about application configuration: https://github.com/yixone/asset-shelf \n\n";
+    "# Read about application configuration: https://github.com/yixone/asset-shelf\n\n";
 
+/// Application configuration container
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(default)]
 pub struct ApplicationConfig {

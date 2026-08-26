@@ -12,10 +12,6 @@ pub struct MetricsRegistry {
 impl MetricsRegistry {
     /// Creates a new [`MetricsRegistry`]
     pub fn new(metrics_enabled: bool) -> Self {
-        if metrics_enabled {
-            tracing::info!("Metrics are enabled for the current instance")
-        }
-
         Self {
             metrics_enabled,
             inner: Registry::new(),
