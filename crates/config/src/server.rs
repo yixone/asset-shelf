@@ -5,6 +5,7 @@ const DEFAULT_LISTEN_PORT: u16 = 8080;
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct ServerConfig {
+    /// The port the server is listening on
     listen_port: u16,
 }
 

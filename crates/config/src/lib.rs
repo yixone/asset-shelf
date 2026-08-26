@@ -6,11 +6,19 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-pub mod database;
-pub mod instance;
-pub mod server;
-pub mod storage;
+mod database;
+mod instance;
+mod server;
+mod storage;
 
+pub use database::{DatabaseConfig, DatabaseDriverConfig};
+pub use storage::{StorageBackendConfig, StorageConfig};
+
+/// Configuration file header with additional information
+const CONFIG_FILE_HEADER: &str =
+    "# Read about application configuration: https://github.com/yixone/asset-shelf\n\n";
+
+/// Application configuration container
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(default)]
 pub struct ApplicationConfig {
@@ -21,17 +29,17 @@ pub struct ApplicationConfig {
 }
 
 impl ApplicationConfig {
-    pub fn deserialize(data: &[u8]) -> Result<Self, ConfigError> {
-        let deserialized = toml::from_slice(data).map_err(|_| ConfigError::DeserializingFailed)?;
-        Ok(deserialized)
+    /// Deserializes the application configuration
+    fn deserialize(data: &[u8]) -> Result<Self, ConfigError> {
+        toml::from_slice(data).map_err(|_| ConfigError::DeserializingFailed)
     }
 
-    pub fn serialize(&self) -> Result<String, ConfigError> {
-        let serialized =
-            toml::to_string_pretty(&self).map_err(|_| ConfigError::SerializingFailed)?;
-        Ok(serialized)
+    /// Serializes the application configuration
+    fn serialize(&self) -> Result<String, ConfigError> {
+        toml::to_string_pretty(&self).map_err(|_| ConfigError::SerializingFailed)
     }
 
+    /// Tries to load the application configuration. Otherwise, it creates a default file
     pub fn try_load(path: impl AsRef<Path>, create_if_missing: bool) -> Result<Self, ConfigError> {
         let path = path.as_ref();
 
@@ -39,7 +47,7 @@ impl ApplicationConfig {
             Ok(buf) => match ApplicationConfig::deserialize(&buf) {
                 Ok(cfg) => Ok(cfg),
                 Err(e) => {
-                    tracing::error!("Failed to deserialize config! Application launch aborted!");
+                    tracing::error!("Failed to read config! Application launch aborted!");
                     Err(e)
                 }
             },
@@ -48,10 +56,16 @@ impl ApplicationConfig {
                     return Err(ConfigError::FileDoesNotExist);
                 }
 
+                tracing::info!("Config not found; Using default configuration");
+
                 let default = ApplicationConfig::default();
 
-                let serialized = default.serialize()?;
                 let mut file = File::create(path).map_err(ConfigError::IoError)?;
+
+                file.write_all(CONFIG_FILE_HEADER.as_bytes())
+                    .map_err(ConfigError::IoError)?;
+
+                let serialized = default.serialize()?;
                 file.write_all(serialized.as_bytes())
                     .map_err(ConfigError::IoError)?;
 
@@ -62,6 +76,7 @@ impl ApplicationConfig {
     }
 }
 
+/// Application configuration error
 #[derive(Debug)]
 pub enum ConfigError {
     DeserializingFailed,

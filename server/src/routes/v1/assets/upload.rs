@@ -99,8 +99,8 @@ async fn upload_asset(
                     }
                 };
 
-                if mimetype.is_video() && !ctx.config.instance.allow_video() {
-                    return Err(create_error!(VideoSupportDisabled));
+                if mimetype.is_video() && !ctx.config.instance.features.video_enabled() {
+                    return Err(create_error!(FeatureDisabled { feature: "video" }));
                 }
 
                 upload.upload = Some(UploadFile {

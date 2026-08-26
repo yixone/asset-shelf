@@ -9,8 +9,8 @@ use crate::{
 
 #[get("/metrics")]
 async fn get_metrics(ctx: web::Data<DataCtx>, metrics: web::Data<MetricsCtx>) -> ApiResult {
-    if !ctx.config.instance.allow_metrics() {
-        return Err(create_error!(TelemetryDisabled));
+    if !ctx.config.instance.telemetry.enabled() {
+        return Err(create_error!(FeatureDisabled { feature: "metrics" }));
     }
 
     let collected = metrics.registry.gather();

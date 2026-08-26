@@ -55,7 +55,11 @@ impl Error {
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize),
-    serde(rename_all = "SCREAMING_SNAKE_CASE", tag = "error", content = "kind")
+    serde(
+        rename_all = "SCREAMING_SNAKE_CASE",
+        tag = "error",
+        content = "details"
+    )
 )]
 pub enum ErrorKind {
     /// File type not supported
@@ -83,10 +87,8 @@ pub enum ErrorKind {
     /// Processing timed out
     ProcessingTimeout,
 
-    /// Video support is disabled
-    VideoSupportDisabled,
-    /// Telemetriy support is disabled
-    TelemetryDisabled,
+    /// Features is disabled
+    FeatureDisabled { feature: &'static str },
 
     /// Internal application error
     Internal {

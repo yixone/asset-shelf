@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
+use config::{DatabaseDriverConfig, StorageBackendConfig};
 use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
@@ -24,26 +25,41 @@ use workers::{
 #[tokio::main]
 async fn main() -> Result<()> {
     init_tracing();
-    print_header();
+    tracing::info!(version = SERVER_VERSION, "Starting the server:");
 
     let cfg = load_config()?;
 
-    let metrics_reg = MetricsRegistry::new(cfg.instance.allow_metrics());
+    let metrics_reg = MetricsRegistry::new(cfg.instance.telemetry.enabled());
     let metrics_ctx = MetricsCtx::try_new(metrics_reg)?;
-
-    tracing::info!("Opening database");
-    let db = SqliteDatabase::open(cfg.database.path()).await?;
-    db.migrate().await?;
-
-    let db = Arc::new(db.repositories());
+    if cfg.instance.telemetry.enabled() {
+        tracing::info!("Telemetry is enabled");
+    }
 
     let flake = Arc::new(FlakeIdGenerator::new(cfg.instance.node_id()));
 
-    tracing::info!("Opening storage");
-    let storage_backend = NativeFsStorageBackend::new(cfg.storage.dir()).await?;
-    let storage = Arc::new(Storage::new(storage_backend, flake.clone(), cfg.storage.temp()).await?);
+    tracing::info!("Initializing dependencies");
+    let db = match cfg.database.driver() {
+        DatabaseDriverConfig::Sqlite { path } => {
+            tracing::info!(path = path, "|- Using SQLITE database:");
 
-    tracing::info!("Initializing event bus");
+            let db = SqliteDatabase::open(path).await?;
+            db.migrate().await?;
+
+            Arc::new(db.repositories())
+        }
+    };
+
+    let storage = match cfg.storage.backend() {
+        StorageBackendConfig::Native { dir, temp } => {
+            tracing::info!(dir = dir, "|- Using NATIVE storage:");
+
+            let storage_backend = NativeFsStorageBackend::new(dir).await?;
+            Arc::new(Storage::new(storage_backend, flake.clone(), temp.into()).await?)
+        }
+    };
+
+    tracing::info!("Initializing the background infrastructure");
+    tracing::info!("|- Initializing event bus");
     let events = Arc::new(EventBus::new(1024));
     let cancel = CancellationToken::new();
 
@@ -55,10 +71,11 @@ async fn main() -> Result<()> {
         config: cfg.clone(),
     };
 
-    tracing::info!("Initializing background worker supervisor");
+    tracing::info!("|- Initializing background worker supervisor");
     let supervisor = init_workers(&ctx);
     let workers_handle = supervisor.run(cancel.clone());
 
+    tracing::info!("Server configuration...");
     let server = configure_server(ctx, metrics_ctx, &cfg.server.listen_addr())?;
     let handle = server.handle();
 
@@ -100,7 +117,7 @@ fn spawn_shutdown_handler(
         match signal::ctrl_c().await {
             Ok(_) => {
                 println!();
-                tracing::info!("Starting graceful shutdown...")
+                tracing::info!("Starting graceful shutdown")
             }
             Err(e) => {
                 tracing::error!(err = ?e, "Failed to wait for ^C");
@@ -111,12 +128,6 @@ fn spawn_shutdown_handler(
         cancel.cancel();
         workers_handle.stop().await;
     });
-}
-
-fn print_header() {
-    tracing::info!("{}", "=".repeat(26));
-    tracing::info!("Asset shelf server ({SERVER_VERSION})");
-    tracing::info!("{}", "=".repeat(26));
 }
 
 fn init_tracing() {
