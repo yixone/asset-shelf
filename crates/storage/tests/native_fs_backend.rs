@@ -1,5 +1,8 @@
 use bytes::Bytes;
-use storage::backend::{StorageBackend, fs::NativeFsStorageBackend, path::StoragePath};
+use storage::{
+    StoragePath,
+    backend::{StorageBackend, fs::NativeFsStorageBackend},
+};
 use tempfile::TempDir;
 use tokio::io::AsyncReadExt;
 

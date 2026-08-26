@@ -9,9 +9,12 @@ use tokio_util::io::ReaderStream;
 use crate::{
     backend::{StorageBackend, fs::NativeFsStorageBackend},
     files::{LocalFile, ReservedFile, UncommitedFile},
-    global::{GlobalPathData, GlobalSection, generate_global_path},
+    global::{GlobalPathData, GlobalSection},
     temp::TempSection,
 };
+
+mod path;
+pub use path::StoragePath;
 
 pub mod backend;
 
@@ -19,8 +22,6 @@ pub mod files;
 
 pub mod global;
 pub mod temp;
-
-pub use backend::path::StoragePath;
 
 /// File storage divided into two sections:
 /// - `Temporary Storage`
@@ -64,7 +65,7 @@ impl Storage {
         F: FnMut(&[u8]) -> Result<()>,
     {
         // Generates the future file path in the storage
-        let path = generate_global_path(path);
+        let path = StoragePath::new_container(path.container).join(path.file);
 
         // Creates a file size counter
         let mut size_bytes = 0;
@@ -197,7 +198,7 @@ impl Storage {
         let real_path = self.temp.resolve_path(&temp_path);
 
         // Generates the future file path in the storage
-        let path = generate_global_path(path);
+        let path = StoragePath::new_container(path.container).join(path.file);
 
         ReservedFile {
             owner: self,

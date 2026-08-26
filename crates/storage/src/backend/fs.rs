@@ -9,7 +9,10 @@ use tokio::{
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufWriter},
 };
 
-use crate::backend::{BoxedReader, BoxedWriter, FileWriter, StorageBackend, path::StoragePath};
+use crate::{
+    StoragePath,
+    backend::{BoxedReader, BoxedWriter, FileWriter, StorageBackend},
+};
 
 /// File storage backend for a native file system
 #[derive(Debug)]
@@ -122,7 +125,7 @@ impl StorageBackend for NativeFsStorageBackend {
 
         match end {
             Some(end) => {
-                let to_read = end - start + 1;
+                let to_read = end.saturating_sub(start) + 1;
                 Ok(Box::new(file.take(to_read)))
             }
             None => Ok(Box::new(file)),

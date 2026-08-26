@@ -15,9 +15,7 @@ pub(crate) struct TempSection {
 impl TempSection {
     /// Generates a new temporary path in the temporary storage section
     pub fn generate_temp_path(&self) -> StoragePath {
-        StoragePath {
-            key: self.temp_id_generator.get_id_as::<FlakeIdStr>().to_string(),
-        }
+        StoragePath::new(self.temp_id_generator.get_id_as::<FlakeIdStr>().to_string())
     }
 
     /// Returns the real path to the file on the local file system

@@ -4,12 +4,10 @@ use bytes::Bytes;
 use result::Result;
 use tokio::io::AsyncRead;
 
-use crate::backend::path::StoragePath;
+use crate::StoragePath;
 
 pub mod fs;
 pub mod s3;
-
-pub mod path;
 
 pub type BoxedWriter = Box<dyn FileWriter>;
 pub type BoxedReader = Box<dyn AsyncRead + Send + Unpin>;
