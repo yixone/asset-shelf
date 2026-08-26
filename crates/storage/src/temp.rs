@@ -5,6 +5,7 @@ use flake_id::{FlakeIdGenerator, str::FlakeIdStr};
 use crate::{StoragePath, backend::fs::NativeFsStorageBackend};
 
 /// The part of the storage system responsible for handling temporary files
+#[derive(Debug)]
 pub(crate) struct TempSection {
     /// Backend for the temporary file storage section
     pub backend: NativeFsStorageBackend,

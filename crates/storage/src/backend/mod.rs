@@ -1,5 +1,7 @@
 //! Internal implementations of the file storage
 
+use std::fmt::Debug;
+
 use bytes::Bytes;
 use result::Result;
 use tokio::io::AsyncRead;
@@ -14,7 +16,7 @@ pub type BoxedReader = Box<dyn AsyncRead + Send + Unpin>;
 
 /// Abstract file storage backend
 #[async_trait::async_trait]
-pub trait StorageBackend: Send + Sync {
+pub trait StorageBackend: Send + Sync + Debug {
     /// Creates a new [`FileWriter`] at the specified [`StoragePath`] and returns it
     async fn create(&self, path: &StoragePath) -> Result<BoxedWriter>;
 

@@ -33,12 +33,14 @@ const SEQUENCE_MASK: u16 = u16::MAX >> 2;
 /// // Flake ID Generation
 /// let id = generator.get_id();
 /// ```
+#[derive(Debug)]
 pub struct FlakeIdGenerator {
     base_epoch: i64,
     node_id: u8,
     state: Mutex<GeneratorState>,
 }
 
+#[derive(Debug)]
 struct GeneratorState {
     idx: u16,
     last_time: i64,

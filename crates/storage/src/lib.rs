@@ -26,6 +26,7 @@ pub mod temp;
 /// File storage divided into two sections:
 /// - `Temporary Storage`
 /// - `Global (Persistent) Storage`
+#[derive(Debug)]
 pub struct Storage {
     /// Section for storing persistent files
     global: GlobalSection,
