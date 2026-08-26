@@ -106,26 +106,13 @@ impl Storage {
         temp: &StoragePath,
         global: &StoragePath,
     ) -> Result<usize> {
-        // Copies a file from the temporary section to the permanent section
-        let bytes_moved = self
-            .copy_to_section((&self.temp.backend, temp), (&*self.global.backend, global))
-            .await?;
-
-        // Deletes the file from the temporary section
-        if let Err(e) = self.temp.backend.remove(temp).await {
-            tracing::warn!(err = ?e, "Failed to delete temp file after moving to global storage section");
-        }
-
-        Ok(bytes_moved)
+        // Moves the file from the temporary section to the global section
+        let temp = self.temp.resolve_path(temp);
+        let transfered_bytes = self.global.backend.move_from_local(&temp, global).await?;
+        Ok(transfered_bytes)
     }
 
     /// Copies the file to the specified section and and returns the number of bytes moved
-    ///
-    /// ### Note:
-    /// It might be worth revisiting the approach to moving
-    /// files between sections in the future,
-    /// but for now, moving a file for instance,
-    /// from `FS` to `S3`-is implemented solely via copying.
     async fn copy_to_section(
         &self,
         from: (&dyn StorageBackend, &StoragePath),
@@ -155,8 +142,7 @@ impl Storage {
 
     /// Returns a reader for a file from the global section of the storage
     pub async fn open(&self, path: &StoragePath) -> Result<Box<dyn AsyncRead + Send + Unpin>> {
-        let reader = self.global.backend.read(path).await?;
-        Ok(reader)
+        self.global.backend.read(path).await
     }
 
     /// Returns the reader to the specified byte range of the file within the global storage section
@@ -166,12 +152,11 @@ impl Storage {
         start: u64,
         end: Option<u64>,
     ) -> Result<Box<dyn AsyncRead + Send + Unpin>> {
-        let reader = self.global.backend.read_ranged(path, start, end).await?;
-        Ok(reader)
+        self.global.backend.read_ranged(path, start, end).await
     }
 
     /// Copies the specified file from the global storage to a temporary location and returns it
-    pub async fn open_local(&self, path: &StoragePath) -> Result<LocalFile> {
+    pub async fn use_local(&self, path: &StoragePath) -> Result<LocalFile> {
         // Generates a temporary path for a file
         let temp_path = self.temp.generate_temp_path();
 

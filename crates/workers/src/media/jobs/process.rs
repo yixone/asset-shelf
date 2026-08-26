@@ -138,13 +138,15 @@ async fn process_asset_as_image(ctx: &WorkerContext, asset: &AssetView) -> Resul
     Ok(())
 }
 
+// TODO: Replace processing via copying the original to a temp file
+// with processing via streaming to an ffmpeg stdin pipe
 async fn process_asset_as_video(ctx: &WorkerContext, asset: &AssetView) -> Result<()> {
     // Retrieves information about the original media file
     let original = get_original(ctx, asset.media_id()).await?;
 
     // Copies the video to a temporary directory for processing
     let path = StoragePath::from_str(&original.storage_path).to_app_err()?;
-    let original_video = ctx.storage.open_local(&path).await?;
+    let original_video = ctx.storage.use_local(&path).await?;
 
     // Opens the video
     let processor = VideoProcessor::open_video(original_video.path()).await?;

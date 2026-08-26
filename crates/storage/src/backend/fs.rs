@@ -1,5 +1,6 @@
 use std::{
     io::ErrorKind,
+    os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
 };
 
@@ -95,6 +96,18 @@ impl StorageBackend for NativeFsStorageBackend {
 
         let writer = NativeFsStorageWriter { writer, path };
         Ok(Box::new(writer))
+    }
+
+    async fn move_from_local(&self, from: &Path, dest: &StoragePath) -> Result<usize> {
+        let dest = self.resolve_path(dest);
+        self.create_parents(&dest).await?;
+
+        tokio::fs::rename(from, &dest).await.to_app_err()?;
+
+        let meta = tokio::fs::metadata(dest).await.to_app_err()?;
+        let size = meta.size() as usize;
+
+        Ok(size)
     }
 
     async fn read(&self, path: &StoragePath) -> Result<BoxedReader> {
