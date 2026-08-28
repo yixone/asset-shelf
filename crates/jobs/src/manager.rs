@@ -6,17 +6,23 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     Job, JobSchedule, JobsScheduler,
+    job::JobId,
     resolver::JobsResolver,
     worker::{AsyncWorker, WorkerContext},
 };
 
 #[derive(Debug, Clone)]
-pub struct JobsQueueHandle(Arc<JobsResolver>);
+pub struct JobsHandle(Arc<JobsResolver>);
 
-impl JobsQueueHandle {
+impl JobsHandle {
     /// Adds a [`Job`] to the jobs queue
     pub async fn queue(&self, job: Job) {
         self.0.queue(job).await
+    }
+
+    /// Returns a snapshot of the background jobs queue
+    pub async fn snapshot(&self) -> Vec<(JobId, &'static str)> {
+        self.0.snapshot().await
     }
 }
 
@@ -50,7 +56,7 @@ pub struct JobsManager {
 
 impl JobsManager {
     /// Creates a new [`JobsManager`]
-    pub fn new(
+    pub async fn new(
         workers_count: usize,
         scheduled: Vec<(Job, JobSchedule)>,
         ctx: Arc<WorkerContext>,
@@ -63,6 +69,9 @@ impl JobsManager {
 
         let mut scheduler = JobsScheduler::new(resolver.clone());
         for (j, s) in scheduled {
+            if s.is_interval() {
+                resolver.queue(j.clone()).await;
+            }
             scheduler = scheduler.schedule(j, s);
         }
 
@@ -73,7 +82,7 @@ impl JobsManager {
         }
     }
 
-    pub fn run(self, cancel: CancellationToken) -> (JobsQueueHandle, JobsManagerHandle) {
+    pub fn run(self, cancel: CancellationToken) -> (JobsHandle, JobsManagerHandle) {
         let mut async_handles = Vec::new();
 
         let workers_count = self.async_workers.len();
@@ -86,7 +95,7 @@ impl JobsManager {
         async_handles.push(self.scheduler.run(cancel.clone()));
         tracing::info!("   |- Started jobs scheduler");
 
-        let queue_handle = JobsQueueHandle(self.resolver.clone());
+        let queue_handle = JobsHandle(self.resolver.clone());
         let manager_handle = JobsManagerHandle {
             resolver: self.resolver,
             async_handles,

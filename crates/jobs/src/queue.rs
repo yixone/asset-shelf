@@ -52,4 +52,9 @@ impl JobsQueue {
         let mut lock = self.inner.lock().await;
         lock.pop_front()
     }
+
+    pub async fn snapshot(&self) -> Vec<(JobId, &'static str)> {
+        let lock = self.inner.lock().await;
+        lock.iter().map(|(id, job)| (*id, job.kind())).collect()
+    }
 }

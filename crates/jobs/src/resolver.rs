@@ -82,6 +82,11 @@ impl JobsResolver {
         self.queue.drain().await
     }
 
+    /// Returns a snapshot of the background jobs queue
+    pub async fn snapshot(&self) -> Vec<(JobId, &'static str)> {
+        self.queue.snapshot().await
+    }
+
     /// Removes the job from the active list
     fn remove_active(&self, id: JobId, job: &Job) {
         let mut lock = self.runtime.lock().unwrap_or_else(|i| i.into_inner());

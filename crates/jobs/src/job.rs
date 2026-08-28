@@ -7,7 +7,10 @@ use tokio::sync::Notify;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Job {
     ProcessAssetMedia { id: models::types::AssetId },
+    ProcessUnprocessedAssets,
+
     CleanupStorageMedia,
+    RemoveMediaAfterAssetCreation { id: models::types::MediaId },
 }
 
 impl Job {
@@ -15,7 +18,10 @@ impl Job {
     pub fn kind(&self) -> &'static str {
         match self {
             Job::ProcessAssetMedia { .. } => "process_asset_media",
+            Job::ProcessUnprocessedAssets => "process_uprocessed_assets",
+
             Job::CleanupStorageMedia => "cleanup_storage_media",
+            Job::RemoveMediaAfterAssetCreation { .. } => "remove_media_after_asset_creation",
         }
     }
 
@@ -23,7 +29,10 @@ impl Job {
     pub fn allow_concurrency(&self) -> bool {
         match self {
             Job::ProcessAssetMedia { .. } => true,
+            Job::ProcessUnprocessedAssets => true,
+
             Job::CleanupStorageMedia => false,
+            Job::RemoveMediaAfterAssetCreation { .. } => true,
         }
     }
 }

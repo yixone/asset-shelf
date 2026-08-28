@@ -2,6 +2,7 @@ use actix_multipart::Multipart;
 use actix_web::{HttpResponse, post, web};
 use events::AssetCreatedEvent;
 use futures::TryStreamExt;
+use jobs::Job;
 use mimetype::MimeType;
 use models::{
     assets::{Asset, AssetFeatures},
@@ -154,6 +155,9 @@ async fn upload_asset(
 
     metrics.server.file_uploaded(&media_file.mimetype.kind());
     ctx.events.publish(AssetCreatedEvent { asset_id: asset.id });
+    ctx.jobs
+        .queue(Job::ProcessAssetMedia { id: asset.id })
+        .await;
 
     let res = AssetDtoV1::from((asset, asset_features, vec![media_file]));
     Ok(HttpResponse::Created().json(res))

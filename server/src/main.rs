@@ -63,17 +63,24 @@ async fn main() -> Result<()> {
 
     let jobs = JobsManager::new(
         4,
-        vec![(
-            Job::CleanupStorageMedia,
-            JobSchedule::interval(Duration::from_mins(30)),
-        )],
+        vec![
+            (
+                Job::CleanupStorageMedia,
+                JobSchedule::interval(Duration::from_mins(30)),
+            ),
+            (
+                Job::ProcessUnprocessedAssets,
+                JobSchedule::interval(Duration::from_mins(50)),
+            ),
+        ],
         Arc::new(WorkerContext {
             db: db.clone(),
             storage: storage.clone(),
             flake: flake.clone(),
         }),
         flake.clone(),
-    );
+    )
+    .await;
     let (queue_handle, jobs_handle) = jobs.run(cancel.clone());
 
     tracing::info!("Server configuration...");
@@ -81,6 +88,7 @@ async fn main() -> Result<()> {
         db,
         storage,
         flake: flake.clone(),
+        jobs: queue_handle,
         events,
         config: cfg.clone(),
     };
@@ -146,19 +154,3 @@ fn init_tracing() {
         .with_target(false)
         .init();
 }
-
-// fn init_workers(ctx: &DataCtx) -> WorkersSupervisor {
-//     let workers_context = WorkerContext {
-//         db: ctx.db.clone(),
-//         storage: ctx.storage.clone(),
-//         flake: ctx.flake.clone(),
-//         events: ctx.events.clone(),
-//     };
-
-//     let cleanup_worker = CleanupWorker::new(workers_context.clone());
-//     let media_worker = MediaWorker::new(workers_context.clone());
-
-//     WorkersSupervisor::new()
-//         .with_worker(cleanup_worker)
-//         .with_worker(media_worker)
-// }

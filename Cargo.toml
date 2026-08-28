@@ -16,7 +16,6 @@ members = [
     "crates/result",
     "crates/storage",
     "crates/telemetry",
-    "crates/workers",
 
     # Binary crates
     "server",
@@ -38,7 +37,6 @@ models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
 telemetry = { path = "crates/telemetry" }
-workers = { path = "crates/workers" }
 
 
 # External crates

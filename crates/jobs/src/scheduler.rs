@@ -38,7 +38,6 @@ impl JobsScheduler {
                 job: scheduled.job.clone(),
                 schedule: scheduled.schedule.move_run(interval),
             };
-            tracing::info!(job = ?rescheduled.job, next_run_on = ?rescheduled.schedule.next_run(), "Job rescheduled");
             self.scheduled.push(rescheduled);
         }
 

@@ -7,7 +7,10 @@ use storage::Storage;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
-use crate::resolver::{ActiveJobPermit, JobsResolver};
+use crate::{
+    resolver::{ActiveJobPermit, JobsResolver},
+    services::dispatch_job,
+};
 
 const WORKER_RESART_DELAY: Duration = Duration::from_mins(2);
 
@@ -54,14 +57,6 @@ impl AsyncWorker {
     }
 
     async fn perform_job(&mut self, job: &ActiveJobPermit) -> Result<()> {
-        match job.inner().job() {
-            crate::Job::ProcessAssetMedia { .. } => {
-                dbg!(job.inner().job());
-            }
-            crate::Job::CleanupStorageMedia => {
-                dbg!(job.inner().job());
-            }
-        }
-        Ok(())
+        dispatch_job(job.inner().job(), &self.1).await
     }
 }

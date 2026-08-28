@@ -17,7 +17,6 @@ result = { workspace = true, features = ["actix"] }
 storage = { workspace = true }
 join = { workspace = true }
 telemetry = { workspace = true }
-workers = { workspace = true }
 
 # External
 actix-cors = { workspace = true }
