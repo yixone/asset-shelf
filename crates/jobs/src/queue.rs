@@ -45,7 +45,7 @@ impl JobsQueue {
 
     pub async fn drain(&self) -> usize {
         let mut lock = self.inner.lock().await;
-        lock.drain(0..).len()
+        lock.drain(..).len()
     }
 
     pub async fn try_pop(&self) -> Option<(JobId, Job)> {

@@ -2,11 +2,11 @@ use actix_web::web;
 
 use crate::middlewares;
 
-pub mod assets;
-pub mod collections;
-pub mod media;
+mod assets;
+mod collections;
+mod media;
 
-pub mod metrics;
+mod metrics;
 
 /// Configures endpoints for API `/v1`
 pub fn cfg(cfg: &mut web::ServiceConfig) {

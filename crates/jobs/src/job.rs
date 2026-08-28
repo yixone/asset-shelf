@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use flake_id::FlakeId;
 use tokio::sync::Notify;
 
@@ -56,8 +54,12 @@ impl ActiveJob {
     }
 
     /// Sends a signal to cancel job execution to the worker that picked up the job
-    pub fn cancel(self: Arc<Self>) {
+    pub fn cancel(&self) {
         self.cancel.notify_one();
+    }
+
+    pub async fn cancelled(&self) {
+        self.cancel.notified().await
     }
 
     /// Returns a reference to the job of this [`ActiveJob`]
@@ -73,5 +75,11 @@ pub struct JobId(FlakeId);
 impl From<FlakeId> for JobId {
     fn from(id: FlakeId) -> Self {
         JobId(id)
+    }
+}
+
+impl std::fmt::Display for JobId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }

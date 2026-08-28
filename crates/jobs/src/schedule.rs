@@ -1,35 +1,43 @@
-use std::{collections::BinaryHeap, sync::Arc, time::Duration};
+use std::{collections::BinaryHeap, time::Duration};
 
-use tokio::{task::JoinHandle, time::Instant};
-use tokio_util::sync::CancellationToken;
+use tokio::{sync::Mutex, time::Instant};
 
-use crate::{Job, resolver::JobsResolver};
+use crate::Job;
 
-/// Background Job Scheduler
-///
-/// Periodically adds background tasks to the queue
+/// Jobs Execution Schedule
 #[derive(Debug)]
-pub struct JobsScheduler {
-    scheduled: BinaryHeap<ScheduledJob>,
-    resolver: Arc<JobsResolver>,
+pub struct Schedule {
+    inner: Mutex<BinaryHeap<ScheduledJob>>,
 }
 
-impl JobsScheduler {
-    /// Creates a new [`JobsScheduler`]
-    pub fn new(resolver: Arc<JobsResolver>) -> Self {
-        Self {
-            scheduled: BinaryHeap::new(),
-            resolver,
+impl Schedule {
+    /// Creates a new [`Schedule`]
+    pub fn new(jobs: &[(Job, JobSchedule)]) -> Self {
+        let mut schedule = BinaryHeap::with_capacity(jobs.len());
+        for (j, s) in jobs {
+            schedule.push(ScheduledJob {
+                job: j.clone(),
+                schedule: *s,
+            });
+        }
+        // dbg!(&schedule);
+        Schedule {
+            inner: Mutex::new(schedule),
         }
     }
 
-    pub fn schedule(mut self, job: Job, schedule: JobSchedule) -> Self {
-        self.scheduled.push(ScheduledJob { job, schedule });
-        self
+    /// Returns the full list of scheduled tasks
+    pub async fn snapshot(&self) -> Vec<ScheduledJob> {
+        let lock = self.inner.lock().await;
+        lock.iter().cloned().collect()
     }
 
-    async fn next_run(&mut self) -> Option<Job> {
-        let scheduled = self.scheduled.pop()?;
+    /// Waits for the time of the next scheduled task and returns it
+    pub async fn next_run(&self) -> Option<Job> {
+        let scheduled = {
+            let mut lock = self.inner.lock().await;
+            lock.pop()
+        }?;
 
         tokio::time::sleep_until(*scheduled.schedule.next_run()).await;
 
@@ -38,31 +46,16 @@ impl JobsScheduler {
                 job: scheduled.job.clone(),
                 schedule: scheduled.schedule.move_run(interval),
             };
-            self.scheduled.push(rescheduled);
+            let mut lock = self.inner.lock().await;
+            lock.push(rescheduled);
         }
 
         Some(scheduled.job)
     }
-
-    /// Starts the loop for this [`JobsScheduler`]
-    pub fn run(mut self, cancel: CancellationToken) -> JoinHandle<()> {
-        tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    Some(job) = self.next_run() => {
-                        self.resolver.queue(job).await;
-                    }
-                    _ = cancel.cancelled() => {
-                        return;
-                    }
-                }
-            }
-        })
-    }
 }
 
 /// Scheduled background job
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ScheduledJob {
     pub(crate) job: Job,
     pub(crate) schedule: JobSchedule,
@@ -89,7 +82,7 @@ impl PartialEq for ScheduledJob {
 impl Eq for ScheduledJob {}
 
 /// Job execution schedule
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum JobSchedule {
     Interval {
         interval: Duration,

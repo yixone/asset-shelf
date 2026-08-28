@@ -56,7 +56,15 @@ impl AsyncWorker {
         }
     }
 
-    async fn perform_job(&mut self, job: &ActiveJobPermit) -> Result<()> {
-        dispatch_job(job.inner().job(), &self.1).await
+    async fn perform_job(&mut self, permit: &ActiveJobPermit) -> Result<()> {
+        let job = permit.inner();
+        tokio::select! {
+            _ = job.cancelled() => {
+                Ok(())
+            }
+            _ = dispatch_job(permit.inner().job(), &self.1) => {
+                Ok(())
+            }
+        }
     }
 }

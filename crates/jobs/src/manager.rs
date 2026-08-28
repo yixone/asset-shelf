@@ -5,8 +5,7 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    Job, JobSchedule, JobsScheduler,
-    job::JobId,
+    Job, JobSchedule, JobsSnapshot,
     resolver::JobsResolver,
     worker::{AsyncWorker, WorkerContext},
 };
@@ -21,7 +20,7 @@ impl JobsHandle {
     }
 
     /// Returns a snapshot of the background jobs queue
-    pub async fn snapshot(&self) -> Vec<(JobId, &'static str)> {
+    pub async fn snapshot(&self) -> JobsSnapshot {
         self.0.snapshot().await
     }
 }
@@ -37,7 +36,7 @@ impl JobsManagerHandle {
     /// It will only take effect after the cancellation is signaled via the cancellation token;
     /// otherwise, it will wait indefinitely
     pub async fn stop(self) {
-        let removed = self.resolver.drain().await;
+        let removed = self.resolver.clear_pending().await;
         tracing::info!("Stopping background tasks; {removed} tasks removed from the queue");
 
         for ah in self.async_handles {
@@ -51,7 +50,6 @@ impl JobsManagerHandle {
 pub struct JobsManager {
     async_workers: Vec<AsyncWorker>,
     resolver: Arc<JobsResolver>,
-    scheduler: JobsScheduler,
 }
 
 impl JobsManager {
@@ -62,23 +60,14 @@ impl JobsManager {
         ctx: Arc<WorkerContext>,
         flake: Arc<FlakeIdGenerator>,
     ) -> Self {
-        let resolver = Arc::new(JobsResolver::new(flake.clone()));
+        let resolver = Arc::new(JobsResolver::new(scheduled, flake.clone()).await);
         let async_workers = (0..workers_count)
             .map(|_| AsyncWorker::new(resolver.clone(), ctx.clone()))
             .collect::<Vec<_>>();
 
-        let mut scheduler = JobsScheduler::new(resolver.clone());
-        for (j, s) in scheduled {
-            if s.is_interval() {
-                resolver.queue(j.clone()).await;
-            }
-            scheduler = scheduler.schedule(j, s);
-        }
-
         Self {
             async_workers,
             resolver,
-            scheduler,
         }
     }
 
@@ -92,7 +81,7 @@ impl JobsManager {
         }
         tracing::info!("   |- Started {workers_count} background workers");
 
-        async_handles.push(self.scheduler.run(cancel.clone()));
+        async_handles.push(self.resolver.run_scheduler(cancel.clone()));
         tracing::info!("   |- Started jobs scheduler");
 
         let queue_handle = JobsHandle(self.resolver.clone());
