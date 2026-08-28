@@ -1,24 +1,27 @@
 //! Internal implementations of the file storage
 
+use std::{fmt::Debug, path::Path};
+
 use bytes::Bytes;
 use result::Result;
 use tokio::io::AsyncRead;
 
-use crate::backend::path::StoragePath;
+use crate::StoragePath;
 
 pub mod fs;
 pub mod s3;
-
-pub mod path;
 
 pub type BoxedWriter = Box<dyn FileWriter>;
 pub type BoxedReader = Box<dyn AsyncRead + Send + Unpin>;
 
 /// Abstract file storage backend
 #[async_trait::async_trait]
-pub trait StorageBackend: Send + Sync {
+pub trait StorageBackend: Send + Sync + Debug {
     /// Creates a new [`FileWriter`] at the specified [`StoragePath`] and returns it
     async fn create(&self, path: &StoragePath) -> Result<BoxedWriter>;
+
+    /// Moves the specified file from the local file system to the storage at the specified path
+    async fn move_from_local(&self, from: &Path, dest: &StoragePath) -> Result<usize>;
 
     /// Opens a file reader at the specified [`StoragePath`] and returns it
     async fn read(&self, path: &StoragePath) -> Result<BoxedReader>;

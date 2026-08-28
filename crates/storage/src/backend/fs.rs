@@ -1,5 +1,6 @@
 use std::{
     io::ErrorKind,
+    os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
 };
 
@@ -9,7 +10,10 @@ use tokio::{
     io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, BufWriter},
 };
 
-use crate::backend::{BoxedReader, BoxedWriter, FileWriter, StorageBackend, path::StoragePath};
+use crate::{
+    StoragePath,
+    backend::{BoxedReader, BoxedWriter, FileWriter, StorageBackend},
+};
 
 /// File storage backend for a native file system
 #[derive(Debug)]
@@ -94,6 +98,18 @@ impl StorageBackend for NativeFsStorageBackend {
         Ok(Box::new(writer))
     }
 
+    async fn move_from_local(&self, from: &Path, dest: &StoragePath) -> Result<usize> {
+        let dest = self.resolve_path(dest);
+        self.create_parents(&dest).await?;
+
+        tokio::fs::rename(from, &dest).await.to_app_err()?;
+
+        let meta = tokio::fs::metadata(dest).await.to_app_err()?;
+        let size = meta.size() as usize;
+
+        Ok(size)
+    }
+
     async fn read(&self, path: &StoragePath) -> Result<BoxedReader> {
         let path = self.resolve_path(path);
         match File::open(path).await {
@@ -122,7 +138,7 @@ impl StorageBackend for NativeFsStorageBackend {
 
         match end {
             Some(end) => {
-                let to_read = end - start + 1;
+                let to_read = end.saturating_sub(start) + 1;
                 Ok(Box::new(file.take(to_read)))
             }
             None => Ok(Box::new(file)),
