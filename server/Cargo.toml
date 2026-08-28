@@ -9,6 +9,7 @@ config = { workspace = true }
 db = { workspace = true }
 events = { workspace = true }
 flake-id = { workspace = true }
+jobs = { workspace = true }
 media = { workspace = true }
 mimetype = { workspace = true }
 models = { workspace = true, features = ["serde"] }

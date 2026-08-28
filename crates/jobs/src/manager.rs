@@ -1,0 +1,97 @@
+use std::sync::Arc;
+
+use flake_id::FlakeIdGenerator;
+use tokio::task::JoinHandle;
+use tokio_util::sync::CancellationToken;
+
+use crate::{
+    Job, JobSchedule, JobsScheduler,
+    resolver::JobsResolver,
+    worker::{AsyncWorker, WorkerContext},
+};
+
+#[derive(Debug, Clone)]
+pub struct JobsQueueHandle(Arc<JobsResolver>);
+
+impl JobsQueueHandle {
+    /// Adds a [`Job`] to the jobs queue
+    pub async fn queue(&self, job: Job) {
+        self.0.queue(job).await
+    }
+}
+
+pub struct JobsManagerHandle {
+    resolver: Arc<JobsResolver>,
+    async_handles: Vec<JoinHandle<()>>,
+}
+
+impl JobsManagerHandle {
+    /// Removes all tasks from the queue and waits for active tasks to complete
+    ///
+    /// It will only take effect after the cancellation is signaled via the cancellation token;
+    /// otherwise, it will wait indefinitely
+    pub async fn stop(self) {
+        let removed = self.resolver.drain().await;
+        tracing::info!("Stopping background tasks; {removed} tasks removed from the queue");
+
+        for ah in self.async_handles {
+            if let Err(e) = ah.await {
+                tracing::error!(err = ?e);
+            }
+        }
+    }
+}
+
+pub struct JobsManager {
+    async_workers: Vec<AsyncWorker>,
+    resolver: Arc<JobsResolver>,
+    scheduler: JobsScheduler,
+}
+
+impl JobsManager {
+    /// Creates a new [`JobsManager`]
+    pub fn new(
+        workers_count: usize,
+        scheduled: Vec<(Job, JobSchedule)>,
+        ctx: Arc<WorkerContext>,
+        flake: Arc<FlakeIdGenerator>,
+    ) -> Self {
+        let resolver = Arc::new(JobsResolver::new(flake.clone()));
+        let async_workers = (0..workers_count)
+            .map(|_| AsyncWorker::new(resolver.clone(), ctx.clone()))
+            .collect::<Vec<_>>();
+
+        let mut scheduler = JobsScheduler::new(resolver.clone());
+        for (j, s) in scheduled {
+            scheduler = scheduler.schedule(j, s);
+        }
+
+        Self {
+            async_workers,
+            resolver,
+            scheduler,
+        }
+    }
+
+    pub fn run(self, cancel: CancellationToken) -> (JobsQueueHandle, JobsManagerHandle) {
+        let mut async_handles = Vec::new();
+
+        let workers_count = self.async_workers.len();
+
+        for aw in self.async_workers {
+            async_handles.push(aw.worker_loop(cancel.clone()));
+        }
+        tracing::info!("   |- Started {workers_count} background workers");
+
+        async_handles.push(self.scheduler.run(cancel.clone()));
+        tracing::info!("   |- Started jobs scheduler");
+
+        let queue_handle = JobsQueueHandle(self.resolver.clone());
+        let manager_handle = JobsManagerHandle {
+            resolver: self.resolver,
+            async_handles,
+        };
+
+        (queue_handle, manager_handle)
+    }
+}

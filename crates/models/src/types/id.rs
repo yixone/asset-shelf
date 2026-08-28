@@ -5,7 +5,7 @@ macro_rules! id_type {
         $( #[$meta: meta] )*
         $id: ident as $id_ty: ty
     ) => {
-        #[derive(Debug, Clone, Eq, PartialEq, Hash)]
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[cfg_attr(feature = "sqlx", derive(sqlx::Type), sqlx(transparent))]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         $( #[$meta] )*
