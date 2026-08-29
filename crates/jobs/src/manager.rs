@@ -5,7 +5,7 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    Job, JobSchedule, JobsSnapshot,
+    Job, JobId, JobSchedule, JobsSnapshot,
     resolver::JobsResolver,
     worker::{AsyncWorker, WorkerContext},
 };
@@ -22,6 +22,15 @@ impl JobsHandle {
     /// Returns a snapshot of the background jobs queue
     pub async fn snapshot(&self) -> JobsSnapshot {
         self.0.snapshot().await
+    }
+
+    /// Removes a job from the queue or interrupts the execution of an active jobs
+    pub async fn remove_job(&self, id: JobId) -> bool {
+        if self.0.interrupt_active(id).await {
+            return true;
+        }
+
+        self.0.remove_from_queue(id).await
     }
 }
 

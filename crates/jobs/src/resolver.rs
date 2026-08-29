@@ -119,8 +119,38 @@ impl JobsResolver {
         }
     }
 
-    /// Removes the job from the active list
-    fn remove_active(&self, id: JobId) {
+    /// Interrupts the execution of the active job
+    pub async fn interrupt_active(&self, id: JobId) -> bool {
+        let mut lock = self.runtime.lock().unwrap_or_else(|i| i.into_inner());
+        if let Some(removed) = lock.active.remove(&id) {
+            removed.cancel();
+
+            if !removed.job().allow_concurrency() {
+                lock.pending_kinds.remove(removed.job().kind());
+            }
+
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Removes a task from the queue
+    pub async fn remove_from_queue(&self, id: JobId) -> bool {
+        let Some(job) = self.queue.remove_by_id(id).await else {
+            return false;
+        };
+
+        if !job.allow_concurrency() {
+            let mut lock = self.runtime.lock().unwrap_or_else(|i| i.into_inner());
+            lock.pending_kinds.remove(job.kind());
+        }
+
+        true
+    }
+
+    /// Removes the active task after execution
+    fn cleanup_active(&self, id: JobId) {
         let mut lock = self.runtime.lock().unwrap_or_else(|i| i.into_inner());
         if let Some(removed) = lock.active.remove(&id)
             && !removed.job().allow_concurrency()
@@ -166,7 +196,7 @@ impl ActiveJobPermit {
 
 impl Drop for ActiveJobPermit {
     fn drop(&mut self) {
-        self.resolver.remove_active(self.job_id);
+        self.resolver.cleanup_active(self.job_id);
     }
 }
 

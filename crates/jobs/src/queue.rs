@@ -19,12 +19,28 @@ impl JobsQueue {
         }
     }
 
+    pub async fn len(&self) -> usize {
+        let lock = self.inner.lock().await;
+        lock.len()
+    }
+
     pub async fn queue(&self, job: (JobId, Job)) {
         {
             let mut lock = self.inner.lock().await;
             lock.push_back(job);
         }
         self.notify.notify_one();
+    }
+
+    pub async fn remove_by_id(&self, id: JobId) -> Option<Job> {
+        let mut lock = self.inner.lock().await;
+
+        let Ok(job_idx) = lock.binary_search_by(|(i, _)| i.cmp(&id)) else {
+            return None;
+        };
+
+        let (_, job) = lock.remove(job_idx)?;
+        Some(job)
     }
 
     pub async fn pop(&self) -> (JobId, Job) {

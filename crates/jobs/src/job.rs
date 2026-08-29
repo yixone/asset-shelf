@@ -69,7 +69,7 @@ impl ActiveJob {
 }
 
 /// Scheduler job identifier
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct JobId(FlakeId);
 
 impl From<FlakeId> for JobId {
