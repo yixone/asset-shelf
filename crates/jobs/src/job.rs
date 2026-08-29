@@ -25,13 +25,7 @@ impl Job {
 
     /// Returns `true` if concurrent execution is allowed for the current [`Job`]
     pub fn allow_concurrency(&self) -> bool {
-        match self {
-            Job::ProcessAssetMedia { .. } => true,
-            Job::ProcessUnprocessedAssets => true,
-
-            Job::CleanupStorageMedia => false,
-            Job::RemoveMediaAfterAssetCreation { .. } => true,
-        }
+        !matches!(self, Job::CleanupStorageMedia)
     }
 }
 

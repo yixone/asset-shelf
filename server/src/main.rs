@@ -6,7 +6,7 @@ use config::{DatabaseDriverConfig, StorageBackendConfig};
 use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
-use jobs::{Job, JobSchedule, JobsManager, JobsManagerHandle, WorkerContext};
+use jobs::{Job, JobSchedule, JobsResolver, ResolverHandle, WorkerContext};
 use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
@@ -36,9 +36,10 @@ async fn main() -> Result<()> {
     tracing::info!("Initializing dependencies");
     let db = match cfg.database.driver() {
         DatabaseDriverConfig::Sqlite { path } => {
-            tracing::info!(path = path, "|- Using SQLITE database:");
+            tracing::info!("- Using SQLITE database");
 
             let db = SqliteDatabase::open(path).await?;
+            tracing::info!("\t- Opening SQLite from file: {path}");
             db.migrate().await?;
 
             Arc::new(db.repositories())
@@ -47,48 +48,57 @@ async fn main() -> Result<()> {
 
     let storage = match cfg.storage.backend() {
         StorageBackendConfig::Native { dir, temp } => {
-            tracing::info!(dir = dir, "|- Using NATIVE storage:");
+            tracing::info!("- Using NATIVE storage");
 
             let storage_backend = NativeFsStorageBackend::new(dir).await?;
+            tracing::info!("\t- Opening storage directory: {dir}");
+
             Arc::new(Storage::new(storage_backend, flake.clone(), temp.into()).await?)
         }
     };
 
     tracing::info!("Initializing the background infrastructure");
-    tracing::info!("|- Initializing event bus");
-    let events = Arc::new(EventBus::new(1024));
     let cancel = CancellationToken::new();
 
-    tracing::info!("|- Initializing background jobs manager");
+    tracing::info!("- Initializing event bus");
+    let events = Arc::new(EventBus::new(1024));
 
-    let jobs = JobsManager::new(
-        4,
-        vec![
-            (
-                Job::CleanupStorageMedia,
-                JobSchedule::interval(Duration::from_mins(30)),
-            ),
-            (
-                Job::ProcessUnprocessedAssets,
-                JobSchedule::interval(Duration::from_mins(50)),
-            ),
-        ],
-        Arc::new(WorkerContext {
-            db: db.clone(),
-            storage: storage.clone(),
-            flake: flake.clone(),
-        }),
-        flake.clone(),
-    )
-    .await;
-    let (queue_handle, jobs_handle) = jobs.run(cancel.clone());
+    tracing::info!("- Initializing background jobs");
+    let scheduled = vec![
+        (
+            Job::CleanupStorageMedia,
+            JobSchedule::interval(Duration::from_mins(30)),
+        ),
+        (
+            Job::ProcessUnprocessedAssets,
+            JobSchedule::interval(Duration::from_mins(50)),
+        ),
+    ];
+    tracing::info!("\t- Jobs schedule created");
 
-    tracing::info!("Server configuration...");
+    let ctx = Arc::new(WorkerContext {
+        db: db.clone(),
+        storage: storage.clone(),
+        flake: flake.clone(),
+    });
+    tracing::info!("\t- Workers context created");
+
+    const WORKERS_COUNT: usize = 4;
+    let resolver = JobsResolver::new(WORKERS_COUNT, scheduled, flake.clone(), cancel.clone());
+    tracing::info!("\t- Jobs resolver created");
+    tracing::info!("\t- Set workers count: {WORKERS_COUNT}");
+
+    let jobs_resolver_handle = resolver.run(ctx);
+    tracing::info!("\t- Jobs resolver runned!");
+
+    let jobs_handle = jobs_resolver_handle.jobs();
+
+    tracing::info!("Server configuration");
     let ctx = DataCtx {
         db,
         storage,
         flake: flake.clone(),
-        jobs: queue_handle,
+        jobs: jobs_handle,
         events,
         config: cfg.clone(),
     };
@@ -96,7 +106,7 @@ async fn main() -> Result<()> {
     let server = configure_server(ctx, metrics_ctx, &cfg.server.listen_addr())?;
     let handle = server.handle();
 
-    spawn_shutdown_handler(cancel, handle, jobs_handle);
+    spawn_shutdown_handler(cancel, handle, jobs_resolver_handle);
 
     tracing::info!("Server started on http://{}!", cfg.server.listen_addr());
     server.await.to_app_err()?;
@@ -128,7 +138,7 @@ fn configure_server(
 fn spawn_shutdown_handler(
     cancel: CancellationToken,
     server_handle: ServerHandle,
-    jobs_handle: JobsManagerHandle,
+    jobs_resolver_handle: ResolverHandle,
 ) {
     tokio::spawn(async move {
         match signal::ctrl_c().await {
@@ -143,7 +153,7 @@ fn spawn_shutdown_handler(
         }
         server_handle.stop(true).await;
         cancel.cancel();
-        jobs_handle.stop().await;
+        jobs_resolver_handle.close().await;
     });
 }
 

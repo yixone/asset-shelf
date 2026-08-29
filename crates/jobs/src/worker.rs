@@ -7,10 +7,7 @@ use storage::Storage;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
-use crate::{
-    resolver::{ActiveJobPermit, JobsResolver},
-    services::dispatch_job,
-};
+use crate::{JobQueue, queue::ActiveJobPermit, services::dispatch_job};
 
 const WORKER_RESART_DELAY: Duration = Duration::from_mins(2);
 
@@ -23,12 +20,12 @@ pub struct WorkerContext {
 }
 
 /// Asynchronous background worker
-pub struct AsyncWorker(Arc<JobsResolver>, Arc<WorkerContext>);
+pub struct AsyncWorker(Arc<JobQueue>, Arc<WorkerContext>);
 
 impl AsyncWorker {
     /// Creates a new [`AsyncWorker`]
-    pub fn new(resolver: Arc<JobsResolver>, ctx: Arc<WorkerContext>) -> Self {
-        AsyncWorker(resolver, ctx)
+    pub fn new(queue: Arc<JobQueue>, ctx: Arc<WorkerContext>) -> Self {
+        AsyncWorker(queue, ctx)
     }
 
     pub fn worker_loop(mut self, cancel: CancellationToken) -> JoinHandle<()> {
@@ -42,7 +39,7 @@ impl AsyncWorker {
     async fn jobs_loop(&mut self, cancel: CancellationToken) -> Result<()> {
         loop {
             tokio::select! {
-                next_job = self.0.next() => {
+                next_job = self.0.next_job() => {
                     if let Err(e) = self.perform_job(&next_job).await {
                         tracing::error!(err = ?e, job = ?next_job.inner().job(), "Worker error occurred");
 

@@ -1,12 +1,14 @@
 pub(crate) mod job;
 pub use job::{Job, JobId};
 
-mod manager;
-pub use manager::{JobsHandle, JobsManager, JobsManagerHandle};
+mod handle;
+pub use handle::{JobsHandle, ResolverHandle};
 
 pub(crate) mod queue;
+pub(crate) use queue::JobQueue;
+
 pub(crate) mod resolver;
-pub use resolver::JobsSnapshot;
+pub use resolver::JobsResolver;
 
 mod schedule;
 pub use schedule::{JobSchedule, ScheduledJob};

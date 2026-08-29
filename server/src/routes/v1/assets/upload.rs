@@ -155,9 +155,7 @@ async fn upload_asset(
 
     metrics.server.file_uploaded(&media_file.mimetype.kind());
     ctx.events.publish(AssetCreatedEvent { asset_id: asset.id });
-    ctx.jobs
-        .queue(Job::ProcessAssetMedia { id: asset.id })
-        .await;
+    ctx.jobs.queue(Job::ProcessAssetMedia { id: asset.id });
 
     let res = AssetDtoV1::from((asset, asset_features, vec![media_file]));
     Ok(HttpResponse::Created().json(res))

@@ -8,6 +8,7 @@ use crate::Job;
 #[derive(Debug)]
 pub struct Schedule {
     inner: Mutex<BinaryHeap<ScheduledJob>>,
+    current: Mutex<Option<ScheduledJob>>,
 }
 
 impl Schedule {
@@ -20,16 +21,11 @@ impl Schedule {
                 schedule: *s,
             });
         }
-        // dbg!(&schedule);
+
         Schedule {
             inner: Mutex::new(schedule),
+            current: Mutex::new(None),
         }
-    }
-
-    /// Returns the full list of scheduled tasks
-    pub async fn snapshot(&self) -> Vec<ScheduledJob> {
-        let lock = self.inner.lock().await;
-        lock.iter().cloned().collect()
     }
 
     /// Waits for the time of the next scheduled task and returns it
@@ -38,6 +34,11 @@ impl Schedule {
             let mut lock = self.inner.lock().await;
             lock.pop()
         }?;
+
+        {
+            let mut lock = self.current.lock().await;
+            *lock = Some(scheduled.clone());
+        }
 
         tokio::time::sleep_until(*scheduled.schedule.next_run()).await;
 
@@ -48,6 +49,11 @@ impl Schedule {
             };
             let mut lock = self.inner.lock().await;
             lock.push(rescheduled);
+        }
+
+        {
+            let mut lock = self.current.lock().await;
+            *lock = None;
         }
 
         Some(scheduled.job)
