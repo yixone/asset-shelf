@@ -70,6 +70,7 @@ impl JobQueue {
             queue: self.clone(),
             job_id: id,
             inner: active,
+            cleanup_on_drop: true,
         }
     }
 
@@ -96,6 +97,22 @@ impl JobQueue {
         {
             lock.remove_pending(removed.job());
         }
+    }
+
+    fn requeue(&self, id: JobId) -> bool {
+        let mut lock = self.lock();
+        let Some(removed) = lock.remove_active(id) else {
+            return false;
+        };
+
+        let job = removed.job().clone();
+
+        lock.push_job(id, job);
+        drop(lock);
+
+        self.notify.notify_one();
+
+        true
     }
 }
 
@@ -153,6 +170,8 @@ pub struct ActiveJobPermit {
     queue: Arc<JobQueue>,
     job_id: JobId,
     inner: Arc<ActiveJob>,
+
+    cleanup_on_drop: bool,
 }
 
 impl ActiveJobPermit {
@@ -160,10 +179,20 @@ impl ActiveJobPermit {
     pub fn inner(&self) -> &ActiveJob {
         &self.inner
     }
+
+    /// Removes the current task from the list of active tasks and returns it to the end of the queue
+    pub fn requeue(mut self) {
+        self.queue.requeue(self.job_id);
+        self.cleanup_on_drop = false;
+    }
 }
 
 impl Drop for ActiveJobPermit {
     fn drop(&mut self) {
+        if !self.cleanup_on_drop {
+            return;
+        }
+
         self.queue.remove_active(self.job_id);
     }
 }

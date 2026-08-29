@@ -43,6 +43,10 @@ impl AsyncWorker {
                     if let Err(e) = self.perform_job(&next_job).await {
                         tracing::error!(err = ?e, job = ?next_job.inner().job(), "Worker error occurred");
 
+                        if e.is_retryable() {
+                            next_job.requeue();
+                        }
+
                         if e.is_internal() {
                             return Err(e);
                         }

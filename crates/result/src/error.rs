@@ -42,12 +42,23 @@ impl Error {
         matches!(self.kind, ErrorKind::Internal { .. })
     }
 
+    /// Returns `true` if the cause of the error is that the requested object was not found or does not exist
     pub fn is_not_found(&self) -> bool {
         matches!(self.kind, ErrorKind::NotFound)
     }
 
+    /// Returns `true` if the cause of the error is related to a conflict
     pub fn is_conflict(&self) -> bool {
         matches!(self.kind, ErrorKind::AlreadyExists)
+    }
+
+    /// Returns `true` if, after an error occurs,
+    /// the same operation can be retried and the result might change (e.g., connection errors, timeouts, etc.)
+    pub fn is_retryable(&self) -> bool {
+        matches!(
+            self.kind,
+            ErrorKind::ProcessingTimeout | ErrorKind::Internal { .. }
+        )
     }
 }
 
