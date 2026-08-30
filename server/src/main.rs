@@ -6,7 +6,7 @@ use config::{DatabaseDriverConfig, StorageBackendConfig};
 use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
-use jobs::{Job, JobSchedule, JobsResolver, ResolverHandle, WorkerContext};
+use jobs::{Job, JobSchedule, JobsResolver, ResolverTasksHandle, WorkerContext};
 use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
@@ -17,6 +17,8 @@ use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use telemetry::MetricsRegistry;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
+
+const JOBS_WORKERS_COUNT: usize = 4;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -77,21 +79,22 @@ async fn main() -> Result<()> {
     });
     tracing::info!("Workers context created");
 
-    const WORKERS_COUNT: usize = 4;
-    let resolver = JobsResolver::new(WORKERS_COUNT, scheduled, flake.clone(), cancel.clone());
+    let resolver = Arc::new(JobsResolver::new(
+        JOBS_WORKERS_COUNT,
+        scheduled,
+        flake.clone(),
+    ));
     tracing::info!("Jobs resolver created");
-    tracing::info!("Set workers count: {WORKERS_COUNT}");
+    tracing::info!("Set workers count: {}", resolver.workers_count());
 
-    let jobs_resolver_handle = resolver.run(ctx);
+    let jobs_resolver_handle = resolver.run(cancel.clone(), ctx);
     tracing::info!("Jobs resolver runned!");
-
-    let jobs_handle = jobs_resolver_handle.jobs();
 
     let ctx = DataCtx {
         db,
         storage,
         flake: flake.clone(),
-        jobs: jobs_handle,
+        jobs: resolver,
         events,
         config: cfg.clone(),
     };
@@ -132,7 +135,7 @@ fn configure_server(
 fn spawn_shutdown_handler(
     cancel: CancellationToken,
     server_handle: ServerHandle,
-    jobs_resolver_handle: ResolverHandle,
+    jobs_resolver_handle: ResolverTasksHandle,
 ) {
     tokio::spawn(async move {
         match signal::ctrl_c().await {

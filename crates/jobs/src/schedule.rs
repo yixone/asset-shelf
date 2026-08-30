@@ -78,7 +78,7 @@ impl Schedule {
         if let JobSchedule::Interval { interval, .. } = scheduled.schedule {
             let rescheduled = ScheduledJob {
                 job: scheduled.job.clone(),
-                schedule: scheduled.schedule.move_run(interval),
+                schedule: scheduled.schedule.move_next_run(interval),
             };
 
             lock.scheduled_queue.push(rescheduled);
@@ -164,8 +164,8 @@ impl JobSchedule {
         matches!(self, JobSchedule::Interval { .. })
     }
 
-    /// Shifts the scheduled execution time
-    pub fn move_run(self, move_on: Duration) -> Self {
+    /// Shifts the scheduled job next run time
+    pub fn move_next_run(self, move_on: Duration) -> Self {
         match self {
             JobSchedule::Interval { interval, next_run } => JobSchedule::Interval {
                 interval,

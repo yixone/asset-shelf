@@ -11,10 +11,13 @@ use crate::{
     job::{ActiveJob, JobId},
 };
 
+/// Jobs queue broker
+///
+/// Stores and automatically distributes background jobs among workers
 #[derive(Debug)]
 pub struct JobQueue {
     inner: Mutex<JobsQueueInner>,
-    notify: Notify,
+    on_new_job: Notify,
     flake: Arc<FlakeIdGenerator>,
 }
 
@@ -22,8 +25,12 @@ impl JobQueue {
     /// Creates a new [`JobQueue`]
     pub fn new(flake: Arc<FlakeIdGenerator>) -> Self {
         Self {
-            inner: Mutex::new(JobsQueueInner::new()),
-            notify: Notify::new(),
+            inner: Mutex::new(JobsQueueInner {
+                queue: VecDeque::new(),
+                active: HashMap::new(),
+                pending_kinds: HashSet::new(),
+            }),
+            on_new_job: Notify::new(),
             flake,
         }
     }
@@ -52,25 +59,39 @@ impl JobQueue {
         }
     }
 
-    /// Adds a new task to the queue
-    pub fn queue(&self, job: Job) -> Option<JobId> {
+    /// Adds multiple jobs to the queue, skipping jobs
+    /// that violate concurrency constraints, and notifies waiting workers
+    pub fn queue_many(&self, jobs: impl IntoIterator<Item = Job>) -> Vec<JobId> {
         let mut lock = self.lock();
+        let mut added = Vec::new();
 
-        if !job.allow_concurrency() && !lock.pending_kinds.insert(job.kind()) {
-            return None;
+        for job in jobs {
+            if !job.allow_concurrency() && !lock.pending_kinds.insert(job.kind()) {
+                continue;
+            }
+
+            let id = self.flake.get_id_as();
+            lock.queue.push_back((id, job));
+
+            added.push(id);
         }
 
-        let id = self.flake.get_id_as();
-        let kind = job.kind();
-
-        lock.queue.push_back((id, job));
         drop(lock);
 
-        tracing::info!("New job added: {id}: {kind}");
+        match added.len() {
+            0 => (),
+            1 => self.on_new_job.notify_one(),
+            _ => self.on_new_job.notify_waiters(),
+        }
 
-        self.notify.notify_one();
+        added
+    }
 
-        Some(id)
+    /// Adds a new task to the queue and notifies one waiting worker
+    ///
+    /// Does not add the task to the queue if it violates concurrency constraints
+    pub fn queue(&self, job: Job) -> Option<JobId> {
+        self.queue_many([job]).into_iter().next()
     }
 
     /// Removes all pending tasks from the queue
@@ -83,6 +104,7 @@ impl JobQueue {
     /// Returns a next job from the queue
     pub async fn next_job(self: &Arc<Self>) -> ActiveJobPermit {
         let (id, job) = self.pool_queue().await;
+
         let active = Arc::new(ActiveJob::new(job));
 
         {
@@ -114,7 +136,7 @@ impl JobQueue {
         false
     }
 
-    /// Removes the job with the specified [`JobId`] from the queue
+    /// Removes the [`Job`] with the specified [`JobId`] from the queue
     pub fn remove_queued(&self, id: JobId) -> bool {
         let mut lock = self.lock();
 
@@ -133,9 +155,10 @@ impl JobQueue {
         false
     }
 
+    /// Returns the next [`Job`] from the queue or waits for a new one to be added
     async fn pool_queue(&self) -> (JobId, Job) {
         loop {
-            let permit = self.notify.notified();
+            let permit = self.on_new_job.notified();
 
             if let Some(j) = {
                 let mut lock = self.lock();
@@ -148,6 +171,7 @@ impl JobQueue {
         }
     }
 
+    /// Removes the [`ActiveJob`] without triggering cancellation
     fn remove_active(&self, id: JobId) {
         let mut lock = self.lock();
         if let Some(removed) = lock.active.remove(&id)
@@ -157,6 +181,7 @@ impl JobQueue {
         }
     }
 
+    /// Removes the [`ActiveJob`] and requeues it at the end of the queue
     fn requeue(&self, id: JobId) -> bool {
         let mut lock = self.lock();
         let Some(removed) = lock.active.remove(&id) else {
@@ -168,7 +193,7 @@ impl JobQueue {
         lock.queue.push_back((id, job));
         drop(lock);
 
-        self.notify.notify_one();
+        self.on_new_job.notify_one();
 
         true
     }
@@ -179,17 +204,6 @@ struct JobsQueueInner {
     queue: VecDeque<(JobId, Job)>,
     active: HashMap<JobId, Arc<ActiveJob>>,
     pending_kinds: HashSet<&'static str>,
-}
-
-impl JobsQueueInner {
-    /// Creates a new [`JobsQueueInner`]
-    fn new() -> Self {
-        Self {
-            queue: VecDeque::new(),
-            pending_kinds: HashSet::new(),
-            active: HashMap::new(),
-        }
-    }
 }
 
 /// Permit for active job

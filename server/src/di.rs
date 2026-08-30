@@ -4,7 +4,7 @@ use config::ApplicationConfig;
 use db::RepositoryContext;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
-use jobs::JobsHandle;
+use jobs::JobsResolver;
 use result::Result;
 use storage::Storage;
 use telemetry::MetricsRegistry;
@@ -15,7 +15,7 @@ pub struct DataCtx {
     pub db: Arc<RepositoryContext>,
     pub storage: Arc<Storage>,
     pub flake: Arc<FlakeIdGenerator>,
-    pub jobs: JobsHandle,
+    pub jobs: Arc<JobsResolver>,
     pub events: Arc<EventBus>,
     pub config: Arc<ApplicationConfig>,
 }

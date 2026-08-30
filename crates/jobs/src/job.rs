@@ -52,11 +52,12 @@ impl ActiveJob {
         self.cancel.notify_one();
     }
 
+    /// Waiting for a cancellation signal for the [`ActiveJob`]
     pub async fn cancelled(&self) {
         self.cancel.notified().await
     }
 
-    /// Returns a reference to the job of this [`ActiveJob`]
+    /// Returns a reference to the [`Job`] of this [`ActiveJob`]
     pub fn job(&self) -> &Job {
         &self.job
     }
