@@ -1617,6 +1617,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
+name = "jobs"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "db",
+ "flake-id",
+ "media",
+ "mimetype",
+ "models",
+ "result",
+ "storage",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "jobserver"
 version = "0.1.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2651,6 +2669,7 @@ dependencies = [
  "events",
  "flake-id",
  "futures",
+ "jobs",
  "join",
  "media",
  "mimetype",
@@ -2663,7 +2682,6 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-subscriber",
- "workers",
 ]
 
 [[package]]
@@ -3765,26 +3783,6 @@ name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
-
-[[package]]
-name = "workers"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "db",
- "events",
- "flake-id",
- "join",
- "media",
- "mimetype",
- "models",
- "result",
- "storage",
- "tokio",
- "tokio-util",
- "tracing",
-]
 
 [[package]]
 name = "writeable"

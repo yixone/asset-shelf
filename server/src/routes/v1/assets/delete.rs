@@ -2,6 +2,7 @@ use actix_web::{HttpResponse, delete, web};
 use chrono::Utc;
 use db::types::patch::AssetPatch;
 use events::AssetDeletedEvent;
+use jobs::Job;
 use models::types::AssetId;
 use serde::Serialize;
 
@@ -36,7 +37,10 @@ async fn delete_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiRes
 
             ctx.events.publish(AssetDeletedEvent {
                 asset: asset.inner.id,
-                media: asset.inner.media_id,
+                media: asset.inner.media_id.clone(),
+            });
+            ctx.jobs.queue(Job::RemoveMediaAfterAssetCreation {
+                id: asset.inner.media_id,
             });
 
             RemovalStateResponse::Deleted

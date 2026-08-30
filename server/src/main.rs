@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
@@ -6,6 +6,7 @@ use config::{DatabaseDriverConfig, StorageBackendConfig};
 use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
+use jobs::{Job, JobSchedule, JobsResolver, ResolverTasksHandle, WorkerContext};
 use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
@@ -16,11 +17,8 @@ use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use telemetry::MetricsRegistry;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
-use workers::{
-    cleanup::CleanupWorker,
-    media::MediaWorker,
-    runtime::{SupervisorHandle, WorkerContext, WorkersSupervisor},
-};
+
+const JOBS_WORKERS_COUNT: usize = 4;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,12 +35,10 @@ async fn main() -> Result<()> {
 
     let flake = Arc::new(FlakeIdGenerator::new(cfg.instance.node_id()));
 
-    tracing::info!("Initializing dependencies");
     let db = match cfg.database.driver() {
         DatabaseDriverConfig::Sqlite { path } => {
-            tracing::info!(path = path, "|- Using SQLITE database:");
-
             let db = SqliteDatabase::open(path).await?;
+            tracing::info!("Opening SQLite from file: {path}");
             db.migrate().await?;
 
             Arc::new(db.repositories())
@@ -51,36 +47,64 @@ async fn main() -> Result<()> {
 
     let storage = match cfg.storage.backend() {
         StorageBackendConfig::Native { dir, temp } => {
-            tracing::info!(dir = dir, "|- Using NATIVE storage:");
-
             let storage_backend = NativeFsStorageBackend::new(dir).await?;
+            tracing::info!("Opening native storage from directory: {dir}");
+
             Arc::new(Storage::new(storage_backend, flake.clone(), temp.into()).await?)
         }
     };
 
-    tracing::info!("Initializing the background infrastructure");
-    tracing::info!("|- Initializing event bus");
-    let events = Arc::new(EventBus::new(1024));
     let cancel = CancellationToken::new();
+
+    tracing::info!("Initializing event bus");
+    let events = Arc::new(EventBus::new(1024));
+
+    tracing::info!("Initializing background jobs");
+    let scheduled = vec![
+        (
+            Job::CleanupStorageMedia,
+            JobSchedule::interval(Duration::from_mins(30)),
+        ),
+        (
+            Job::ProcessUnprocessedAssets,
+            JobSchedule::interval(Duration::from_mins(50)),
+        ),
+    ];
+    tracing::info!("Jobs schedule created");
+
+    let ctx = Arc::new(WorkerContext {
+        db: db.clone(),
+        storage: storage.clone(),
+        flake: flake.clone(),
+    });
+    tracing::info!("Workers context created");
+
+    let resolver = Arc::new(JobsResolver::new(
+        JOBS_WORKERS_COUNT,
+        scheduled,
+        flake.clone(),
+    ));
+    tracing::info!("Jobs resolver created");
+    tracing::info!("Set workers count: {}", resolver.workers_count());
+
+    let jobs_resolver_handle = resolver.run(cancel.clone(), ctx);
+    tracing::info!("Jobs resolver runned!");
 
     let ctx = DataCtx {
         db,
         storage,
-        flake,
+        flake: flake.clone(),
+        jobs: resolver,
         events,
         config: cfg.clone(),
     };
 
-    tracing::info!("|- Initializing background worker supervisor");
-    let supervisor = init_workers(&ctx);
-    let workers_handle = supervisor.run(cancel.clone());
-
-    tracing::info!("Server configuration...");
     let server = configure_server(ctx, metrics_ctx, &cfg.server.listen_addr())?;
     let handle = server.handle();
 
-    spawn_shutdown_handler(cancel, handle, workers_handle);
+    spawn_shutdown_handler(cancel, handle, jobs_resolver_handle);
 
+    tracing::info!("Server configurated");
     tracing::info!("Server started on http://{}!", cfg.server.listen_addr());
     server.await.to_app_err()?;
 
@@ -111,7 +135,7 @@ fn configure_server(
 fn spawn_shutdown_handler(
     cancel: CancellationToken,
     server_handle: ServerHandle,
-    workers_handle: SupervisorHandle,
+    jobs_resolver_handle: ResolverTasksHandle,
 ) {
     tokio::spawn(async move {
         match signal::ctrl_c().await {
@@ -126,7 +150,7 @@ fn spawn_shutdown_handler(
         }
         server_handle.stop(true).await;
         cancel.cancel();
-        workers_handle.stop().await;
+        jobs_resolver_handle.close().await;
     });
 }
 
@@ -136,20 +160,4 @@ fn init_tracing() {
         .compact()
         .with_target(false)
         .init();
-}
-
-fn init_workers(ctx: &DataCtx) -> WorkersSupervisor {
-    let workers_context = WorkerContext {
-        db: ctx.db.clone(),
-        storage: ctx.storage.clone(),
-        flake: ctx.flake.clone(),
-        events: ctx.events.clone(),
-    };
-
-    let cleanup_worker = CleanupWorker::new(workers_context.clone());
-    let media_worker = MediaWorker::new(workers_context.clone());
-
-    WorkersSupervisor::new()
-        .with_worker(cleanup_worker)
-        .with_worker(media_worker)
 }

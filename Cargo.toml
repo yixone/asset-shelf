@@ -8,6 +8,7 @@ members = [
     "crates/db-sqlite",
     "crates/events",
     "crates/flake-id",
+    "crates/jobs",
     "crates/join",
     "crates/media",
     "crates/mimetype",
@@ -15,7 +16,6 @@ members = [
     "crates/result",
     "crates/storage",
     "crates/telemetry",
-    "crates/workers",
 
     # Binary crates
     "server",
@@ -29,6 +29,7 @@ db-core = { path = "crates/db-core" }
 db-sqlite = { path = "crates/db-sqlite" }
 events = { path = "crates/events" }
 flake-id = { path = "crates/flake-id" }
+jobs = { path = "crates/jobs" }
 join = { path = "crates/join" }
 media = { path = "crates/media" }
 mimetype = { path = "crates/mimetype" }
@@ -36,7 +37,6 @@ models = { path = "crates/models" }
 result = { path = "crates/result" }
 storage = { path = "crates/storage" }
 telemetry = { path = "crates/telemetry" }
-workers = { path = "crates/workers" }
 
 
 # External crates

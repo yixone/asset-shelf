@@ -1,19 +1,17 @@
 [package]
-name = "workers"
+name = "jobs"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# Internal
+# Workspace
 db = { workspace = true }
-events = { workspace = true }
 flake-id = { workspace = true }
 media = { workspace = true }
 mimetype = { workspace = true }
 models = { workspace = true }
 result = { workspace = true }
 storage = { workspace = true }
-join = { workspace = true }
 
 # External
 async-trait = { workspace = true }
