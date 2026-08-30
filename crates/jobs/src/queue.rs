@@ -7,10 +7,11 @@ use flake_id::FlakeIdGenerator;
 use tokio::sync::Notify;
 
 use crate::{
-    Job,
+    Job, JobsQueueSnapshot,
     job::{ActiveJob, JobId},
 };
 
+#[derive(Debug)]
 pub struct JobQueue {
     inner: Mutex<JobsQueueInner>,
     notify: Notify,
@@ -32,18 +33,40 @@ impl JobQueue {
         self.inner.lock().unwrap_or_else(|f| f.into_inner())
     }
 
+    /// Returns the number of running background jobs
+    pub fn active_count(&self) -> usize {
+        let lock = self.lock();
+        lock.active.len()
+    }
+
+    /// Returns the snapshot of this [`JobQueue`]
+    pub fn snapshot(&self) -> JobsQueueSnapshot {
+        let lock = self.lock();
+        JobsQueueSnapshot {
+            active: lock
+                .active
+                .iter()
+                .map(|(&id, j)| (id, j.job().clone()))
+                .collect(),
+            queue: lock.queue.iter().cloned().collect(),
+        }
+    }
+
     /// Adds a new task to the queue
     pub fn queue(&self, job: Job) -> Option<JobId> {
         let mut lock = self.lock();
 
-        if !job.allow_concurrency() && !lock.add_pending(&job) {
+        if !job.allow_concurrency() && !lock.pending_kinds.insert(job.kind()) {
             return None;
         }
 
         let id = self.flake.get_id_as();
+        let kind = job.kind();
 
-        lock.push_job(id, job);
+        lock.queue.push_back((id, job));
         drop(lock);
+
+        tracing::info!("New job added: {id}: {kind}");
 
         self.notify.notify_one();
 
@@ -53,7 +76,8 @@ impl JobQueue {
     /// Removes all pending tasks from the queue
     pub fn clear(&self) -> usize {
         let mut lock = self.lock();
-        lock.clear()
+        lock.pending_kinds.clear();
+        lock.queue.drain(..).count()
     }
 
     /// Returns a next job from the queue
@@ -63,7 +87,7 @@ impl JobQueue {
 
         {
             let mut lock = self.lock();
-            lock.insert_active(id, active.clone());
+            lock.active.insert(id, active.clone());
         }
 
         ActiveJobPermit {
@@ -74,14 +98,48 @@ impl JobQueue {
         }
     }
 
-    /// Returns a new job from the queue, or waits for a new job to appear if the queue is empty
+    /// Cancels and terminates the [`ActiveJob`]
+    pub fn terminate_active(&self, id: JobId) -> bool {
+        let mut lock = self.lock();
+        if let Some(active) = lock.active.remove(&id) {
+            active.cancel();
+
+            if !active.job().allow_concurrency() {
+                lock.pending_kinds.remove(active.job().kind());
+            }
+
+            return true;
+        }
+
+        false
+    }
+
+    /// Removes the job with the specified [`JobId`] from the queue
+    pub fn remove_queued(&self, id: JobId) -> bool {
+        let mut lock = self.lock();
+
+        let Ok(idx) = lock.queue.binary_search_by(|q| q.0.cmp(&id)) else {
+            return false;
+        };
+
+        if let Some((_, job)) = lock.queue.remove(idx) {
+            if !job.allow_concurrency() {
+                lock.pending_kinds.remove(job.kind());
+            }
+
+            return true;
+        }
+
+        false
+    }
+
     async fn pool_queue(&self) -> (JobId, Job) {
         loop {
             let permit = self.notify.notified();
 
             if let Some(j) = {
                 let mut lock = self.lock();
-                lock.pop_queue()
+                lock.queue.pop_front()
             } {
                 return j;
             }
@@ -92,22 +150,22 @@ impl JobQueue {
 
     fn remove_active(&self, id: JobId) {
         let mut lock = self.lock();
-        if let Some(removed) = lock.remove_active(id)
+        if let Some(removed) = lock.active.remove(&id)
             && !removed.job().allow_concurrency()
         {
-            lock.remove_pending(removed.job());
+            lock.pending_kinds.remove(removed.job().kind());
         }
     }
 
     fn requeue(&self, id: JobId) -> bool {
         let mut lock = self.lock();
-        let Some(removed) = lock.remove_active(id) else {
+        let Some(removed) = lock.active.remove(&id) else {
             return false;
         };
 
         let job = removed.job().clone();
 
-        lock.push_job(id, job);
+        lock.queue.push_back((id, job));
         drop(lock);
 
         self.notify.notify_one();
@@ -116,6 +174,7 @@ impl JobQueue {
     }
 }
 
+#[derive(Debug)]
 struct JobsQueueInner {
     queue: VecDeque<(JobId, Job)>,
     active: HashMap<JobId, Arc<ActiveJob>>,
@@ -130,36 +189,6 @@ impl JobsQueueInner {
             pending_kinds: HashSet::new(),
             active: HashMap::new(),
         }
-    }
-
-    fn push_job(&mut self, id: JobId, job: Job) {
-        self.queue.push_back((id, job));
-    }
-
-    fn clear(&mut self) -> usize {
-        self.pending_kinds.clear();
-
-        self.queue.drain(..).count()
-    }
-
-    fn insert_active(&mut self, id: JobId, job: Arc<ActiveJob>) {
-        self.active.insert(id, job);
-    }
-
-    fn pop_queue(&mut self) -> Option<(JobId, Job)> {
-        self.queue.pop_front()
-    }
-
-    fn remove_active(&mut self, id: JobId) -> Option<Arc<ActiveJob>> {
-        self.active.remove(&id)
-    }
-
-    fn add_pending(&mut self, job: &Job) -> bool {
-        self.pending_kinds.insert(job.kind())
-    }
-
-    fn remove_pending(&mut self, job: &Job) -> bool {
-        self.pending_kinds.remove(job.kind())
     }
 }
 

@@ -33,13 +33,10 @@ async fn main() -> Result<()> {
 
     let flake = Arc::new(FlakeIdGenerator::new(cfg.instance.node_id()));
 
-    tracing::info!("Initializing dependencies");
     let db = match cfg.database.driver() {
         DatabaseDriverConfig::Sqlite { path } => {
-            tracing::info!("- Using SQLITE database");
-
             let db = SqliteDatabase::open(path).await?;
-            tracing::info!("\t- Opening SQLite from file: {path}");
+            tracing::info!("Opening SQLite from file: {path}");
             db.migrate().await?;
 
             Arc::new(db.repositories())
@@ -48,22 +45,19 @@ async fn main() -> Result<()> {
 
     let storage = match cfg.storage.backend() {
         StorageBackendConfig::Native { dir, temp } => {
-            tracing::info!("- Using NATIVE storage");
-
             let storage_backend = NativeFsStorageBackend::new(dir).await?;
-            tracing::info!("\t- Opening storage directory: {dir}");
+            tracing::info!("Opening native storage from directory: {dir}");
 
             Arc::new(Storage::new(storage_backend, flake.clone(), temp.into()).await?)
         }
     };
 
-    tracing::info!("Initializing the background infrastructure");
     let cancel = CancellationToken::new();
 
-    tracing::info!("- Initializing event bus");
+    tracing::info!("Initializing event bus");
     let events = Arc::new(EventBus::new(1024));
 
-    tracing::info!("- Initializing background jobs");
+    tracing::info!("Initializing background jobs");
     let scheduled = vec![
         (
             Job::CleanupStorageMedia,
@@ -74,26 +68,25 @@ async fn main() -> Result<()> {
             JobSchedule::interval(Duration::from_mins(50)),
         ),
     ];
-    tracing::info!("\t- Jobs schedule created");
+    tracing::info!("Jobs schedule created");
 
     let ctx = Arc::new(WorkerContext {
         db: db.clone(),
         storage: storage.clone(),
         flake: flake.clone(),
     });
-    tracing::info!("\t- Workers context created");
+    tracing::info!("Workers context created");
 
     const WORKERS_COUNT: usize = 4;
     let resolver = JobsResolver::new(WORKERS_COUNT, scheduled, flake.clone(), cancel.clone());
-    tracing::info!("\t- Jobs resolver created");
-    tracing::info!("\t- Set workers count: {WORKERS_COUNT}");
+    tracing::info!("Jobs resolver created");
+    tracing::info!("Set workers count: {WORKERS_COUNT}");
 
     let jobs_resolver_handle = resolver.run(ctx);
-    tracing::info!("\t- Jobs resolver runned!");
+    tracing::info!("Jobs resolver runned!");
 
     let jobs_handle = jobs_resolver_handle.jobs();
 
-    tracing::info!("Server configuration");
     let ctx = DataCtx {
         db,
         storage,
@@ -108,6 +101,7 @@ async fn main() -> Result<()> {
 
     spawn_shutdown_handler(cancel, handle, jobs_resolver_handle);
 
+    tracing::info!("Server configurated");
     tracing::info!("Server started on http://{}!", cfg.server.listen_addr());
     server.await.to_app_err()?;
 

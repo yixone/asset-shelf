@@ -5,11 +5,12 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    JobQueue, JobSchedule, ResolverHandle, WorkerContext, job::Job, schedule::Schedule,
-    worker::AsyncWorker,
+    JobId, JobQueue, JobSchedule, JobsSnapshot, ResolverHandle, WorkerContext, job::Job,
+    schedule::Schedule, worker::AsyncWorker,
 };
 
 /// Application background jobs resolver
+#[derive(Debug)]
 pub struct JobsResolver {
     /// Jobs queue
     queue: Arc<JobQueue>,
@@ -33,7 +34,7 @@ impl JobsResolver {
         cancel: CancellationToken,
     ) -> Self {
         let resolver = JobsResolver {
-            queue: Arc::new(JobQueue::new(flake)),
+            queue: Arc::new(JobQueue::new(flake.clone())),
             workers_count: workers,
             schedule: Arc::new(Schedule::new(&scheduled)),
             cancel,
@@ -58,9 +59,32 @@ impl JobsResolver {
         ResolverHandle { resolver, handles }
     }
 
+    /// Returns the snapshot of this [`JobsResolver`]
+    pub fn snapshot(&self) -> JobsSnapshot {
+        JobsSnapshot {
+            schedule: self.schedule.snapshot(),
+            queue: self.queue.snapshot(),
+        }
+    }
+
     /// Queues one job
     pub fn queue(&self, job: Job) {
         self.queue.queue(job);
+    }
+
+    /// Returns the number of running background jobs
+    pub fn active_count(&self) -> usize {
+        self.queue.active_count()
+    }
+
+    /// Cancels and terminates the active job
+    pub fn terminate_active(&self, id: JobId) -> bool {
+        self.queue.terminate_active(id)
+    }
+
+    /// Removes the job with the specified [`JobId`] from the queue
+    pub fn remove_queued(&self, id: JobId) -> bool {
+        self.queue.remove_queued(id)
     }
 
     /// Starts all resolver workers
