@@ -6,24 +6,21 @@ use std::{
 use flake_id::FlakeIdGenerator;
 use tokio::sync::Notify;
 
-use crate::{
-    Job, JobsQueueSnapshot,
-    job::{ActiveJob, JobId},
-};
+use crate::{Job, JobsQueueSnapshot, job::JobId};
 
 /// Jobs queue broker
 ///
 /// Stores and automatically distributes background jobs among workers
 #[derive(Debug)]
-pub struct JobQueue {
+pub struct JobsDispatcher {
     inner: Mutex<JobsQueueInner>,
     on_new_job: Notify,
     flake: Arc<FlakeIdGenerator>,
 }
 
-impl JobQueue {
-    /// Creates a new [`JobQueue`]
-    pub fn new(flake: Arc<FlakeIdGenerator>) -> Self {
+impl JobsDispatcher {
+    /// Creates a new [`JobsDispatcher`]
+    pub fn new() -> Self {
         Self {
             inner: Mutex::new(JobsQueueInner {
                 queue: VecDeque::new(),
@@ -31,7 +28,7 @@ impl JobQueue {
                 pending_kinds: HashSet::new(),
             }),
             on_new_job: Notify::new(),
-            flake,
+            flake: Arc::new(FlakeIdGenerator::new(0)),
         }
     }
 
@@ -46,7 +43,7 @@ impl JobQueue {
         lock.active.len()
     }
 
-    /// Returns the snapshot of this [`JobQueue`]
+    /// Returns the snapshot of this [`JobsDispatcher`]
     pub fn snapshot(&self) -> JobsQueueSnapshot {
         let lock = self.lock();
         JobsQueueSnapshot {
@@ -61,7 +58,7 @@ impl JobQueue {
 
     /// Adds multiple jobs to the queue, skipping jobs
     /// that violate concurrency constraints, and notifies waiting workers
-    pub fn queue_many(&self, jobs: impl IntoIterator<Item = Job>) -> Vec<JobId> {
+    pub fn enqueue_many(&self, jobs: impl IntoIterator<Item = Job>) -> Vec<JobId> {
         let mut lock = self.lock();
         let mut added = Vec::new();
 
@@ -90,8 +87,8 @@ impl JobQueue {
     /// Adds a new task to the queue and notifies one waiting worker
     ///
     /// Does not add the task to the queue if it violates concurrency constraints
-    pub fn queue(&self, job: Job) -> Option<JobId> {
-        self.queue_many([job]).into_iter().next()
+    pub fn enqueue(&self, job: Job) -> Option<JobId> {
+        self.enqueue_many([job]).into_iter().next()
     }
 
     /// Removes all pending tasks from the queue
@@ -102,7 +99,7 @@ impl JobQueue {
     }
 
     /// Returns a next job from the queue
-    pub async fn next_job(self: &Arc<Self>) -> ActiveJobPermit {
+    pub async fn next(self: &Arc<Self>) -> ActiveJobPermit {
         let (id, job) = self.pool_queue().await;
 
         let active = Arc::new(ActiveJob::new(job));
@@ -113,10 +110,10 @@ impl JobQueue {
         }
 
         ActiveJobPermit {
-            queue: self.clone(),
+            dispatcher: self.clone(),
             job_id: id,
             inner: active,
-            cleanup_on_drop: true,
+            remove_on_drop: true,
         }
     }
 
@@ -199,6 +196,12 @@ impl JobQueue {
     }
 }
 
+impl Default for JobsDispatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 struct JobsQueueInner {
     queue: VecDeque<(JobId, Job)>,
@@ -210,11 +213,10 @@ struct JobsQueueInner {
 ///
 /// Upon a Drop, the job is automatically removed from the list of active jobs
 pub struct ActiveJobPermit {
-    queue: Arc<JobQueue>,
+    dispatcher: Arc<JobsDispatcher>,
     job_id: JobId,
     inner: Arc<ActiveJob>,
-
-    cleanup_on_drop: bool,
+    remove_on_drop: bool,
 }
 
 impl ActiveJobPermit {
@@ -223,19 +225,59 @@ impl ActiveJobPermit {
         &self.inner
     }
 
-    /// Removes the current task from the list of active tasks and returns it to the end of the queue
+    /// Removes the current job from the list of active jobs and returns it to the end of the queue
     pub fn requeue(mut self) {
-        self.queue.requeue(self.job_id);
-        self.cleanup_on_drop = false;
+        self.dispatcher.requeue(self.job_id);
+        self.remove_on_drop = false;
+    }
+
+    /// Removes the current job from the list of active jobs
+    pub fn remove(mut self) {
+        self.dispatcher.remove_active(self.job_id);
+        self.remove_on_drop = false;
     }
 }
 
 impl Drop for ActiveJobPermit {
     fn drop(&mut self) {
-        if !self.cleanup_on_drop {
+        if !self.remove_on_drop {
             return;
         }
 
-        self.queue.remove_active(self.job_id);
+        self.dispatcher.remove_active(self.job_id);
+    }
+}
+
+/// Active job currently being processed
+#[derive(Debug)]
+pub struct ActiveJob {
+    /// Payload of the active job
+    job: Job,
+    /// Task cancellation token
+    cancel: Notify,
+}
+
+impl ActiveJob {
+    /// Creates a new [`ActiveJob`]
+    pub fn new(job: Job) -> ActiveJob {
+        ActiveJob {
+            job,
+            cancel: Notify::new(),
+        }
+    }
+
+    /// Sends a signal to cancel job execution to the worker that picked up the job
+    pub fn cancel(&self) {
+        self.cancel.notify_one();
+    }
+
+    /// Waiting for a cancellation signal for the [`ActiveJob`]
+    pub async fn cancelled(&self) {
+        self.cancel.notified().await
+    }
+
+    /// Returns a reference to the `job` of this [`ActiveJob`]
+    pub fn job(&self) -> &Job {
+        &self.job
     }
 }

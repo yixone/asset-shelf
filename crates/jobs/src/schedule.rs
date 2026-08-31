@@ -4,7 +4,8 @@ use std::{
     time::Duration,
 };
 
-use tokio::time::Instant;
+use flake_id::{FlakeId, FlakeIdGenerator};
+use tokio::{sync::Notify, time::Instant};
 
 use crate::{Job, JobsSchedulerSnapshot};
 
@@ -12,6 +13,8 @@ use crate::{Job, JobsSchedulerSnapshot};
 #[derive(Debug)]
 pub struct Schedule {
     inner: Mutex<ScheduleInner>,
+    notify: Notify,
+    flake: FlakeIdGenerator,
 }
 
 #[derive(Debug)]
@@ -22,21 +25,14 @@ pub struct ScheduleInner {
 
 impl Schedule {
     /// Creates a new [`Schedule`]
-    pub fn new(jobs: &[(Job, JobSchedule)]) -> Self {
-        let mut schedule = BinaryHeap::with_capacity(jobs.len());
-
-        for (j, s) in jobs {
-            schedule.push(ScheduledJob {
-                job: j.clone(),
-                schedule: *s,
-            });
-        }
-
+    pub fn new() -> Self {
         Schedule {
             inner: Mutex::new(ScheduleInner {
-                scheduled_queue: schedule,
+                scheduled_queue: BinaryHeap::new(),
                 waiting: None,
             }),
+            notify: Notify::new(),
+            flake: FlakeIdGenerator::new(0),
         }
     }
 
@@ -55,12 +51,41 @@ impl Schedule {
 
     /// Waits for the time of the next scheduled task and returns it
     pub async fn next_run(&self) -> Option<Job> {
-        let scheduled = self.take_near()?;
+        loop {
+            let scheduled = self.take_near()?;
 
-        tokio::time::sleep_until(scheduled.schedule.next_run()).await;
+            tokio::select! {
+                _ = self.notify.notified() => {
+                    self.restore_waiting(scheduled);
+                    continue
+                }
+                _ = tokio::time::sleep_until(scheduled.schedule.next_run()) => {
+                    let job = self.handle_processed_schedule(scheduled);
+                    return Some(job)
+                }
+            }
+        }
+    }
 
-        let job = self.handle_processed_schedule(scheduled).await;
-        Some(job)
+    pub fn schedule_many(&self, jobs: impl IntoIterator<Item = (Job, JobSchedule)>) {
+        let mut lock = self.lock();
+        let mut added = 0;
+
+        for (j, s) in jobs {
+            lock.scheduled_queue.push(ScheduledJob {
+                id: self.flake.get_id_as(),
+                job: j.clone(),
+                schedule: s,
+            });
+
+            added += 1;
+        }
+
+        drop(lock);
+
+        if added > 0 {
+            self.notify.notify_last();
+        }
     }
 
     /// Retrieves the nearest job and moves it to current
@@ -72,11 +97,24 @@ impl Schedule {
         Some(scheduled)
     }
 
-    async fn handle_processed_schedule(&self, scheduled: ScheduledJob) -> Job {
+    /// Returns the waiting job to the schedule
+    fn restore_waiting(&self, waiting: ScheduledJob) {
+        let mut lock = self.lock();
+
+        if let Some(scheduled) = &lock.waiting
+            && scheduled.id == waiting.id
+        {
+            lock.scheduled_queue.push(waiting);
+            lock.waiting = None;
+        }
+    }
+
+    fn handle_processed_schedule(&self, scheduled: ScheduledJob) -> Job {
         let mut lock = self.lock();
 
         if let JobSchedule::Interval { interval, .. } = scheduled.schedule {
             let rescheduled = ScheduledJob {
+                id: scheduled.id,
                 job: scheduled.job.clone(),
                 schedule: scheduled.schedule.move_next_run(interval),
             };
@@ -93,6 +131,7 @@ impl Schedule {
 /// Scheduled background job
 #[derive(Debug, Clone)]
 pub struct ScheduledJob {
+    pub(crate) id: ScheduledJobId,
     pub(crate) job: Job,
     pub(crate) schedule: JobSchedule,
 }
@@ -187,5 +226,15 @@ impl JobSchedule {
     pub fn scheduled_time_utc(&self) -> chrono::DateTime<chrono::Utc> {
         let delta = self.next_run().saturating_duration_since(Instant::now());
         chrono::Utc::now() + delta
+    }
+}
+
+/// Scheduler job identifier
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ScheduledJobId(FlakeId);
+
+impl From<FlakeId> for ScheduledJobId {
+    fn from(id: FlakeId) -> Self {
+        ScheduledJobId(id)
     }
 }

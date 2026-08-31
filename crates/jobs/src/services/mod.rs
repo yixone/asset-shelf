@@ -6,7 +6,7 @@ mod storage_cleanup;
 
 mod asset_processing;
 
-pub async fn dispatch_job(job: &Job, ctx: &WorkerContext) -> Result<()> {
+pub async fn handle_job(job: &Job, ctx: &WorkerContext) -> Result<()> {
     match job {
         Job::ProcessAssetMedia { id } => asset_processing::process_asset_by_id(ctx, *id).await,
         Job::ProcessUnprocessedAssets => {
@@ -30,7 +30,7 @@ pub async fn dispatch_job(job: &Job, ctx: &WorkerContext) -> Result<()> {
 
             Ok(())
         }
-        Job::RemoveMediaAfterAssetCreation { id } => {
+        Job::RemoveMediaAfterAssetDeletion { id } => {
             storage_cleanup::remove_media_by_id(ctx, id).await
         }
     }

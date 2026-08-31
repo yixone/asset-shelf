@@ -39,7 +39,7 @@ async fn delete_asset(id: web::Path<AssetId>, ctx: web::Data<DataCtx>) -> ApiRes
                 asset: asset.inner.id,
                 media: asset.inner.media_id.clone(),
             });
-            ctx.jobs.queue(Job::RemoveMediaAfterAssetCreation {
+            ctx.jobs.enqueue(Job::RemoveMediaAfterAssetDeletion {
                 id: asset.inner.media_id,
             });
 

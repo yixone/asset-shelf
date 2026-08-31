@@ -6,7 +6,7 @@ use config::{DatabaseDriverConfig, StorageBackendConfig};
 use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
-use jobs::{Job, JobSchedule, JobsResolver, ResolverTasksHandle, WorkerContext};
+use jobs::{Job, JobSchedule, JobsDispatcher, JobsResolver, ResolverTasksHandle, WorkerContext};
 use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
@@ -17,8 +17,6 @@ use storage::{Storage, backend::fs::NativeFsStorageBackend};
 use telemetry::MetricsRegistry;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
-
-const JOBS_WORKERS_COUNT: usize = 4;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -60,34 +58,31 @@ async fn main() -> Result<()> {
     let events = Arc::new(EventBus::new(1024));
 
     tracing::info!("Initializing background jobs");
-    let scheduled = vec![
-        (
-            Job::CleanupStorageMedia,
-            JobSchedule::interval(Duration::from_mins(30)),
-        ),
-        (
-            Job::ProcessUnprocessedAssets,
-            JobSchedule::interval(Duration::from_mins(50)),
-        ),
-    ];
-    tracing::info!("Jobs schedule created");
 
-    let ctx = Arc::new(WorkerContext {
-        db: db.clone(),
-        storage: storage.clone(),
-        flake: flake.clone(),
-    });
-    tracing::info!("Workers context created");
-
-    let resolver = Arc::new(JobsResolver::new(
-        JOBS_WORKERS_COUNT,
-        scheduled,
-        flake.clone(),
-    ));
+    let resolver = JobsResolver::builder()
+        .dispatcher(JobsDispatcher::new())
+        .context(WorkerContext {
+            db: db.clone(),
+            storage: storage.clone(),
+            flake: flake.clone(),
+        })
+        .cancel(cancel.clone())
+        .build_shared()
+        .to_app_err()?;
     tracing::info!("Jobs resolver created");
     tracing::info!("Set workers count: {}", resolver.workers_count());
 
-    let jobs_resolver_handle = resolver.run(cancel.clone(), ctx);
+    resolver.schedule(
+        Job::CleanupStorageMedia,
+        JobSchedule::interval(Duration::from_mins(30)),
+    );
+    resolver.schedule(
+        Job::ProcessUnprocessedAssets,
+        JobSchedule::interval(Duration::from_mins(50)),
+    );
+    tracing::info!("Jobs have been added to the scheduler");
+
+    let jobs_resolver_handle = resolver.run();
     tracing::info!("Jobs resolver runned!");
 
     let ctx = DataCtx {
