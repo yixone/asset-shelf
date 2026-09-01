@@ -18,13 +18,13 @@ use storage::StoragePath;
 use storage::global::GlobalPathData;
 use tokio::io::AsyncRead;
 
-use crate::WorkerContext;
-
 use image::ImageProcessor;
 use video::VideoProcessor;
 
+use crate::JobContext;
+
 /// Processes media of pending assets or assets lacking certain features
-pub async fn process_unprocessed_media(ctx: &WorkerContext) -> Result<usize> {
+pub async fn process_unprocessed_media(ctx: &JobContext) -> Result<usize> {
     let mut processed = 0;
 
     // Retrieves unprocessed assets as long as there are any in the database
@@ -47,7 +47,7 @@ pub async fn process_unprocessed_media(ctx: &WorkerContext) -> Result<usize> {
 }
 
 /// Calls for processing of an [`Asset`] by id
-pub async fn process_asset_by_id(ctx: &WorkerContext, id: AssetId) -> Result<()> {
+pub async fn process_asset_by_id(ctx: &JobContext, id: AssetId) -> Result<()> {
     // Retrieves an Asset by ID
     let asset = {
         let asset = ctx.db.assets.get_by_id(id).await;
@@ -62,7 +62,7 @@ pub async fn process_asset_by_id(ctx: &WorkerContext, id: AssetId) -> Result<()>
     process_asset_media(ctx, &asset).await
 }
 
-async fn process_asset_media(ctx: &WorkerContext, asset: &AssetView) -> Result<()> {
+async fn process_asset_media(ctx: &JobContext, asset: &AssetView) -> Result<()> {
     if !asset.inner.need_processing(&asset.features, Utc::now()) {
         return Ok(());
     }
@@ -107,7 +107,7 @@ async fn process_asset_media(ctx: &WorkerContext, asset: &AssetView) -> Result<(
     Ok(())
 }
 
-async fn process_asset_as_image(ctx: &WorkerContext, asset: &AssetView) -> Result<()> {
+async fn process_asset_as_image(ctx: &JobContext, asset: &AssetView) -> Result<()> {
     // Retrieves information about the original media file
     let original = get_original(ctx, asset.media_id()).await?;
 
@@ -139,7 +139,7 @@ async fn process_asset_as_image(ctx: &WorkerContext, asset: &AssetView) -> Resul
 
 // TODO: Replace processing via copying the original to a temp file
 // with processing via streaming to an ffmpeg stdin pipe
-async fn process_asset_as_video(ctx: &WorkerContext, asset: &AssetView) -> Result<()> {
+async fn process_asset_as_video(ctx: &JobContext, asset: &AssetView) -> Result<()> {
     // Retrieves information about the original media file
     let original = get_original(ctx, asset.media_id()).await?;
 
@@ -192,14 +192,14 @@ async fn process_asset_as_video(ctx: &WorkerContext, asset: &AssetView) -> Resul
 }
 
 async fn change_asset_state(
-    ctx: &WorkerContext,
+    ctx: &JobContext,
     id: AssetId,
     state: AssetState,
 ) -> Result<UpdateResult<AssetView>> {
     ctx.db.assets.update_state(id, state).await
 }
 
-async fn get_original(ctx: &WorkerContext, id: &MediaId) -> Result<MediaFile> {
+async fn get_original(ctx: &JobContext, id: &MediaId) -> Result<MediaFile> {
     ctx.db.media.get_variant(id, MediaVariant::Original).await
 }
 
@@ -424,14 +424,11 @@ mod store {
     use models::{media::MediaFile, types::MediaId};
     use storage::global::GlobalPathData;
 
-    use crate::services::asset_processing::{
-        image::GeneratedImageVariant, video::GeneratedVideoVariant,
-    };
-
     use super::*;
+    use super::{image::GeneratedImageVariant, video::GeneratedVideoVariant};
 
     pub async fn store_image_variant(
-        ctx: &WorkerContext,
+        ctx: &JobContext,
         variant: GeneratedImageVariant,
         media_group_id: &MediaId,
     ) -> Result<()> {
@@ -467,7 +464,7 @@ mod store {
     }
 
     pub async fn store_video_variant<'a>(
-        ctx: &WorkerContext,
+        ctx: &JobContext,
         variant: GeneratedVideoVariant<'a>,
         media_group_id: &MediaId,
     ) -> Result<()> {

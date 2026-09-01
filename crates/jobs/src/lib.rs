@@ -1,20 +1,80 @@
-pub(crate) mod dispatcher;
-pub use dispatcher::JobsDispatcher;
+use std::sync::Arc;
 
-pub(crate) mod job;
-pub use job::{Job, JobId};
+use db::RepositoryContext;
+use flake_id::FlakeIdGenerator;
+use jobs_runtime::BackgroundJob;
+use storage::Storage;
 
-mod resolver;
-pub use resolver::{JobsResolver, ResolverTasksHandle};
+mod cleanup;
+mod process;
 
-mod schedule;
-pub use schedule::JobSchedule;
-pub(crate) use schedule::ScheduledJob;
+/// Job to be executed by a background worker
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Job {
+    ProcessAssetMedia { id: models::types::AssetId },
+    ProcessUnprocessedAssets,
 
-pub(crate) mod worker;
-pub use worker::WorkerContext;
+    CleanupStorageMedia,
+    RemoveMediaAfterAssetDeletion { id: models::types::MediaId },
+}
 
-pub(crate) mod services;
+/// Shared context of the jobs
+#[derive(Clone)]
+pub struct JobContext {
+    pub db: Arc<RepositoryContext>,
+    pub flake: Arc<FlakeIdGenerator>,
+    pub storage: Arc<Storage>,
+}
 
-mod snapshot;
-pub use snapshot::{JobsQueueSnapshot, JobsSchedulerSnapshot, JobsSnapshot};
+impl BackgroundJob for Job {
+    type Error = result::Error;
+
+    type Context = JobContext;
+
+    fn kind(&self) -> &'static str {
+        match self {
+            Job::ProcessAssetMedia { .. } => "process_asset_media",
+            Job::ProcessUnprocessedAssets => "process_uprocessed_assets",
+
+            Job::CleanupStorageMedia => "cleanup_storage_media",
+            Job::RemoveMediaAfterAssetDeletion { .. } => "remove_media_after_asset_creation",
+        }
+    }
+
+    fn allow_concurrency(&self) -> bool {
+        !matches!(self, Job::CleanupStorageMedia)
+    }
+
+    async fn execute(&self, ctx: &Self::Context) -> Result<(), Self::Error> {
+        handle_job(self, ctx).await
+    }
+}
+
+/// Processes the job by calling the appropriate service
+async fn handle_job(job: &Job, ctx: &JobContext) -> result::Result<()> {
+    match job {
+        Job::ProcessAssetMedia { id } => process::process_asset_by_id(ctx, *id).await,
+        Job::ProcessUnprocessedAssets => {
+            let processed = process::process_unprocessed_media(ctx).await?;
+
+            tracing::info!(
+                processed,
+                "Background processing of pending media is complete;"
+            );
+
+            Ok(())
+        }
+
+        Job::CleanupStorageMedia => {
+            let mut removed = 0;
+
+            removed += cleanup::cleanup_orphaned(ctx).await?;
+            removed += cleanup::cleanup_deleted_assets(ctx).await?;
+
+            tracing::info!(removed, "Background storage cleanup completed;");
+
+            Ok(())
+        }
+        Job::RemoveMediaAfterAssetDeletion { id } => cleanup::remove_media_by_id(ctx, id).await,
+    }
+}

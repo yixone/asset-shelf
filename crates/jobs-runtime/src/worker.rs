@@ -1,33 +1,28 @@
 use std::{sync::Arc, time::Duration};
 
-use db::RepositoryContext;
-use flake_id::FlakeIdGenerator;
 use result::Result;
-use storage::Storage;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
-use crate::{JobsDispatcher, dispatcher::ActiveJobPermit, services::handle_job};
+use crate::{JobsDispatcher, dispatcher::ActiveJobPermit, job::BackgroundJob};
 
 const WORKER_RESART_DELAY: Duration = Duration::from_mins(2);
 
-/// Shared context of the workers
-#[derive(Clone)]
-pub struct WorkerContext {
-    pub db: Arc<RepositoryContext>,
-    pub flake: Arc<FlakeIdGenerator>,
-    pub storage: Arc<Storage>,
-}
-
 /// Asynchronous background worker
-pub struct AsyncWorker {
-    dispatcher: Arc<JobsDispatcher>,
-    ctx: Arc<WorkerContext>,
+pub struct AsyncWorker<J>
+where
+    J: BackgroundJob,
+{
+    dispatcher: Arc<JobsDispatcher<J>>,
+    ctx: Arc<J::Context>,
 }
 
-impl AsyncWorker {
+impl<J> AsyncWorker<J>
+where
+    J: BackgroundJob + 'static,
+{
     /// Creates a new [`AsyncWorker`]
-    pub fn new(dispatcher: Arc<JobsDispatcher>, ctx: Arc<WorkerContext>) -> Self {
+    pub fn new(dispatcher: Arc<JobsDispatcher<J>>, ctx: Arc<J::Context>) -> Self {
         AsyncWorker { dispatcher, ctx }
     }
 
@@ -60,13 +55,14 @@ impl AsyncWorker {
         }
     }
 
-    async fn perform_job(&mut self, permit: &ActiveJobPermit) -> Result<()> {
+    async fn perform_job(&mut self, permit: &ActiveJobPermit<J>) -> Result<()> {
         let job = permit.inner();
+
         tokio::select! {
             _ = job.cancelled() => {
                 Ok(())
             }
-            _ = handle_job(permit.inner().job(), &self.ctx) => {
+            _ = job.job().execute(&self.ctx) => {
                 Ok(())
             }
         }

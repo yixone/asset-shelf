@@ -12,12 +12,12 @@ use models::{
 use result::{Result, error::ResultExt};
 use storage::StoragePath;
 
-use crate::WorkerContext;
+use crate::JobContext;
 
 const BATCH_LIMIT: u32 = 50;
 const BATCH: Pagination = Pagination::new(BATCH_LIMIT, 0);
 
-pub async fn cleanup_orphaned(ctx: &WorkerContext) -> Result<usize> {
+pub async fn cleanup_orphaned(ctx: &JobContext) -> Result<usize> {
     let mut deleted = 0;
 
     loop {
@@ -38,7 +38,7 @@ pub async fn cleanup_orphaned(ctx: &WorkerContext) -> Result<usize> {
     Ok(deleted)
 }
 
-pub async fn cleanup_deleted_assets(ctx: &WorkerContext) -> Result<usize> {
+pub async fn cleanup_deleted_assets(ctx: &JobContext) -> Result<usize> {
     let mut deleted = 0;
     let now = Utc::now();
     let retention_time = chrono::Duration::days(30);
@@ -75,7 +75,7 @@ pub async fn cleanup_deleted_assets(ctx: &WorkerContext) -> Result<usize> {
     Ok(deleted)
 }
 
-pub async fn remove_media_by_id(ctx: &WorkerContext, id: &MediaId) -> Result<()> {
+pub async fn remove_media_by_id(ctx: &JobContext, id: &MediaId) -> Result<()> {
     let media = ctx.db.media.get_by_id(id).await?;
     delete::delete_media(ctx, media).await
 }
@@ -83,7 +83,7 @@ pub async fn remove_media_by_id(ctx: &WorkerContext, id: &MediaId) -> Result<()>
 mod delete {
     use super::*;
 
-    pub async fn delete_media(ctx: &WorkerContext, media: MediaView) -> Result<()> {
+    pub async fn delete_media(ctx: &JobContext, media: MediaView) -> Result<()> {
         for f in &media.files {
             ctx.db.media.delete_file(&f.id).await?;
             delete_storage_file(ctx, f).await?;
@@ -94,12 +94,12 @@ mod delete {
         Ok(())
     }
 
-    pub async fn delete_asset(ctx: &WorkerContext, asset: &Asset) -> Result<()> {
+    pub async fn delete_asset(ctx: &JobContext, asset: &Asset) -> Result<()> {
         ctx.db.assets.delete(asset.id).await?;
         Ok(())
     }
 
-    pub async fn delete_storage_file(ctx: &WorkerContext, file: &MediaFile) -> Result<()> {
+    pub async fn delete_storage_file(ctx: &JobContext, file: &MediaFile) -> Result<()> {
         let path = StoragePath::from_str(&file.storage_path).to_app_err()?;
         if ctx.storage.remove_safely(&path).await {
             tracing::info!(path = ?file.storage_path, "CleanupWorker: Removed storage media file");

@@ -7,23 +7,23 @@ use std::{
 use flake_id::{FlakeId, FlakeIdGenerator};
 use tokio::{sync::Notify, time::Instant};
 
-use crate::{Job, JobsSchedulerSnapshot};
+use crate::{JobsSchedulerSnapshot, job::BackgroundJob};
 
 /// Jobs Execution Schedule
 #[derive(Debug)]
-pub struct Schedule {
-    inner: Mutex<ScheduleInner>,
+pub struct Schedule<J: BackgroundJob> {
+    inner: Mutex<ScheduleInner<J>>,
     notify: Notify,
     flake: FlakeIdGenerator,
 }
 
 #[derive(Debug)]
-pub struct ScheduleInner {
-    scheduled_queue: BinaryHeap<ScheduledJob>,
-    waiting: Option<ScheduledJob>,
+pub struct ScheduleInner<J: BackgroundJob> {
+    scheduled_queue: BinaryHeap<ScheduledJob<J>>,
+    waiting: Option<ScheduledJob<J>>,
 }
 
-impl Schedule {
+impl<J: BackgroundJob> Schedule<J> {
     /// Creates a new [`Schedule`]
     pub fn new() -> Self {
         Schedule {
@@ -36,12 +36,12 @@ impl Schedule {
         }
     }
 
-    fn lock<'a>(&'a self) -> MutexGuard<'a, ScheduleInner> {
+    fn lock<'a>(&'a self) -> MutexGuard<'a, ScheduleInner<J>> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// Returns the snapshot of this [`Schedule`]
-    pub fn snapshot(&self) -> JobsSchedulerSnapshot {
+    pub fn snapshot(&self) -> JobsSchedulerSnapshot<J> {
         let lock = self.lock();
         JobsSchedulerSnapshot {
             next: lock.waiting.clone(),
@@ -50,7 +50,7 @@ impl Schedule {
     }
 
     /// Waits for the time of the next scheduled task and returns it
-    pub async fn next_run(&self) -> Option<Job> {
+    pub async fn next_run(&self) -> Option<J> {
         loop {
             let scheduled = self.take_near()?;
 
@@ -67,7 +67,7 @@ impl Schedule {
         }
     }
 
-    pub fn schedule_many(&self, jobs: impl IntoIterator<Item = (Job, JobSchedule)>) {
+    pub fn schedule_many(&self, jobs: impl IntoIterator<Item = (J, JobSchedule)>) {
         let mut lock = self.lock();
         let mut added = 0;
 
@@ -89,7 +89,7 @@ impl Schedule {
     }
 
     /// Retrieves the nearest job and moves it to current
-    fn take_near(&self) -> Option<ScheduledJob> {
+    fn take_near(&self) -> Option<ScheduledJob<J>> {
         let mut lock = self.lock();
         let scheduled = lock.scheduled_queue.pop()?;
         lock.waiting = Some(scheduled.clone());
@@ -98,7 +98,7 @@ impl Schedule {
     }
 
     /// Returns the waiting job to the schedule
-    fn restore_waiting(&self, waiting: ScheduledJob) {
+    fn restore_waiting(&self, waiting: ScheduledJob<J>) {
         let mut lock = self.lock();
 
         if let Some(scheduled) = &lock.waiting
@@ -109,7 +109,7 @@ impl Schedule {
         }
     }
 
-    fn handle_processed_schedule(&self, scheduled: ScheduledJob) -> Job {
+    fn handle_processed_schedule(&self, scheduled: ScheduledJob<J>) -> J {
         let mut lock = self.lock();
 
         if let JobSchedule::Interval { interval, .. } = scheduled.schedule {
@@ -130,15 +130,15 @@ impl Schedule {
 
 /// Scheduled background job
 #[derive(Debug, Clone)]
-pub struct ScheduledJob {
+pub struct ScheduledJob<J: BackgroundJob> {
     pub(crate) id: ScheduledJobId,
-    pub(crate) job: Job,
+    pub(crate) job: J,
     pub(crate) schedule: JobSchedule,
 }
 
-impl ScheduledJob {
+impl<J: BackgroundJob> ScheduledJob<J> {
     /// Returns a reference to the job of this [`ScheduledJob`]
-    pub fn job(&self) -> &Job {
+    pub fn job(&self) -> &J {
         &self.job
     }
 
@@ -148,25 +148,25 @@ impl ScheduledJob {
     }
 }
 
-impl Ord for ScheduledJob {
+impl<J: BackgroundJob> Ord for ScheduledJob<J> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other.schedule.next_run().cmp(&self.schedule.next_run())
     }
 }
 
-impl PartialOrd for ScheduledJob {
+impl<J: BackgroundJob> PartialOrd for ScheduledJob<J> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl PartialEq for ScheduledJob {
+impl<J: BackgroundJob> PartialEq for ScheduledJob<J> {
     fn eq(&self, other: &Self) -> bool {
         self.job == other.job
     }
 }
 
-impl Eq for ScheduledJob {}
+impl<J: BackgroundJob> Eq for ScheduledJob<J> {}
 
 /// Job execution schedule
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

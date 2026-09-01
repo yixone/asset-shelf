@@ -6,19 +6,22 @@ use std::{
 use flake_id::FlakeIdGenerator;
 use tokio::sync::Notify;
 
-use crate::{Job, JobsQueueSnapshot, job::JobId};
+use crate::{
+    JobsQueueSnapshot,
+    job::{BackgroundJob, JobId},
+};
 
 /// Jobs queue broker
 ///
 /// Stores and automatically distributes background jobs among workers
 #[derive(Debug)]
-pub struct JobsDispatcher {
-    inner: Mutex<JobsQueueInner>,
+pub struct JobsDispatcher<J: BackgroundJob> {
+    inner: Mutex<JobsQueueInner<J>>,
     on_new_job: Notify,
     flake: Arc<FlakeIdGenerator>,
 }
 
-impl JobsDispatcher {
+impl<J: BackgroundJob> JobsDispatcher<J> {
     /// Creates a new [`JobsDispatcher`]
     pub fn new() -> Self {
         Self {
@@ -33,7 +36,7 @@ impl JobsDispatcher {
     }
 
     /// Returns the mutex guard for the jobs queue contents
-    fn lock<'a>(&'a self) -> MutexGuard<'a, JobsQueueInner> {
+    fn lock<'a>(&'a self) -> MutexGuard<'a, JobsQueueInner<J>> {
         self.inner.lock().unwrap_or_else(|f| f.into_inner())
     }
 
@@ -44,7 +47,7 @@ impl JobsDispatcher {
     }
 
     /// Returns the snapshot of this [`JobsDispatcher`]
-    pub fn snapshot(&self) -> JobsQueueSnapshot {
+    pub fn snapshot(&self) -> JobsQueueSnapshot<J> {
         let lock = self.lock();
         JobsQueueSnapshot {
             active: lock
@@ -58,7 +61,7 @@ impl JobsDispatcher {
 
     /// Adds multiple jobs to the queue, skipping jobs
     /// that violate concurrency constraints, and notifies waiting workers
-    pub fn enqueue_many(&self, jobs: impl IntoIterator<Item = Job>) -> Vec<JobId> {
+    pub fn enqueue_many(&self, jobs: impl IntoIterator<Item = J>) -> Vec<JobId> {
         let mut lock = self.lock();
         let mut added = Vec::new();
 
@@ -87,7 +90,7 @@ impl JobsDispatcher {
     /// Adds a new task to the queue and notifies one waiting worker
     ///
     /// Does not add the task to the queue if it violates concurrency constraints
-    pub fn enqueue(&self, job: Job) -> Option<JobId> {
+    pub fn enqueue(&self, job: J) -> Option<JobId> {
         self.enqueue_many([job]).into_iter().next()
     }
 
@@ -99,7 +102,7 @@ impl JobsDispatcher {
     }
 
     /// Returns a next job from the queue
-    pub async fn next(self: &Arc<Self>) -> ActiveJobPermit {
+    pub async fn next(self: &Arc<Self>) -> ActiveJobPermit<J> {
         let (id, job) = self.pool_queue().await;
 
         let active = Arc::new(ActiveJob::new(job));
@@ -152,8 +155,8 @@ impl JobsDispatcher {
         false
     }
 
-    /// Returns the next [`Job`] from the queue or waits for a new one to be added
-    async fn pool_queue(&self) -> (JobId, Job) {
+    /// Returns the next `Job` from the queue or waits for a new one to be added
+    async fn pool_queue(&self) -> (JobId, J) {
         loop {
             let permit = self.on_new_job.notified();
 
@@ -196,32 +199,32 @@ impl JobsDispatcher {
     }
 }
 
-impl Default for JobsDispatcher {
+impl<J: BackgroundJob> Default for JobsDispatcher<J> {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[derive(Debug)]
-struct JobsQueueInner {
-    queue: VecDeque<(JobId, Job)>,
-    active: HashMap<JobId, Arc<ActiveJob>>,
+struct JobsQueueInner<J: BackgroundJob> {
+    queue: VecDeque<(JobId, J)>,
+    active: HashMap<JobId, Arc<ActiveJob<J>>>,
     pending_kinds: HashSet<&'static str>,
 }
 
 /// Permit for active job
 ///
 /// Upon a Drop, the job is automatically removed from the list of active jobs
-pub struct ActiveJobPermit {
-    dispatcher: Arc<JobsDispatcher>,
+pub struct ActiveJobPermit<J: BackgroundJob> {
+    dispatcher: Arc<JobsDispatcher<J>>,
     job_id: JobId,
-    inner: Arc<ActiveJob>,
+    inner: Arc<ActiveJob<J>>,
     remove_on_drop: bool,
 }
 
-impl ActiveJobPermit {
+impl<J: BackgroundJob> ActiveJobPermit<J> {
     /// Returns a reference to the job of this [`ActiveJobPermit`]
-    pub fn inner(&self) -> &ActiveJob {
+    pub fn inner(&self) -> &ActiveJob<J> {
         &self.inner
     }
 
@@ -238,7 +241,7 @@ impl ActiveJobPermit {
     }
 }
 
-impl Drop for ActiveJobPermit {
+impl<J: BackgroundJob> Drop for ActiveJobPermit<J> {
     fn drop(&mut self) {
         if !self.remove_on_drop {
             return;
@@ -250,16 +253,16 @@ impl Drop for ActiveJobPermit {
 
 /// Active job currently being processed
 #[derive(Debug)]
-pub struct ActiveJob {
+pub struct ActiveJob<J: BackgroundJob> {
     /// Payload of the active job
-    job: Job,
+    job: J,
     /// Task cancellation token
     cancel: Notify,
 }
 
-impl ActiveJob {
+impl<J: BackgroundJob> ActiveJob<J> {
     /// Creates a new [`ActiveJob`]
-    pub fn new(job: Job) -> ActiveJob {
+    pub fn new(job: J) -> ActiveJob<J> {
         ActiveJob {
             job,
             cancel: Notify::new(),
@@ -277,7 +280,7 @@ impl ActiveJob {
     }
 
     /// Returns a reference to the `job` of this [`ActiveJob`]
-    pub fn job(&self) -> &Job {
+    pub fn job(&self) -> &J {
         &self.job
     }
 }

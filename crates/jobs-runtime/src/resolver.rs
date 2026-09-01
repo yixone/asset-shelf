@@ -4,31 +4,31 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    JobId, JobSchedule, JobsDispatcher, JobsSnapshot, WorkerContext, job::Job, schedule::Schedule,
+    JobId, JobSchedule, JobsDispatcher, JobsSnapshot, job::BackgroundJob, schedule::Schedule,
     worker::AsyncWorker,
 };
 
 /// Application background jobs resolver
-pub struct JobsResolver {
+pub struct JobsResolver<J: BackgroundJob> {
     /// Jobs dispatcher
-    dispatcher: Arc<JobsDispatcher>,
+    dispatcher: Arc<JobsDispatcher<J>>,
 
     /// Number of workers to launch
     workers_count: usize,
 
     /// Jobs Execution Schedule
-    schedule: Arc<Schedule>,
+    schedule: Arc<Schedule<J>>,
 
     /// Cancellation token for tasks started by the resolver
     cancel: CancellationToken,
 
     /// Background worker context
-    context: Arc<WorkerContext>,
+    context: Arc<J::Context>,
 }
 
-impl JobsResolver {
+impl<J: BackgroundJob + 'static> JobsResolver<J> {
     /// Creates a new [`JobsResolverBuilder`]
-    pub fn builder() -> JobsResolverBuilder {
+    pub fn builder<T: BackgroundJob + 'static>() -> JobsResolverBuilder<T> {
         JobsResolverBuilder {
             dispatcher: None,
             workers_count: get_available_parallelism(),
@@ -39,7 +39,7 @@ impl JobsResolver {
 
     /// Launches all child background resolver tasks and
     /// returns a [`ResolverTasksHandle`] for managing the stopping of these tasks
-    pub fn run(self: &Arc<Self>) -> ResolverTasksHandle {
+    pub fn run(self: &Arc<Self>) -> ResolverTasksHandle<J> {
         // The approximate capacity is indicated based on the calculation: workers + 1 scheduler
         let mut handles = Vec::with_capacity(self.workers_count + 1);
 
@@ -53,11 +53,7 @@ impl JobsResolver {
     }
 
     /// Starts all resolver workers
-    fn run_workers(
-        &self,
-        cancel: CancellationToken,
-        ctx: Arc<WorkerContext>,
-    ) -> Vec<JoinHandle<()>> {
+    fn run_workers(&self, cancel: CancellationToken, ctx: Arc<J::Context>) -> Vec<JoinHandle<()>> {
         let mut handles = Vec::with_capacity(self.workers_count);
         let range = 0..self.workers_count;
         for w in range.map(|_| AsyncWorker::new(self.dispatcher.clone(), ctx.clone())) {
@@ -89,12 +85,12 @@ impl JobsResolver {
     /// Adds a new task to the queue and notifies one waiting worker
     ///
     /// Does not add the task to the queue if it violates concurrency constraints
-    pub fn enqueue(&self, job: Job) {
+    pub fn enqueue(&self, job: J) {
         self.dispatcher.enqueue(job);
     }
 
     /// Adds new job to the schedule
-    pub fn schedule(&self, job: Job, schedule: JobSchedule) {
+    pub fn schedule(&self, job: J, schedule: JobSchedule) {
         self.schedule.schedule_many([(job.clone(), schedule)]);
         if schedule.is_interval() {
             self.enqueue(job);
@@ -132,7 +128,7 @@ impl JobsResolver {
     }
 
     /// Returns the snapshot of this [`JobsResolver`]
-    pub fn snapshot(&self) -> JobsSnapshot {
+    pub fn snapshot(&self) -> JobsSnapshot<J> {
         JobsSnapshot {
             schedule: self.schedule.snapshot(),
             queue: self.dispatcher.snapshot(),
@@ -146,12 +142,12 @@ impl JobsResolver {
 }
 
 /// [`JobsResolver`] spawned tasks handle
-pub struct ResolverTasksHandle {
-    resolver: Arc<JobsResolver>,
+pub struct ResolverTasksHandle<J: BackgroundJob> {
+    resolver: Arc<JobsResolver<J>>,
     handles: Vec<JoinHandle<()>>,
 }
 
-impl ResolverTasksHandle {
+impl<J: BackgroundJob + 'static> ResolverTasksHandle<J> {
     /// Removes all jobs from the queue and waits for active jobs to complete
     pub async fn close(self) {
         let removed = self.resolver.clear_queue();
@@ -165,9 +161,9 @@ impl ResolverTasksHandle {
     }
 }
 
-pub struct JobsResolverBuilder {
+pub struct JobsResolverBuilder<J: BackgroundJob> {
     /// Jobs dispatcher
-    dispatcher: Option<JobsDispatcher>,
+    dispatcher: Option<JobsDispatcher<J>>,
 
     /// Number of workers to launch
     workers_count: usize,
@@ -176,12 +172,12 @@ pub struct JobsResolverBuilder {
     cancel: Option<CancellationToken>,
 
     /// Background worker context
-    context: Option<WorkerContext>,
+    context: Option<J::Context>,
 }
 
-impl JobsResolverBuilder {
+impl<J: BackgroundJob> JobsResolverBuilder<J> {
     /// Sets the dispatcher of [`JobsResolver`]
-    pub fn dispatcher(mut self, dispatcher: JobsDispatcher) -> Self {
+    pub fn dispatcher(mut self, dispatcher: JobsDispatcher<J>) -> Self {
         self.dispatcher = Some(dispatcher);
         self
     }
@@ -199,21 +195,21 @@ impl JobsResolverBuilder {
     }
 
     /// Sets the context of [`JobsResolver`]
-    pub fn context(mut self, ctx: WorkerContext) -> Self {
+    pub fn context(mut self, ctx: J::Context) -> Self {
         self.context = Some(ctx);
         self
     }
 
     /// Builds the resolver or returns a missing-fields error
-    pub fn build(self) -> Result<JobsResolver, MissingBuilderFields> {
+    pub fn build(self) -> Result<JobsResolver<J>, MissingBuilderFields> {
         self.try_build().ok_or(MissingBuilderFields)
     }
 
-    pub fn build_shared(self) -> Result<Arc<JobsResolver>, MissingBuilderFields> {
+    pub fn build_shared(self) -> Result<Arc<JobsResolver<J>>, MissingBuilderFields> {
         self.build().map(Arc::new)
     }
 
-    fn try_build(self) -> Option<JobsResolver> {
+    fn try_build(self) -> Option<JobsResolver<J>> {
         Some(JobsResolver {
             dispatcher: Arc::new(self.dispatcher?),
             workers_count: self.workers_count,

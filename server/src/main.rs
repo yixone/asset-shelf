@@ -6,7 +6,8 @@ use config::{DatabaseDriverConfig, StorageBackendConfig};
 use db::sqlite::SqliteDatabase;
 use events::EventBus;
 use flake_id::FlakeIdGenerator;
-use jobs::{Job, JobSchedule, JobsDispatcher, JobsResolver, ResolverTasksHandle, WorkerContext};
+use jobs::{Job, JobContext};
+use jobs_runtime::{JobSchedule, JobsDispatcher, JobsResolver, ResolverTasksHandle};
 use result::{Result, error::ResultExt};
 use server::{
     SERVER_VERSION,
@@ -59,9 +60,9 @@ async fn main() -> Result<()> {
 
     tracing::info!("Initializing background jobs");
 
-    let resolver = JobsResolver::builder()
+    let resolver: Arc<JobsResolver<Job>> = JobsResolver::<Job>::builder()
         .dispatcher(JobsDispatcher::new())
-        .context(WorkerContext {
+        .context(JobContext {
             db: db.clone(),
             storage: storage.clone(),
             flake: flake.clone(),
@@ -130,7 +131,7 @@ fn configure_server(
 fn spawn_shutdown_handler(
     cancel: CancellationToken,
     server_handle: ServerHandle,
-    jobs_resolver_handle: ResolverTasksHandle,
+    jobs_resolver_handle: ResolverTasksHandle<Job>,
 ) {
     tokio::spawn(async move {
         match signal::ctrl_c().await {
