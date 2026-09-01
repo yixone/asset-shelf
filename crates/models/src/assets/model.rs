@@ -6,6 +6,8 @@ use crate::{
     types::{AssetId, MediaId},
 };
 
+const DELETED_ASSET_RETENTION_TIME: chrono::Duration = chrono::Duration::days(30);
+
 /// An asset domain representing a media file in storage
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
@@ -87,6 +89,19 @@ impl Asset {
 
         // The asset was processed previously but currently lacks all the necessary fields
         if state == AssetState::Ready && !feats.enough_fields() {
+            return true;
+        }
+
+        false
+    }
+
+    /// Returns `true` if the asset can be deleted/cleared
+    pub fn need_cleanup(&self, now: DateTime<Utc>) -> bool {
+        let Some(deleted_at) = self.deleted_at else {
+            return false;
+        };
+
+        if (now - deleted_at) >= DELETED_ASSET_RETENTION_TIME {
             return true;
         }
 
