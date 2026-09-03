@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use db_core::{
     repos::media::MediaRepository,
-    types::{DeleteResult, InsertResult, UpdateResult, patch::MediaFilePatch},
+    types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::MediaFilePatch},
 };
 use models::{
     media::{Media, MediaFile, MediaVariant, view::MediaView},
@@ -147,5 +147,30 @@ impl MediaRepository for SqliteMediaRepository {
         .to_app_err()?;
 
         hydrate::hydrate_media(orphans, &mut conn).await
+    }
+
+    async fn list_files(
+        &self,
+        pagination: Pagination,
+        kind: MediaVariant,
+    ) -> Result<Vec<MediaFile>> {
+        let mut conn = self.db.acquire().await?;
+
+        let files = sqlx::query_as(
+            "
+            SELECT mf.* 
+            FROM media_files AS mf
+            WHERE mf.variant = ?
+            LIMIT ? OFFSET ?
+            ",
+        )
+        .bind(kind)
+        .bind(pagination.limit())
+        .bind(pagination.offset())
+        .fetch_all(&mut *conn)
+        .await
+        .to_app_err()?;
+
+        Ok(files)
     }
 }

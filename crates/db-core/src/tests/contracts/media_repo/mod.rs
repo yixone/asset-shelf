@@ -78,6 +78,7 @@ where
     // Tests getting media variant
     retrieval::get_media_variant(repo().await).await?;
     retrieval::return_error_for_non_existent_variant(repo().await).await?;
+    retrieval::list_of_original_files(repo().await).await?;
 
     Ok(())
 }

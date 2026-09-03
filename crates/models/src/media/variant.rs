@@ -20,6 +20,10 @@ impl MediaVariant {
             MediaVariant::LoopPreview => "loop_preview",
         }
     }
+
+    pub fn is_original(&self) -> bool {
+        matches!(self, MediaVariant::Original)
+    }
 }
 
 impl std::fmt::Display for MediaVariant {

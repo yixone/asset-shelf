@@ -4,7 +4,7 @@ use models::{
 };
 use result::{Result, create_error};
 
-use crate::types::{DeleteResult, InsertResult, UpdateResult, patch::MediaFilePatch};
+use crate::types::{DeleteResult, InsertResult, Pagination, UpdateResult, patch::MediaFilePatch};
 
 #[async_trait::async_trait]
 pub trait MediaRepository: Send + Sync {
@@ -32,4 +32,10 @@ pub trait MediaRepository: Send + Sync {
     async fn get_by_ids(&self, ids: &[MediaId]) -> Result<Vec<MediaView>>;
 
     async fn get_orphans(&self, limit: u32) -> Result<Vec<MediaView>>;
+
+    async fn list_files(
+        &self,
+        pagination: Pagination,
+        kind: MediaVariant,
+    ) -> Result<Vec<MediaFile>>;
 }
