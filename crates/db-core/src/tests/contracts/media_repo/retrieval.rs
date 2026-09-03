@@ -47,7 +47,7 @@ pub async fn return_error_for_non_existent_variant<R: MediaRepository>(repo: R) 
 }
 
 /// Tests retrieving the list of files for a specific variant
-pub async fn list_of_original_files<R: MediaRepository>(repo: R) -> Result<()> {
+pub async fn list_original_files<R: MediaRepository>(repo: R) -> Result<()> {
     let flake = FlakeIdGenerator::new(0);
 
     {
