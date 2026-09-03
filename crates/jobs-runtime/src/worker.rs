@@ -1,31 +1,29 @@
 use std::{sync::Arc, time::Duration};
 
-use db::RepositoryContext;
-use flake_id::FlakeIdGenerator;
 use result::Result;
-use storage::Storage;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
-use crate::{JobQueue, queue::ActiveJobPermit, services::dispatch_job};
+use crate::{JobsDispatcher, dispatcher::ActiveJobPermit, job::BackgroundJob};
 
 const WORKER_RESART_DELAY: Duration = Duration::from_mins(2);
 
-/// Shared context of the workers
-#[derive(Clone)]
-pub struct WorkerContext {
-    pub db: Arc<RepositoryContext>,
-    pub flake: Arc<FlakeIdGenerator>,
-    pub storage: Arc<Storage>,
+/// Asynchronous background worker
+pub struct AsyncWorker<J>
+where
+    J: BackgroundJob,
+{
+    dispatcher: Arc<JobsDispatcher<J>>,
+    ctx: Arc<J::Context>,
 }
 
-/// Asynchronous background worker
-pub struct AsyncWorker(Arc<JobQueue>, Arc<WorkerContext>);
-
-impl AsyncWorker {
+impl<J> AsyncWorker<J>
+where
+    J: BackgroundJob + 'static,
+{
     /// Creates a new [`AsyncWorker`]
-    pub fn new(queue: Arc<JobQueue>, ctx: Arc<WorkerContext>) -> Self {
-        AsyncWorker(queue, ctx)
+    pub fn new(dispatcher: Arc<JobsDispatcher<J>>, ctx: Arc<J::Context>) -> Self {
+        AsyncWorker { dispatcher, ctx }
     }
 
     pub fn worker_loop(mut self, cancel: CancellationToken) -> JoinHandle<()> {
@@ -39,7 +37,7 @@ impl AsyncWorker {
     async fn jobs_loop(&mut self, cancel: CancellationToken) -> Result<()> {
         loop {
             tokio::select! {
-                next_job = self.0.next_job() => {
+                next_job = self.dispatcher.next() => {
                     if let Err(e) = self.perform_job(&next_job).await {
                         tracing::error!(err = ?e, job = ?next_job.inner().job(), "Worker error occurred");
 
@@ -57,13 +55,14 @@ impl AsyncWorker {
         }
     }
 
-    async fn perform_job(&mut self, permit: &ActiveJobPermit) -> Result<()> {
+    async fn perform_job(&mut self, permit: &ActiveJobPermit<J>) -> Result<()> {
         let job = permit.inner();
+
         tokio::select! {
             _ = job.cancelled() => {
                 Ok(())
             }
-            _ = dispatch_job(permit.inner().job(), &self.1) => {
+            _ = job.job().execute(&self.ctx) => {
                 Ok(())
             }
         }

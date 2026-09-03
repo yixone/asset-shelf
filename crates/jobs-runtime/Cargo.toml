@@ -1,18 +1,12 @@
 [package]
-name = "jobs"
+name = "jobs-runtime"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 # Workspace
-db = { workspace = true }
 flake-id = { workspace = true }
-jobs-runtime = { workspace = true }
-media = { workspace = true }
-mimetype = { workspace = true }
-models = { workspace = true }
 result = { workspace = true }
-storage = { workspace = true }
 
 # External
 async-trait = { workspace = true }
