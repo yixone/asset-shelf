@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
 
     tracing::info!("Initializing background jobs");
 
-    let resolver: Arc<JobsResolver<Job>> = JobsResolver::<Job>::builder()
+    let resolver = JobsResolver::<Job>::builder()
         .dispatcher(JobsDispatcher::new())
         .context(JobContext {
             db: db.clone(),

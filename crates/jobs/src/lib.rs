@@ -61,7 +61,6 @@ impl BackgroundJob for Job {
 
                 Ok(())
             }
-
             Job::CleanupStorageMedia => {
                 let mut removed = 0;
 
