@@ -9,6 +9,8 @@ use crate::{
 
 #[get("/metrics")]
 async fn get_metrics(ctx: web::Data<DataCtx>, metrics: web::Data<MetricsCtx>) -> ApiResult {
+    dbg!(ctx.jobs.snapshot());
+
     if !ctx.config.instance.telemetry.enabled() {
         return Err(create_error!(FeatureDisabled { feature: "metrics" }));
     }

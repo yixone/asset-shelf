@@ -7,16 +7,19 @@ use tokio::sync::Notify;
 
 use crate::{
     JobsQueueSnapshot,
-    job::{BackgroundJob, JobId},
+    job::{ActiveJob, BackgroundJob, ExecutionStatus, JobId},
 };
 
-/// Jobs queue broker
+/// Background jobs dispatcher
 ///
 /// Stores and automatically distributes background jobs among workers
 #[derive(Debug)]
 pub struct JobsDispatcher<J: BackgroundJob> {
-    inner: Mutex<JobsQueueInner<J>>,
-    on_new_job: Notify,
+    /// Dispatcher internal state
+    state: Mutex<JobsDispatcherState<J>>,
+    /// Notification of a new job addition
+    notify: Notify,
+    /// ID counter
     id: Mutex<u64>,
 }
 
@@ -24,19 +27,20 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
     /// Creates a new [`JobsDispatcher`]
     pub fn new() -> Self {
         Self {
-            inner: Mutex::new(JobsQueueInner {
+            state: Mutex::new(JobsDispatcherState {
                 queue: VecDeque::new(),
                 active: HashMap::new(),
+                executed: Vec::new(),
                 pending_kinds: HashSet::new(),
             }),
-            on_new_job: Notify::new(),
+            notify: Notify::new(),
             id: Mutex::new(0),
         }
     }
 
     /// Returns the mutex guard for the jobs queue contents
-    fn lock<'a>(&'a self) -> MutexGuard<'a, JobsQueueInner<J>> {
-        self.inner.lock().unwrap_or_else(|f| f.into_inner())
+    fn lock<'a>(&'a self) -> MutexGuard<'a, JobsDispatcherState<J>> {
+        self.state.lock().unwrap_or_else(|f| f.into_inner())
     }
 
     /// Returns the next id of this [`JobsDispatcher<J>`]
@@ -44,7 +48,6 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
         let mut lock = self.id.lock().unwrap_or_else(|f| f.into_inner());
 
         let id = *lock;
-
         *lock = lock.saturating_add(1);
 
         JobId(id)
@@ -66,6 +69,7 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
                 .map(|(&id, j)| (id, j.job().clone()))
                 .collect(),
             queue: lock.queue.iter().cloned().collect(),
+            executed: lock.executed.clone(),
         }
     }
 
@@ -90,8 +94,8 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
 
         match added.len() {
             0 => (),
-            1 => self.on_new_job.notify_one(),
-            _ => self.on_new_job.notify_waiters(),
+            1 => self.notify.notify_one(),
+            _ => self.notify.notify_waiters(),
         }
 
         added
@@ -146,7 +150,7 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
         false
     }
 
-    /// Removes the [`Job`] with the specified [`JobId`] from the queue
+    /// Removes the `Job` with the specified [`JobId`] from the queue
     pub fn remove_queued(&self, id: JobId) -> bool {
         let mut lock = self.lock();
 
@@ -168,7 +172,7 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
     /// Returns the next `Job` from the queue or waits for a new one to be added
     async fn pool_queue(&self) -> (JobId, J) {
         loop {
-            let permit = self.on_new_job.notified();
+            let permit = self.notify.notified();
 
             if let Some(j) = {
                 let mut lock = self.lock();
@@ -181,13 +185,21 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
         }
     }
 
-    /// Removes the [`ActiveJob`] without triggering cancellation
-    fn remove_active(&self, id: JobId) {
+    /// Marks the [`ActiveJob`] as executed
+    fn mark_executed(&self, id: JobId, status: Option<ExecutionStatus>) {
         let mut lock = self.lock();
-        if let Some(removed) = lock.active.remove(&id)
-            && !removed.job().allow_concurrency()
-        {
-            lock.pending_kinds.remove(removed.job().kind());
+        if let Some(removed) = lock.active.remove(&id) {
+            let kind = removed.job().kind();
+
+            lock.executed.push((
+                id,
+                removed.job.clone(),
+                status.unwrap_or(ExecutionStatus::Undefined),
+            ));
+
+            if !removed.job().allow_concurrency() {
+                lock.pending_kinds.remove(kind);
+            }
         }
     }
 
@@ -203,7 +215,7 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
         lock.queue.push_back((id, job));
         drop(lock);
 
-        self.on_new_job.notify_one();
+        self.notify.notify_one();
 
         true
     }
@@ -215,10 +227,16 @@ impl<J: BackgroundJob> Default for JobsDispatcher<J> {
     }
 }
 
+/// Jobs dispatcher internal state
 #[derive(Debug)]
-struct JobsQueueInner<J: BackgroundJob> {
+struct JobsDispatcherState<J: BackgroundJob> {
+    /// Queue of pending jobs
     queue: VecDeque<(JobId, J)>,
+    /// Active jobs currently being processed
     active: HashMap<JobId, Arc<ActiveJob<J>>>,
+    /// Executed jobs
+    executed: Vec<(JobId, J, ExecutionStatus)>,
+    /// Jobs kinds used to limit the concurrency of certain jobs
     pending_kinds: HashSet<&'static str>,
 }
 
@@ -244,9 +262,10 @@ impl<J: BackgroundJob> ActiveJobPermit<J> {
         self.remove_on_drop = false;
     }
 
-    /// Removes the current job from the list of active jobs
-    pub fn remove(mut self) {
-        self.dispatcher.remove_active(self.job_id);
+    /// Removes the current job from the list of active jobs and marks it as executed
+    pub fn mark_executed(mut self, status: ExecutionStatus) {
+        self.dispatcher.mark_executed(self.job_id, Some(status));
+        tracing::info!("Marked as executed: {status:?}");
         self.remove_on_drop = false;
     }
 }
@@ -257,40 +276,6 @@ impl<J: BackgroundJob> Drop for ActiveJobPermit<J> {
             return;
         }
 
-        self.dispatcher.remove_active(self.job_id);
-    }
-}
-
-/// Active job currently being processed
-#[derive(Debug)]
-pub struct ActiveJob<J: BackgroundJob> {
-    /// Payload of the active job
-    job: J,
-    /// Task cancellation token
-    cancel: Notify,
-}
-
-impl<J: BackgroundJob> ActiveJob<J> {
-    /// Creates a new [`ActiveJob`]
-    pub fn new(job: J) -> ActiveJob<J> {
-        ActiveJob {
-            job,
-            cancel: Notify::new(),
-        }
-    }
-
-    /// Sends a signal to cancel job execution to the worker that picked up the job
-    pub fn cancel(&self) {
-        self.cancel.notify_one();
-    }
-
-    /// Waiting for a cancellation signal for the [`ActiveJob`]
-    pub async fn cancelled(&self) {
-        self.cancel.notified().await
-    }
-
-    /// Returns a reference to the `job` of this [`ActiveJob`]
-    pub fn job(&self) -> &J {
-        &self.job
+        self.dispatcher.mark_executed(self.job_id, None);
     }
 }

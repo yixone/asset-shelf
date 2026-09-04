@@ -77,6 +77,7 @@ impl<J: BackgroundJob> Schedule<J> {
         }
     }
 
+    /// Schedules the execution of several tasks
     pub fn schedule_many(&self, jobs: impl IntoIterator<Item = (J, JobSchedule)>) {
         let mut lock = self.lock();
         let mut added = 0;
@@ -98,9 +99,36 @@ impl<J: BackgroundJob> Schedule<J> {
         }
     }
 
+    /// Plans the execution of the job
+    pub fn schedule(&self, job: J, schedule: JobSchedule) {
+        self.schedule_many([(job, schedule)]);
+    }
+
+    /// Removes the scheduled job
+    pub fn remove_scheduled(&self, id: ScheduledJobId) {
+        let mut lock = self.lock();
+
+        if let Some(waiting) = &lock.waiting
+            && waiting.id == id
+        {
+            lock.waiting = None;
+
+            drop(lock);
+            self.notify.notify_one();
+
+            return;
+        }
+
+        lock.scheduled_queue.retain(|j| j.id != id);
+
+        drop(lock);
+        self.notify.notify_one();
+    }
+
     /// Retrieves the nearest job and moves it to current
     fn take_near(&self) -> Option<ScheduledJob<J>> {
         let mut lock = self.lock();
+
         let scheduled = lock.scheduled_queue.pop()?;
         lock.waiting = Some(scheduled.clone());
 
@@ -126,7 +154,7 @@ impl<J: BackgroundJob> Schedule<J> {
             let rescheduled = ScheduledJob {
                 id: scheduled.id,
                 job: scheduled.job.clone(),
-                schedule: scheduled.schedule.move_next_run(interval),
+                schedule: scheduled.schedule.reschedule_after(interval),
             };
 
             lock.scheduled_queue.push(rescheduled);
@@ -213,14 +241,12 @@ impl JobSchedule {
         matches!(self, JobSchedule::Interval { .. })
     }
 
-    /// Shifts the scheduled job next run time
-    pub fn move_next_run(self, move_on: Duration) -> Self {
+    /// Shifts the scheduled job next run relative to the current time
+    pub fn reschedule_after(self, move_on: Duration) -> Self {
+        let next_run = Instant::now() + move_on;
         match self {
-            JobSchedule::Interval { interval, next_run } => JobSchedule::Interval {
-                interval,
-                next_run: next_run + move_on,
-            },
-            JobSchedule::Once { run } => JobSchedule::Once { run: run + move_on },
+            JobSchedule::Interval { interval, .. } => JobSchedule::Interval { interval, next_run },
+            JobSchedule::Once { .. } => JobSchedule::Once { run: next_run },
         }
     }
 

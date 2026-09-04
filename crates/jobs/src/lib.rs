@@ -35,6 +35,14 @@ impl BackgroundJob for Job {
 
     type Context = JobContext;
 
+    fn can_retry(e: &Self::Error) -> bool {
+        e.is_retryable()
+    }
+
+    fn need_cooldown(e: &Self::Error) -> bool {
+        e.is_internal()
+    }
+
     fn kind(&self) -> &'static str {
         match self {
             Job::ProcessAssetMedia { .. } => "process_asset_media",

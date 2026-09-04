@@ -1,4 +1,7 @@
-use crate::{JobId, ScheduledJob, job::BackgroundJob};
+use crate::{
+    JobId, ScheduledJob,
+    job::{BackgroundJob, ExecutionStatus},
+};
 
 /// Background jobs snapshot
 #[derive(Debug)]
@@ -12,6 +15,7 @@ pub struct JobsSnapshot<J: BackgroundJob> {
 pub struct JobsQueueSnapshot<J: BackgroundJob> {
     pub active: Vec<(JobId, J)>,
     pub queue: Vec<(JobId, J)>,
+    pub executed: Vec<(JobId, J, ExecutionStatus)>,
 }
 
 /// Background jobs scheduler snapshot
