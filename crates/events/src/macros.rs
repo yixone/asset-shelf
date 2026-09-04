@@ -1,44 +1,23 @@
-macro_rules! events {
+#[macro_export]
+macro_rules! event {
     {
-        $(
-            $event_name: ident => $event: path
-        ),*
+        $( #[$meta: meta] )*
+        $event_name: ident {
+            $(
+                $( #[$data_meta: meta] )*
+                $event_data_id: ident: $event_data_ty: ty
+            ),* $(,)?
+        }
     } => {
-        #[derive(Debug, Clone)]
-        pub enum Event {
+        $( #[$meta] )*
+        #[derive(Debug)]
+        pub struct $event_name {
             $(
-                $event_name($event)
+                $( #[$data_meta] )*
+                pub $event_data_id: $event_data_ty
             ),*
         }
 
-        #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-        pub enum EventKind {
-            $(
-                $event_name
-            ),*
-        }
-
-        $(
-            impl $crate::AbstractEvent for $event {
-                const KIND: EventKind = $crate::EventKind::$event_name;
-            }
-
-            impl TryFrom<$crate::Event> for $event {
-                type Error = $crate::EventRoutingError;
-
-                fn try_from(e: $crate::Event) -> Result<Self, Self::Error> {
-                    match e {
-                        $crate::Event::$event_name(e) => Ok(e),
-                        _ => Err($crate::EventRoutingError)
-                    }
-                }
-            }
-
-            impl From<$event> for $crate::Event {
-                fn from(e: $event) -> Self {
-                    $crate::Event::$event_name(e)
-                }
-            }
-        )*
+        impl $crate::DynamicEvent for $event_name {}
     };
 }

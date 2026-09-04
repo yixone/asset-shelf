@@ -1,21 +1,24 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
 use result::error::ResultExt;
 use tokio::sync::broadcast::{Receiver, Sender};
 
-use crate::{AbstractEvent, Event};
+use crate::DynamicEvent;
 
 /// Event Sender
 ///
 /// Sends an event to all subscribers for the specified Kind
-pub struct EventSender {
-    pub tx: Sender<Event>,
+pub(crate) struct EventSender {
+    pub tx: Sender<Arc<dyn DynamicEvent>>,
 }
 
 impl EventSender {
     /// Attempts to send an event to everyone subscribed to it
-    pub fn send(&self, event: Event) -> bool {
-        if let Err(e) = self.tx.send(event) {
+    pub fn send<E>(&self, event: E) -> bool
+    where
+        E: DynamicEvent + 'static,
+    {
+        if let Err(e) = self.tx.send(Arc::new(event)) {
             tracing::warn!(error = ?e, "Failed to send event");
             return false;
         }
@@ -28,20 +31,24 @@ impl EventSender {
 /// Receives event as `<E>`
 pub struct EventStream<E>
 where
-    E: AbstractEvent,
+    E: DynamicEvent,
 {
-    pub marker: PhantomData<E>,
-    pub rx: Receiver<Event>,
+    pub(crate) marker: PhantomData<E>,
+    pub(crate) rx: Receiver<Arc<dyn DynamicEvent>>,
 }
 
 impl<E> EventStream<E>
 where
-    E: AbstractEvent + Clone,
+    E: DynamicEvent + Clone + 'static,
 {
-    /// Receives the next [`Event`] for the [`EventStream`]
-    pub async fn recv(&mut self) -> Result<E, result::Error> {
+    /// Receives the next `event` for the [`EventStream`]
+    pub async fn recv(&mut self) -> Result<Arc<E>, result::Error> {
         let event = self.rx.recv().await.to_app_err()?;
-        let event = E::try_from(event).expect("EventBus routing incorrect");
-        Ok(event)
+
+        let Ok(e) = Arc::downcast(event) else {
+            unreachable!()
+        };
+
+        Ok(e)
     }
 }

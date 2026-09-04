@@ -1,12 +1,12 @@
-use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
+use std::{any::TypeId, collections::HashMap, marker::PhantomData, sync::RwLock};
 
 use tokio::sync::broadcast::channel;
 
-use crate::{AbstractEvent, Event, EventKind, EventSender, EventStream};
+use crate::{DynamicEvent, EventStream, channel::EventSender};
 
 /// Event bus for working and managing events
 pub struct EventBus {
-    senders: RwLock<HashMap<EventKind, EventSender>>,
+    senders: RwLock<HashMap<TypeId, EventSender>>,
     channel_size: usize,
 }
 
@@ -19,25 +19,25 @@ impl EventBus {
         }
     }
 
-    /// Creates a new subscriber for the specified event
-    pub fn subscribe<E>(&self) -> EventStream<E>
+    /// Creates a new event listener for the specified event
+    pub fn listener<E>(&self) -> EventStream<E>
     where
-        E: AbstractEvent,
+        E: DynamicEvent + 'static,
     {
-        let kind = E::KIND;
+        let id = TypeId::of::<E>();
 
-        let mut senders = self
-            .senders
-            .write()
-            .expect("Failed to get a lock for event subscription");
-        if let Some(s) = senders.get(&kind) {
+        let mut senders = self.senders.write().unwrap_or_else(|e| e.into_inner());
+
+        if let Some(s) = senders.get(&id) {
             return EventStream {
                 marker: PhantomData,
                 rx: s.tx.subscribe(),
             };
         }
+
         let (tx, rx) = channel(self.channel_size);
-        senders.insert(kind, EventSender { tx });
+        let sender = EventSender { tx };
+        senders.insert(id, sender);
 
         EventStream {
             marker: PhantomData,
@@ -50,19 +50,15 @@ impl EventBus {
     /// Returns false if no one received the event
     pub fn publish<E>(&self, event: E) -> bool
     where
-        E: AbstractEvent + Into<Event>,
+        E: DynamicEvent + 'static,
     {
-        let kind = E::KIND;
+        let id = TypeId::of::<E>();
 
-        let senders = self
-            .senders
-            .read()
-            .expect("Failed to get a lock for event publishing");
-        let Some(sender) = senders.get(&kind) else {
+        let senders = self.senders.read().unwrap_or_else(|e| e.into_inner());
+        let Some(sender) = senders.get(&id) else {
             return false;
         };
 
-        let event = event.into();
         sender.send(event)
     }
 }

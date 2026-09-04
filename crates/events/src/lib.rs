@@ -1,46 +1,40 @@
-use models::types::{AssetId, MediaId};
-use storage::StoragePath;
-
-#[macro_use]
-mod macros;
 mod bus;
 mod channel;
-mod routing;
+mod event;
+mod macros;
 
 pub use bus::EventBus;
-pub use channel::{EventSender, EventStream};
-pub use routing::AbstractEvent;
-use routing::EventRoutingError;
+pub use channel::EventStream;
+pub use event::DynamicEvent;
 
-/// New asset creation event
-///
-/// Called when a new asset is uploaded
-#[derive(Debug, Clone)]
-pub struct AssetCreatedEvent {
-    /// New asset ID
-    pub asset_id: AssetId,
+event! {
+    /// New asset creation event
+    ///
+    /// Called when a new asset is uploaded
+    AssetCreatedEvent {
+        /// New asset ID
+        asset_id: ::models::types::AssetId
+    }
 }
 
-/// Asset deletion event
-///
-/// Called when the marked asset is permanently deleted
-#[derive(Debug, Clone)]
-pub struct AssetDeletedEvent {
-    /// ID of the deleted asset
-    pub asset: AssetId,
-    /// The media ID associated with the deleted asset
-    pub media: MediaId,
+event! {
+    /// Asset deletion event
+    ///
+    /// Called when the marked asset is permanently deleted
+    AssetDeletedEvent {
+        /// ID of the deleted asset
+        asset: ::models::types::AssetId,
+        /// The media ID associated with the deleted asset
+        media: ::models::types::MediaId,
+    }
 }
 
-/// The file was found in the database but is missing from the storage
-#[derive(Debug, Clone)]
-pub struct FileDetachedEvent {
-    pub media: MediaId,
-    pub path: StoragePath,
-}
-
-events! {
-    AssetCreated => AssetCreatedEvent,
-    AssetDeleted => AssetDeletedEvent,
-    MediaDetched => FileDetachedEvent
+event! {
+    /// The file was found in the database but is missing from the storage
+    FileDetachedEvent {
+        /// Detached media ID
+        media: ::models::types::MediaId,
+        /// Detached file path
+        path: ::storage::StoragePath,
+    }
 }
