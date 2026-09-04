@@ -10,7 +10,6 @@ members = [
     "crates/flake-id",
     "crates/jobs",
     "crates/jobs-runtime",
-    "crates/join",
     "crates/media",
     "crates/mimetype",
     "crates/models",
@@ -32,7 +31,6 @@ events = { path = "crates/events" }
 flake-id = { path = "crates/flake-id" }
 jobs = { path = "crates/jobs" }
 jobs-runtime = { path = "crates/jobs-runtime" }
-join = { path = "crates/join" }
 media = { path = "crates/media" }
 mimetype = { path = "crates/mimetype" }
 models = { path = "crates/models" }

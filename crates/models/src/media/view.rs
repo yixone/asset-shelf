@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
-use join::JoinBuilder;
-
-use crate::media::{Media, MediaFile, MediaVariant};
+use crate::{
+    join::JoinBuilder,
+    media::{Media, MediaFile, MediaVariant},
+};
 
 #[derive(Debug, Clone)]
 pub struct MediaView {

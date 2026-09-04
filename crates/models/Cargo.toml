@@ -11,7 +11,6 @@ sqlx = ["dep:sqlx", "flake-id/sqlx", "mimetype/sqlx"]
 # Workspace
 flake-id = { workspace = true }
 mimetype = { workspace = true }
-join = { workspace = true }
 
 # External
 chrono = { workspace = true }

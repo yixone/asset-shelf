@@ -9,3 +9,5 @@ pub mod collections;
 pub mod media;
 
 pub mod types;
+
+pub mod join;

@@ -1,4 +1,4 @@
-use join::impl_joinable;
+use crate::impl_joinable;
 
 use crate::types::MediaId;
 

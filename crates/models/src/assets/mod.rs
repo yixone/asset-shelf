@@ -1,6 +1,5 @@
-use join::impl_joinable;
-
 use crate::{
+    impl_joinable,
     media::{Media, MediaFile},
     types::{AssetId, MediaId},
 };

@@ -10,7 +10,6 @@ tests = ["dep:flake-id", "dep:mimetype"]
 # Workspace
 models = { workspace = true }
 result = { workspace = true }
-join = { workspace = true }
 flake-id = { workspace = true, optional = true }
 mimetype = { workspace = true, optional = true }
 

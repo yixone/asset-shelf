@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
-use join::{JoinBuilder, impl_joinable};
-
 use crate::{
     assets::{Asset, AssetFeatures, similar::SimilarAsset},
+    impl_joinable,
+    join::JoinBuilder,
     media::{MediaFile, MediaVariant},
     types::{AssetId, MediaId},
 };

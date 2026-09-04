@@ -1,7 +1,6 @@
-use join::impl_joinable;
-
 use crate::{
     assets::Asset,
+    impl_joinable,
     types::{AssetId, CollectionId},
 };
 

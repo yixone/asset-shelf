@@ -1,8 +1,8 @@
-use join::{JoinBuilder, impl_joinable};
-
 use crate::{
     assets::view::AssetView,
     collections::{Collection, CollectionAdditions, CollectionAsset},
+    impl_joinable,
+    join::JoinBuilder,
     types::AssetId,
 };
 

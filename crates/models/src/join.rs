@@ -1,4 +1,4 @@
-//! `Joiner` - is a package for combining related types
+//! `Join` - is a package for combining related types
 
 use std::{collections::HashMap, hash::Hash};
 
@@ -168,7 +168,7 @@ impl<T> JoinBuilder<T> {
 #[macro_export]
 macro_rules! impl_joinable {
     ($right:path[$($rk:ident).+] with $left:ty[$($lk:ident).+] as $keyt:ty) => {
-        impl $crate::Joinable<$right> for $left {
+        impl $crate::join::Joinable<$right> for $left {
             type Key = $keyt;
             fn key(&self) -> &Self::Key {
                 &self.$($lk).+
@@ -178,7 +178,7 @@ macro_rules! impl_joinable {
             }
         }
 
-        impl $crate::Joinable<$left> for $right {
+        impl $crate::join::Joinable<$left> for $right {
             type Key = $keyt;
             fn key(&self) -> &Self::Key {
                 &self.$($rk).+
