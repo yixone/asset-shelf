@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
-use flake_id::FlakeIdGenerator;
 use tokio::sync::Notify;
 
 use crate::{
@@ -18,7 +17,7 @@ use crate::{
 pub struct JobsDispatcher<J: BackgroundJob> {
     inner: Mutex<JobsQueueInner<J>>,
     on_new_job: Notify,
-    flake: Arc<FlakeIdGenerator>,
+    id: Mutex<u64>,
 }
 
 impl<J: BackgroundJob> JobsDispatcher<J> {
@@ -31,13 +30,24 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
                 pending_kinds: HashSet::new(),
             }),
             on_new_job: Notify::new(),
-            flake: Arc::new(FlakeIdGenerator::new(0)),
+            id: Mutex::new(0),
         }
     }
 
     /// Returns the mutex guard for the jobs queue contents
     fn lock<'a>(&'a self) -> MutexGuard<'a, JobsQueueInner<J>> {
         self.inner.lock().unwrap_or_else(|f| f.into_inner())
+    }
+
+    /// Returns the next id of this [`JobsDispatcher<J>`]
+    fn next_id(&self) -> JobId {
+        let mut lock = self.id.lock().unwrap_or_else(|f| f.into_inner());
+
+        let id = *lock;
+
+        *lock = lock.saturating_add(1);
+
+        JobId(id)
     }
 
     /// Returns the number of running background jobs
@@ -70,7 +80,7 @@ impl<J: BackgroundJob> JobsDispatcher<J> {
                 continue;
             }
 
-            let id = self.flake.get_id_as();
+            let id = self.next_id();
             lock.queue.push_back((id, job));
 
             added.push(id);

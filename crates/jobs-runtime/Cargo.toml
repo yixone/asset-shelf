@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 # Workspace
-flake-id = { workspace = true }
 result = { workspace = true }
 
 # External

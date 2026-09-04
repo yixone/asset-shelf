@@ -4,7 +4,6 @@ use std::{
     time::Duration,
 };
 
-use flake_id::{FlakeId, FlakeIdGenerator};
 use tokio::{sync::Notify, time::Instant};
 
 use crate::{JobsSchedulerSnapshot, job::BackgroundJob};
@@ -14,7 +13,7 @@ use crate::{JobsSchedulerSnapshot, job::BackgroundJob};
 pub struct Schedule<J: BackgroundJob> {
     inner: Mutex<ScheduleInner<J>>,
     notify: Notify,
-    flake: FlakeIdGenerator,
+    id: Mutex<u64>,
 }
 
 #[derive(Debug)]
@@ -32,12 +31,23 @@ impl<J: BackgroundJob> Schedule<J> {
                 waiting: None,
             }),
             notify: Notify::new(),
-            flake: FlakeIdGenerator::new(0),
+            id: Mutex::new(0),
         }
     }
 
     fn lock<'a>(&'a self) -> MutexGuard<'a, ScheduleInner<J>> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Returns the next id of this [`Schedule<J>`]
+    fn next_id(&self) -> ScheduledJobId {
+        let mut lock = self.id.lock().unwrap_or_else(|f| f.into_inner());
+
+        let id = *lock;
+
+        *lock = lock.saturating_add(1);
+
+        ScheduledJobId(id)
     }
 
     /// Returns the snapshot of this [`Schedule`]
@@ -73,7 +83,7 @@ impl<J: BackgroundJob> Schedule<J> {
 
         for (j, s) in jobs {
             lock.scheduled_queue.push(ScheduledJob {
-                id: self.flake.get_id_as(),
+                id: self.next_id(),
                 job: j.clone(),
                 schedule: s,
             });
@@ -231,10 +241,4 @@ impl JobSchedule {
 
 /// Scheduler job identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ScheduledJobId(FlakeId);
-
-impl From<FlakeId> for ScheduledJobId {
-    fn from(id: FlakeId) -> Self {
-        ScheduledJobId(id)
-    }
-}
+pub struct ScheduledJobId(u64);
