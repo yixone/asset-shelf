@@ -8,8 +8,8 @@ pub mod kind;
 pub use crate::kind::MimeKind;
 
 struct MimePattern {
-    pub mime: MimeType,
-    pub matcher: fn(&[u8]) -> bool,
+    mime: MimeType,
+    matcher: fn(&[u8]) -> bool,
 }
 
 define_mimes! {
