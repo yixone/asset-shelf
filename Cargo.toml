@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/backup",
     # Application crates
     "crates/config",
     "crates/db",
@@ -23,6 +24,7 @@ members = [
 
 [workspace.dependencies]
 # Workspace crates
+backup = { path = "crates/backup" }
 config = { path = "crates/config" }
 db = { path = "crates/db" }
 db-core = { path = "crates/db-core" }

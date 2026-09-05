@@ -13,7 +13,7 @@ pub mod metrics;
 
 pub const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const CONFIG_PATH: &str = "storage/config.toml";
+pub const CONFIG_PATH: &str = "storage/config.toml";
 
 /// Loads the application configuration from the file
 pub fn load_config() -> Result<Arc<ApplicationConfig>> {

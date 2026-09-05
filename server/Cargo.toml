@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # Workspace
+backup = { workspace = true }
 config = { workspace = true }
 db = { workspace = true }
 events = { workspace = true }

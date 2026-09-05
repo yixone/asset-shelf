@@ -409,6 +409,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "backup"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "db",
+ "flake-id",
+ "result",
+ "serde",
+ "tokio",
+ "toml",
+ "tracing",
+]
+
+[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2670,6 +2684,7 @@ dependencies = [
  "actix-cors",
  "actix-multipart",
  "actix-web",
+ "backup",
  "chrono",
  "config",
  "db",

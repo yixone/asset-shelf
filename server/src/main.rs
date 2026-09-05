@@ -2,6 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, dev::ServerHandle, web};
+use backup::BackupManager;
 use config::{DatabaseDriverConfig, StorageBackendConfig};
 use db::Database;
 use events::EventBus;
@@ -47,6 +48,9 @@ async fn main() -> Result<()> {
         }
     };
     let repos = db.repos_shared();
+
+    let backup = BackupManager::new("storage/backups", SERVER_VERSION);
+    backup.backup(&db).await?;
 
     // Opens the file storage
     let storage = match cfg.storage.backend() {

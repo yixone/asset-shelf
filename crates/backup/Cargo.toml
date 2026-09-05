@@ -1,0 +1,17 @@
+[package]
+name = "backup"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Workspace
+db = { workspace = true }
+flake-id = { workspace = true }
+result = { workspace = true }
+
+# External
+chrono = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["fs", "io-util"] }
+toml = { workspace = true }
+tracing = { workspace = true }

@@ -78,12 +78,22 @@ impl SqliteDatabase {
         self.pool.begin().await.to_app_err()
     }
 
-    pub fn repositories(self) -> RepositoryContext {
-        let db = Arc::new(self);
+    /// Returns the context of repositories created from an open SQLite database
+    pub fn repositories(self: &Arc<Self>) -> RepositoryContext {
         RepositoryContext {
-            assets: Arc::new(SqliteAssetRepository { db: db.clone() }),
-            collections: Arc::new(SqliteCollectionRepository { db: db.clone() }),
-            media: Arc::new(SqliteMediaRepository { db: db.clone() }),
+            assets: Arc::new(SqliteAssetRepository { db: self.clone() }),
+            collections: Arc::new(SqliteCollectionRepository { db: self.clone() }),
+            media: Arc::new(SqliteMediaRepository { db: self.clone() }),
         }
+    }
+
+    /// Backs up the database to the specified file
+    pub async fn backup(&self, path: &str) -> Result<()> {
+        sqlx::query("VACUUM INTO ?")
+            .bind(path)
+            .execute(&self.pool)
+            .await
+            .to_app_err()?;
+        Ok(())
     }
 }
