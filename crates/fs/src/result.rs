@@ -7,6 +7,9 @@ pub enum StorageError {
     /// The file storage is mounted in read-only mode
     ReadOnly,
 
+    /// The requested file was not found
+    NotFound,
+
     /// [`std::io`] error
     Io(std::io::Error),
 }

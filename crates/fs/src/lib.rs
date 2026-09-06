@@ -4,5 +4,6 @@ pub mod path;
 pub mod result;
 
 pub mod backend;
+pub mod native;
 
-mod native;
+pub(crate) mod helpers;

@@ -5,6 +5,7 @@ use crate::result::StorageError;
 const SEP_CHAR: char = '/';
 
 /// Relative path to the file from the storage root
+#[derive(Debug, Clone)]
 pub struct StoragePath {
     buf: String,
 }

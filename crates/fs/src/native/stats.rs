@@ -6,7 +6,7 @@ use crate::{backend::FsStats, result::StorageError};
 
 #[cfg(unix)]
 /// Calls `statvfs` and returns [`FsStats`] for the specified path
-fn statvfs(path: &Path) -> Result<FsStats, StorageError> {
+pub fn statvfs(path: &Path) -> Result<FsStats, StorageError> {
     use std::{ffi::CString, mem, os::unix::ffi::OsStrExt};
 
     use libc;
@@ -33,7 +33,7 @@ fn statvfs(path: &Path) -> Result<FsStats, StorageError> {
 
 #[cfg(windows)]
 /// Calls `GetDiskFreeSpaceExW` and returns [`FsStats`] for the specified path
-fn statvfs(path: &Path) -> Result<FsStats, StorageError> {
+pub fn statvfs(path: &Path) -> Result<FsStats, StorageError> {
     use std::{iter::Once, os::windows::ffi::OsStrExt};
 
     use winapi;

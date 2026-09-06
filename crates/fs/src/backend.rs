@@ -58,13 +58,24 @@ pub trait FileStorageBackend: Send + Sync {
 
 /// Transferring data from one storage to another
 #[async_trait::async_trait]
-pub trait FileStorageTransfer<T> {
+pub trait FileStorageTransfer<T: FileStorageBackend>
+where
+    Self: FileStorageBackend,
+{
     /// Moves a file from one storage to another
     async fn transfer(
         &self,
         from: &StoragePath,
         to: &StoragePath,
-        to_storage: T,
+        target: &T,
+    ) -> Result<bool, StorageError>;
+
+    /// Copies a file from one storage to another
+    async fn copy(
+        &self,
+        from: &StoragePath,
+        to: &StoragePath,
+        target: &T,
     ) -> Result<bool, StorageError>;
 }
 

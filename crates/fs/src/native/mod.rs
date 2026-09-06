@@ -1,4 +1,6 @@
 //! Native FS file storage
 
-mod backend;
-mod stats;
+pub mod backend;
+pub mod stats;
+
+pub use backend::FsStorageBackend;
