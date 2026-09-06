@@ -1,0 +1,26 @@
+[package]
+name = "fs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# External
+async-trait = { workspace = true }
+bytes = { workspace = true }
+futures.workspace = true
+tokio = { workspace = true, features = ["io-util", "fs", "time"] }
+tokio-util = { workspace = true, features = ["io"] }
+tracing = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winapi = { workspace = true, features = [
+    "handleapi",
+    "processthreadsapi",
+    "winerror",
+    "fileapi",
+    "winbase",
+    "std",
+] }

@@ -9,6 +9,7 @@ members = [
     "crates/db-sqlite",
     "crates/events",
     "crates/flake-id",
+    "crates/fs",
     "crates/jobs",
     "crates/jobs-runtime",
     "crates/media",
@@ -40,7 +41,6 @@ result = { path = "crates/result" }
 storage = { path = "crates/storage" }
 telemetry = { path = "crates/telemetry" }
 
-
 # External crates
 actix-cors = "0.7.1"
 actix-multipart = "0.7.2"
@@ -62,3 +62,7 @@ toml = "1.1.4"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 webp = "0.3.1"
+
+# FFI / System
+libc = "0.2.189"
+winapi = "0.3.9"
