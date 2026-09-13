@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = ["crates/base62", "crates/snowflake", "crates/schema"]
+
+[workspace.dependencies]
+# --- Workspace crates ---
+
+# Snowflake id generator
+snowflake.path = "crates/snowflake"
+
+# Domain types and structures used in the application
+schema.path = "crates/schema"
+
+
+# Base62 encoder/decoder
+base62.path = "crates/base62"
+
+# --- Extern crates ---
+rand = "0.10.1"
