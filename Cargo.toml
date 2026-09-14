@@ -16,4 +16,5 @@ schema.path = "crates/schema"
 base62.path = "crates/base62"
 
 # --- Extern crates ---
+chrono = "0.4.42"
 rand = "0.10.1"

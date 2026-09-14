@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 # Workspace
 snowflake.workspace = true
+
+# External
+chrono.workspace = true
