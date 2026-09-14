@@ -12,8 +12,6 @@
 //! - `serde` - Enables `serde::Serialize` and `serde::Deserialize`
 //!   implementations for supported types, excluding domain entities
 
-#[macro_use]
-mod id_macro;
 pub mod id;
 
 pub mod models;
