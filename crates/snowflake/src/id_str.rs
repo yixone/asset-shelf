@@ -5,6 +5,8 @@ use crate::SnowflakeId;
 /// [`SnowflakeId`] converted to a string via [`base62`] encoding
 ///
 /// For more information, see the [`SnowflakeId`] documentation
+#[cfg_attr(feature = "sqlx", derive(sqlx::Type), sqlx(transparent))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SnowflakeIdStr(pub(crate) String);
 

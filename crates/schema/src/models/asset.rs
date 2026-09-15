@@ -1,16 +1,17 @@
-//! Asset domain model, including its types and behavour
+//! Asset domain model, including its types and behaviour
 
 use chrono::{DateTime, Utc};
 
 use crate::{
     id::{AssetId, MediaId},
-    types::media::MediaType,
+    types::MediaType,
 };
 
 /// Represents an asset managed by the application
 ///
 /// An asset is a primary domain entity for managing user-uploaded data.
 /// It contains the identification data, metadata, and lifecycle state
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 #[derive(Debug)]
 pub struct Asset {
     /// Unique asset identifier
@@ -18,7 +19,7 @@ pub struct Asset {
 
     /// Identifier of the media related with the asset
     ///
-    /// Reflects a 1:1 relationship between [`Asset`] : [`Media`]
+    /// Represents a 1:1 relation between [`Asset`] : [`Media`]
     pub media: MediaId,
 
     /// Asset creation datetime
@@ -76,13 +77,18 @@ impl Asset {
     }
 
     /// Returns `true` if the current asset is marked as deleted
-    pub fn is_deleted(&self) -> bool {
+    pub fn is_soft_deleted(&self) -> bool {
         self.deleted_at.is_some()
+    }
+
+    /// Returns `true` if the current asset is ready for use
+    pub fn is_ready(&self) -> bool {
+        self.state == AssetState::Ready
     }
 }
 
 /// Represents the current lifecycle state of an asset
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AssetState {
     /// The asset has been uploaded and is awaiting processing
     Pending,

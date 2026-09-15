@@ -8,6 +8,11 @@
 //! let generator = SnowflakeGenerator::new(0);
 //! let id = generator.get_id();
 //! ```
+//!
+//! ## Integration with the Rust crates ecosystem:
+//!
+//! - `sqlx`: Enables [`sqlx::Type`] implementations for types
+//! - `serde`: Enables [`serde::Serialize`] and [`serde::Deserialize`] implementations for types
 
 mod generator;
 

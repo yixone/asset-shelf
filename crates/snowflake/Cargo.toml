@@ -3,6 +3,15 @@ name = "snowflake"
 version = "0.1.0"
 edition = "2024"
 
+
+[features]
+sqlx = ["dep:sqlx"]
+serde = ["dep:serde"]
+
 [dependencies]
 # Workspace
 base62.workspace = true
+
+# External
+serde = { workspace = true, features = ["derive"], optional = true }
+sqlx = { workspace = true, optional = true }

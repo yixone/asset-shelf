@@ -7,10 +7,13 @@
 //!
 //! Support for third-party crates is optional and enabled via dependency features:
 //!
-//! - `sqlx` - Enables `sqlx::Type` and `sqlx::FromRow`
+//! - `sqlx`: Enables [`sqlx::Type`] and [`sqlx::FromRow`]
 //!   implementations for types defined in this crate
-//! - `serde` - Enables `serde::Serialize` and `serde::Deserialize`
+//! - `serde`: Enables [`serde::Serialize`] and [`serde::Deserialize`]
 //!   implementations for supported types, excluding domain entities
+
+#[macro_use]
+mod derived;
 
 pub mod id;
 

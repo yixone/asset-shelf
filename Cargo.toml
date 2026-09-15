@@ -18,3 +18,5 @@ base62.path = "crates/base62"
 # --- Extern crates ---
 chrono = "0.4.42"
 rand = "0.10.1"
+serde = "1.0.219"
+sqlx = "0.8.5"

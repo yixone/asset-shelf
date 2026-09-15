@@ -3,9 +3,15 @@ name = "schema"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+sqlx = ["dep:sqlx", "snowflake/sqlx"]
+serde = ["dep:serde", "chrono/serde", "snowflake/serde"]
+
 [dependencies]
 # Workspace
 snowflake.workspace = true
 
 # External
 chrono.workspace = true
+serde = { workspace = true, features = ["derive"], optional = true }
+sqlx = { workspace = true, features = ["chrono"], optional = true }
