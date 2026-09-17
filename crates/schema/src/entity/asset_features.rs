@@ -1,5 +1,3 @@
-//! Asset features model, including its types and behaviour
-
 use crate::id::AssetId;
 
 /// Represents the asset's calculated features
@@ -20,11 +18,24 @@ pub struct AssetFeatures {
 
     /// Average asset hash
     ///
-    /// It is calculated based on the deviation of the image colors from the mean value
+    /// Calculated based on the deviation of the image colors from the mean value
     pub a_hash: Option<i64>,
 
     /// Asset perceptual hash
     ///
-    /// It is calculated using the image's DCT matrix
+    /// Calculated using the image's DCT matrix
     pub p_hash: Option<i64>,
+}
+
+impl AssetFeatures {
+    /// Creates a new empty [`AssetFeatures`]
+    pub fn new(id: AssetId) -> AssetFeatures {
+        AssetFeatures {
+            id,
+            width: None,
+            height: None,
+            a_hash: None,
+            p_hash: None,
+        }
+    }
 }

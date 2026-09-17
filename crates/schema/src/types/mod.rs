@@ -1,7 +1,5 @@
-//! Main application types
-
+pub mod asset;
 pub mod color;
-pub mod media;
 
+pub use asset::{AssetState, AssetType};
 pub use color::Color;
-pub use media::MediaType;

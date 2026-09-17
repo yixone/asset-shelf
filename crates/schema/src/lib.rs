@@ -17,5 +17,5 @@ mod derived;
 
 pub mod id;
 
-pub mod models;
+pub mod entity;
 pub mod types;

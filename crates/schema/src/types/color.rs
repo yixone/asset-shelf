@@ -1,7 +1,4 @@
-//! Types related to the storage and processing of colors
-
-/// Bitmask for converting to an 8-bit number
-const U8_MASK: i32 = 0xFF;
+// TODO: Move to `media-core` crate
 
 const RED_SHIFT: usize = 16;
 const GREEN_SHIFT: usize = 8;
@@ -24,7 +21,7 @@ impl Color {
     pub const WHITE: Color = Color(0xFFFFFF);
 
     /// Black color (`#000000`)
-    pub const BLACK: Color = Color(0);
+    pub const BLACK: Color = Color(0x0);
 
     /// Creates a new [`Color`]
     pub const fn new(red: u8, green: u8, blue: u8) -> Self {
@@ -34,9 +31,9 @@ impl Color {
     /// Returns the color as a RGB channels tuple
     pub const fn rgb(self) -> (u8, u8, u8) {
         (
-            ((self.0 >> RED_SHIFT) & U8_MASK) as u8,
-            ((self.0 >> GREEN_SHIFT) & U8_MASK) as u8,
-            ((self.0) & U8_MASK) as u8,
+            ((self.0 >> RED_SHIFT) & 0xFF) as u8,
+            ((self.0 >> GREEN_SHIFT) & 0xFF) as u8,
+            ((self.0) & 0xFF) as u8,
         )
     }
 

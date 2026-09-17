@@ -1,10 +1,8 @@
-//! Asset domain model, including its types and behaviour
-
 use chrono::{DateTime, Utc};
 
 use crate::{
     id::{AssetId, MediaId},
-    types::MediaType,
+    types::{AssetState, AssetType},
 };
 
 /// Represents an asset managed by the application
@@ -19,19 +17,8 @@ pub struct Asset {
 
     /// Identifier of the media related with the asset
     ///
-    /// Represents a 1:1 relation between [`Asset`] : [`Media`]
-    pub media: MediaId,
-
-    /// Asset creation datetime
-    pub created_at: DateTime<Utc>,
-
-    /// Datetime of the asset's last modification
-    pub updated_at: DateTime<Utc>,
-
-    /// Optional asset deletion datetime
-    ///
-    /// If `Some`, the asset is considered deleted
-    pub deleted_at: Option<DateTime<Utc>>,
+    /// Represents a 1:1 relation between `Asset` and `Media`
+    pub media_id: MediaId,
 
     /// Optional name for the asset
     pub name: Option<String>,
@@ -40,10 +27,30 @@ pub struct Asset {
     pub caption: Option<String>,
 
     /// Type of the asset's original media file
-    pub media_type: MediaType,
+    pub asset_type: AssetType,
 
     /// Current lifecycle state of the asset
     pub state: AssetState,
+
+    /// SHA-1 checksum for the original asset file
+    pub sha1: Vec<u8>,
+
+    /// The identifier of the asset for which the current asset is a duplicate
+    pub duplicate_of: Option<AssetId>,
+
+    /// If `true`, the original file has been lost from storage and the asset cannot be used
+    pub is_offline: bool,
+
+    /// Asset creation time
+    pub created_at: DateTime<Utc>,
+
+    /// Time of the asset's last modification
+    pub updated_at: DateTime<Utc>,
+
+    /// Optional asset deletion time
+    ///
+    /// If `Some`, the asset is considered deleted
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 impl Asset {
@@ -56,18 +63,22 @@ impl Asset {
         media: MediaId,
         name: Option<String>,
         caption: Option<String>,
-        media_type: MediaType,
+        asset_type: AssetType,
+        sha1: Vec<u8>,
     ) -> Self {
         Self {
             id,
-            media,
+            media_id: media,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             deleted_at: None,
             name,
             caption,
-            media_type,
+            asset_type,
             state: AssetState::Pending,
+            sha1,
+            duplicate_of: None,
+            is_offline: false,
         }
     }
 
@@ -85,20 +96,9 @@ impl Asset {
     pub fn is_ready(&self) -> bool {
         self.state == AssetState::Ready
     }
-}
 
-/// Represents the current lifecycle state of an asset
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum AssetState {
-    /// The asset has been uploaded and is awaiting processing
-    Pending,
-
-    /// The asset is being processed
-    Processing,
-
-    /// The asset has been processed and is ready for use
-    Ready,
-
-    /// Asset processing failed with an error
-    Failed,
+    /// Returns `true` if the current asset is a duplicate of another asset
+    pub fn is_duplicate(&self) -> bool {
+        self.duplicate_of.is_some()
+    }
 }
