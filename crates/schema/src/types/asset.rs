@@ -1,5 +1,5 @@
 auto_derived_ty! {
-    /// Represents the current lifecycle state of an asset
+    /// Represents the lifecycle state of an asset
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum AssetState {
         /// The asset has been uploaded and is awaiting processing
@@ -17,7 +17,7 @@ auto_derived_ty! {
 }
 
 auto_derived_ty! {
-    /// Generalized asset type
+    /// Generalized type of the asset's media
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum AssetType {
         /// Image-type media
@@ -36,5 +36,20 @@ impl AssetType {
     /// Returns `true` if the current [`AssetType`] is a video
     pub fn is_video(&self) -> bool {
         matches!(self, AssetType::Video)
+    }
+}
+
+auto_derived_ty! {
+    no_sqlx;
+
+    /// Specifies the field used to sort assets
+    #[derive(Debug)]
+    pub enum AssetSortBy {
+        /// Sort by creation date
+        CreatedAt,
+        /// Sort by last modified date
+        UpdatedAt,
+        /// Sort by original file size
+        FileSize,
     }
 }

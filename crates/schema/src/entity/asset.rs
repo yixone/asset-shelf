@@ -15,7 +15,7 @@ pub struct Asset {
     /// Unique asset identifier
     pub id: AssetId,
 
-    /// Identifier of the media related with the asset
+    /// Identifier of the media associated with the asset
     ///
     /// Represents a 1:1 relation between `Asset` and `Media`
     pub media_id: MediaId,
@@ -35,7 +35,7 @@ pub struct Asset {
     /// SHA-1 checksum for the original asset file
     pub sha1: Vec<u8>,
 
-    /// The identifier of the asset for which the current asset is a duplicate
+    /// Identifier of the asset that this asset is considered a duplicate of
     pub duplicate_of: Option<AssetId>,
 
     /// If `true`, the original file has been lost from storage and the asset cannot be used
@@ -66,11 +66,13 @@ impl Asset {
         asset_type: AssetType,
         sha1: Vec<u8>,
     ) -> Self {
+        let now = Utc::now();
+
         Self {
             id,
             media_id: media,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: now,
+            updated_at: now,
             deleted_at: None,
             name,
             caption,

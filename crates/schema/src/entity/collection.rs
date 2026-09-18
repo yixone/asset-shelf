@@ -19,6 +19,7 @@ pub struct Collection {
 
     /// Display name of the collection
     pub name: String,
+
     /// Collection description
     pub description: Option<String>,
 
@@ -51,6 +52,11 @@ impl Collection {
             deleted_at: None,
             preview_rel_id: None,
         }
+    }
+
+    /// Returns `true` if the current collection is a child of another collection
+    pub fn has_parent(&self) -> bool {
+        self.parent.is_some()
     }
 
     /// Returns `true` if the current collection is marked as deleted

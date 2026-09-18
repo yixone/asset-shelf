@@ -19,3 +19,15 @@ pub struct CollectionAsset {
     /// The identifier of the asset added to the collection
     pub asset: AssetId,
 }
+
+impl CollectionAsset {
+    /// Creates a new [`CollectionAsset`]
+    pub fn new(id: CollectionAssetId, collection: CollectionId, asset: AssetId) -> Self {
+        Self {
+            id,
+            created_at: Utc::now(),
+            collection,
+            asset,
+        }
+    }
+}
