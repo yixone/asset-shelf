@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
+use mime::MimeKind;
 
 use crate::{
     id::{AssetId, MediaId},
-    types::{AssetState, AssetType},
+    types::AssetState,
 };
 
 /// Represents an asset managed by the application
@@ -27,7 +28,7 @@ pub struct Asset {
     pub caption: Option<String>,
 
     /// Type of the asset's original media file
-    pub asset_type: AssetType,
+    pub asset_type: MimeKind,
 
     /// Current lifecycle state of the asset
     pub state: AssetState,
@@ -63,7 +64,7 @@ impl Asset {
         media: MediaId,
         name: Option<String>,
         caption: Option<String>,
-        asset_type: AssetType,
+        asset_type: MimeKind,
         sha1: Vec<u8>,
     ) -> Self {
         let now = Utc::now();

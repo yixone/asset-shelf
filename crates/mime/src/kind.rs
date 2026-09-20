@@ -14,3 +14,20 @@ pub enum MimeKind {
     /// No specific kind assigned
     Unknown,
 }
+
+impl MimeKind {
+    /// Returns `true` if the current [`MimeKind`] is an image
+    pub fn is_image(&self) -> bool {
+        *self == MimeKind::Image
+    }
+
+    /// Returns `true` if the current [`MimeKind`] is a video
+    pub fn is_video(&self) -> bool {
+        *self == MimeKind::Video
+    }
+
+    /// Returns `true` if the current [`MimeKind`] is unknown
+    pub fn is_unknown(&self) -> bool {
+        *self == MimeKind::Unknown
+    }
+}

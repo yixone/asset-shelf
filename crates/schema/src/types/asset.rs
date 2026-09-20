@@ -17,29 +17,6 @@ auto_derived_ty! {
 }
 
 auto_derived_ty! {
-    /// Generalized type of the asset's media
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub enum AssetType {
-        /// Image-type media
-        Image,
-        /// Video-type media
-        Video,
-    }
-}
-
-impl AssetType {
-    /// Returns `true` if the current [`AssetType`] is an image
-    pub fn is_image(&self) -> bool {
-        matches!(self, AssetType::Image)
-    }
-
-    /// Returns `true` if the current [`AssetType`] is a video
-    pub fn is_video(&self) -> bool {
-        matches!(self, AssetType::Video)
-    }
-}
-
-auto_derived_ty! {
     no_sqlx;
 
     /// Specifies the field used to sort assets

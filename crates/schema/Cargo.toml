@@ -4,11 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-sqlx = ["dep:sqlx", "snowflake/sqlx"]
-serde = ["dep:serde", "chrono/serde", "snowflake/serde"]
+sqlx = ["dep:sqlx", "snowflake/sqlx", "mime/sqlx"]
+serde = ["dep:serde", "chrono/serde", "snowflake/serde", "mime/serde"]
 
 [dependencies]
 # Workspace
+mime.workspace = true
 snowflake.workspace = true
 
 # External
