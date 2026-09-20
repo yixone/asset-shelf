@@ -12,8 +12,15 @@ macro_rules! mime {
         ///
         /// Identifies the format and general content type of the file
         #[derive(Debug, Clone, Copy, PartialEq)]
+        #[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum MimeType {
-            $( $( #[$meta] )* $id ),*
+            $(
+                $( #[$meta] )*
+                #[cfg_attr(feature = "sqlx", sqlx(rename = $mimetype))]
+                #[cfg_attr(feature = "serde",serde(rename = $mimetype))]
+                $id
+            ),*
         }
 
         impl MimeType {

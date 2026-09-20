@@ -1,17 +1,14 @@
 [package]
-name = "snowflake"
+name = "mime"
 version = "0.1.0"
 edition = "2024"
-
 
 [features]
 sqlx = ["dep:sqlx"]
 serde = ["dep:serde"]
 
-[dependencies]
-# Workspace
-base62.workspace = true
 
+[dependencies]
 # External
 serde = { workspace = true, features = ["derive"], optional = true }
-sqlx = { workspace = true, optional = true }
+sqlx = { workspace = true, features = ["chrono"], optional = true }

@@ -20,6 +20,8 @@
 /// // Generates an ID using the generator
 /// let id = generator.get_id();
 /// ```
+#[cfg_attr(feature = "sqlx", derive(sqlx::Type), sqlx(transparent))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SnowflakeId(pub(crate) i64);
 
