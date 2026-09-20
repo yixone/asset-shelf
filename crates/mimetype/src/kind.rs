@@ -5,4 +5,6 @@ pub enum MimeKind {
     Image,
     /// Video formats (MP4, WebM, AVI, etc.)
     Video,
+    /// No specific kind assigned
+    Unknown,
 }

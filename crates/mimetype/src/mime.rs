@@ -1,5 +1,6 @@
 use crate::MimeKind;
 
+/// Defines an enum with MimeType
 macro_rules! mime {
     (
         $(
@@ -58,6 +59,9 @@ mime! {
     Video, Avi, "video/x-msvideo", "avi";
     /// WebM video
     Video, Webm, "video/webm", "webm";
+
+    /// Generic binary data
+    Unknown, OctetStream, "application/octet-stream", "bin";
 }
 
 impl MimeType {
