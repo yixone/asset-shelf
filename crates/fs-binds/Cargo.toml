@@ -1,0 +1,17 @@
+[package]
+name = "fs-binds"
+version = "0.1.0"
+edition = "2024"
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winapi = { workspace = true, features = [
+    "handleapi",
+    "processthreadsapi",
+    "winerror",
+    "fileapi",
+    "winbase",
+    "std",
+] }
