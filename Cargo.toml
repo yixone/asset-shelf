@@ -2,28 +2,27 @@
 resolver = "2"
 members = [
     "crates/base62",
-    "crates/snowflake",
-    "crates/schema",
+    "crates/fs-sys",
     "crates/mime",
+    "crates/schema",
+    "crates/snowflake",
     "crates/storage",
-    "crates/fs-binds",
 ]
 
 [workspace.dependencies]
 # --- Workspace crates ---
 
+# Base62 encoder/decoder
+base62.path = "crates/base62"
+# Low-level cross-platform file system APIs
+fs-sys.path = "crates/fs-sys"
+# MIME types and detector 
+mime.path = "crates/mime"
+# Domain types and structures used in the application
+schema.path = "crates/schema"
 # Snowflake id generator
 snowflake.path = "crates/snowflake"
 
-# MIME types and detector 
-mime.path = "crates/mime"
-
-# Domain types and structures used in the application
-schema.path = "crates/schema"
-
-
-# Base62 encoder/decoder
-base62.path = "crates/base62"
 
 # --- Extern crates ---
 chrono = "0.4.42"
