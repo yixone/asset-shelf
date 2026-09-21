@@ -13,3 +13,18 @@ pub struct CollectionSummary {
     /// Collection previews
     pub thumnails: Vec<MediaId>,
 }
+
+auto_derived_ty! {
+    no_sqlx;
+
+    /// Specifies the field used to sort collections
+    #[derive(Debug)]
+    pub enum CollectionSortBy {
+        /// Sort by creation date
+        CreatedAt,
+        /// Sort by last modified date
+        UpdatedAt,
+        /// Sort by number of assets in the collection
+        AssetsCount,
+    }
+}

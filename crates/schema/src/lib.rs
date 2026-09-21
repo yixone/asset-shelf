@@ -15,6 +15,7 @@
 #[macro_use]
 mod derived;
 
+pub mod event;
 pub mod id;
 
 pub mod entity;
