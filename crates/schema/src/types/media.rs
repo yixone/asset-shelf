@@ -76,15 +76,15 @@ pub struct MediaStorageLayout;
 impl MediaStorageLayout {
     /// Generates a [`MediaFileKey`] using the `v1` storage layout
     ///
-    ///
+    /// The key has following format: `ab/cd/abcdef/original`
     pub fn v1(id: &MediaId, variant: MediaVariant) -> MediaFileKey {
         MediaFileKey(shard(id.to_string(), 2)).push(variant.as_str())
     }
 }
 
 /// Applies path sharding, transforming: `abcdef` into `ab/cd/abcdef`
-fn shard(path: impl AsRef<str>, steps: usize) -> String {
-    let path = path.as_ref();
+fn shard(value: impl AsRef<str>, steps: usize) -> String {
+    let path = value.as_ref();
 
     let mut res = String::with_capacity(path.len() + steps * 3);
 
