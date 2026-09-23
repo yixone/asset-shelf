@@ -7,7 +7,6 @@ edition = "2024"
 sqlx = ["dep:sqlx"]
 serde = ["dep:serde"]
 
-
 [dependencies]
 # External
 serde = { workspace = true, features = ["derive"], optional = true }

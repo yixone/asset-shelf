@@ -7,5 +7,5 @@ pub mod query;
 pub use asset::{AssetSortBy, AssetState};
 pub use collection::{CollectionSortBy, CollectionSummary};
 pub use color::Color;
-pub use media::MediaVariant;
+pub use media::{MediaFileKey, MediaStorageLayout, MediaVariant};
 pub use query::SortOrder;

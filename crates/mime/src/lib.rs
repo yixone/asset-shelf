@@ -12,5 +12,6 @@ mod mime;
 mod guess;
 
 pub use guess::guess_mime;
+
 pub use kind::MimeKind;
 pub use mime::MimeType;

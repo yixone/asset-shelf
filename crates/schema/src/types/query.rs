@@ -1,12 +1,12 @@
-auto_derived_ty! {
-    no_sqlx;
-
-    /// Specifies the field used to sort assets
-    #[derive(Debug)]
-    pub enum SortOrder {
-        /// Ascending order
-        Asc,
-        /// Descending order
-        Desc
-    }
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[derive(Debug)]
+pub enum SortOrder {
+    /// Ascending order
+    Asc,
+    /// Descending order
+    Desc,
 }
