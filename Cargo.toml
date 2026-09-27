@@ -1,12 +1,20 @@
 [workspace]
 resolver = "2"
-members = ["crates/base62", "crates/mime", "crates/snowflake", "crates/storage"]
+members = [
+    "crates/base62",
+    "crates/mime",
+    "crates/schema",
+    "crates/snowflake",
+    "crates/storage",
+]
 
 [workspace.dependencies]
 # --- Workspace crates ---
 
 # Base62 encoder/decoder
 base62.path = "crates/base62"
+# Domain types and structures used in the application
+schema.path = "crates/schema"
 # MIME types and detector 
 mime.path = "crates/mime"
 # Snowflake id generator

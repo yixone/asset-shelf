@@ -8,7 +8,10 @@ use tokio::{
     io::{AsyncRead, AsyncSeek, AsyncWriteExt, BufReader, BufWriter},
 };
 
-use crate::{fs::rename_exclusive, utils::futures::asyncify};
+use crate::{
+    fs::{dir, rename_exclusive},
+    utils::futures::asyncify,
+};
 
 /// A file staged for atomic publication
 ///
@@ -16,8 +19,8 @@ use crate::{fs::rename_exclusive, utils::futures::asyncify};
 /// at its target path using [`StagedFile::commit`]. Dropping an uncommitted
 /// staged file removes its temporary file
 pub struct StagedFile {
-    temp_path: PathBuf,
-    target_path: PathBuf,
+    pub(crate) temp_path: PathBuf,
+    pub(crate) target_path: PathBuf,
     remove_on_drop: bool,
     size_bytes: u64,
 }
@@ -40,6 +43,9 @@ impl StagedFile {
     pub async fn commit(mut self) -> std::io::Result<()> {
         let from = self.temp_path.clone();
         let to = self.target_path.clone();
+
+        dir::create_parents(&to).await?;
+
         asyncify(move || rename_exclusive(from, to)).await??;
         self.remove_on_drop = false;
         Ok(())
@@ -91,6 +97,15 @@ pub struct FileWriter {
 }
 
 impl FileWriter {
+    /// Creates a new [`FileWriter`]
+    pub fn new(staged: StagedFile, writer: BufWriter<File>) -> Self {
+        Self {
+            staged,
+            writer,
+            size_bytes: 0,
+        }
+    }
+
     /// Writes data to the staged file
     pub async fn write(&mut self, data: impl AsRef<[u8]>) -> std::io::Result<()> {
         self._write(data.as_ref()).await
@@ -127,6 +142,11 @@ pub struct ForeignUploader {
 }
 
 impl ForeignUploader {
+    /// Creates a new [`ForeignUploader`]
+    pub fn new(staged: StagedFile) -> Self {
+        Self { staged }
+    }
+
     /// Returns the temporary path where the foreign writer should store data
     pub fn path(&self) -> &Path {
         &self.staged.temp_path
@@ -148,12 +168,28 @@ impl ForeignUploader {
 /// Provides access to a locally stored file
 pub struct LocalFile {
     path: PathBuf,
+    len: u64,
 }
 
 impl LocalFile {
+    /// Creates a new [`LocalFile`]
+    pub fn new(path: PathBuf, len: u64) -> Self {
+        Self { path, len }
+    }
+
     /// Returns the local filesystem path of this file
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// Returns the length of the file
+    pub fn len(&self) -> u64 {
+        self.len
+    }
+
+    /// Returns `true` if the file is empty
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -164,6 +200,11 @@ pub struct FileReader {
 }
 
 impl FileReader {
+    /// Creates a new [`FileReader`]
+    pub fn new(reader: BufReader<File>, len: u64) -> Self {
+        Self { reader, len }
+    }
+
     /// Returns the length of the file when the reader was created
     pub fn len(&self) -> u64 {
         self.len

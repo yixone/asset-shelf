@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# Workspace
+base62.workspace = true
+
 # External
 bytes = { workspace = true }
 futures.workspace = true

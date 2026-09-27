@@ -64,3 +64,9 @@ impl AsRef<str> for StoragePath {
         self.as_str()
     }
 }
+
+impl AsRef<StoragePath> for StoragePath {
+    fn as_ref(&self) -> &StoragePath {
+        self
+    }
+}
