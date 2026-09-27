@@ -1,34 +1,32 @@
 [workspace]
 resolver = "2"
-members = [
-    "crates/base62",
-    "crates/fs-sys",
-    "crates/mime",
-    "crates/schema",
-    "crates/snowflake",
-    "crates/storage",
-]
+members = ["crates/base62", "crates/mime", "crates/snowflake", "crates/storage"]
 
 [workspace.dependencies]
 # --- Workspace crates ---
 
 # Base62 encoder/decoder
 base62.path = "crates/base62"
-# Low-level cross-platform file system APIs
-fs-sys.path = "crates/fs-sys"
 # MIME types and detector 
 mime.path = "crates/mime"
-# Domain types and structures used in the application
-schema.path = "crates/schema"
 # Snowflake id generator
 snowflake.path = "crates/snowflake"
 
+storage.path = "crates/storage"
+
 
 # --- Extern crates ---
+async-trait = "0.1.89"
+bytes = "1.11.1"
 chrono = "0.4.42"
+futures = "0.3.32"
 rand = "0.10.1"
 serde = "1.0.219"
 sqlx = "0.8.5"
+tokio = "1.47.1"
+tokio-util = "0.7.16"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
 
 # --- FFI / System ---
 libc = "0.2.189"
