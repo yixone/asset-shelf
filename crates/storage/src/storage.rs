@@ -12,7 +12,7 @@ use crate::{
     path::{StoragePath, validate_path},
     result::{Result, StorageError},
     types::{DiskUsageStats, FileMetadata},
-    utils::futures::asyncify,
+    utils::{futures::asyncify, path::make_temp_path},
 };
 
 /// Managed file storage
@@ -80,13 +80,8 @@ impl Storage {
         let path = path.as_ref();
         validate_path(path)?;
 
-        let temp_name = path
-            .file_name()
-            .map(|n| format!("~{}-{}", n, base62::random_str(6)))
-            .ok_or(StorageError::InvalidPath)?;
-
-        let mut temp_path = self.realpath(path);
-        temp_path.set_file_name(temp_name);
+        let temp = make_temp_path(path.clone())?;
+        let temp_path = self.realpath(temp);
 
         dir::create_parents(&temp_path).await?;
 
