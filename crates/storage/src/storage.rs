@@ -180,6 +180,9 @@ impl Storage {
         Ok(metadata)
     }
 
+    /// Returns whether a file exists at the specified storage path
+    ///
+    /// Returns `false` if the path does not exists
     pub async fn exists(&self, path: impl AsRef<StoragePath>) -> Result<bool> {
         validate_path(&path)?;
         let path = self.realpath(path);

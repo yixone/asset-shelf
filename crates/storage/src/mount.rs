@@ -16,6 +16,7 @@ impl StorageMountPoint {
         Self { path }
     }
 
+    /// Returns disk usage stats for the fs containing the storage root
     pub async fn disk_usage(&self) -> std::io::Result<DiskUsageStats> {
         let path = self.path.clone();
         asyncify(move || statvfs(path)).await?
