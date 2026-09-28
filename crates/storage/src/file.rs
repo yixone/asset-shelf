@@ -3,13 +3,16 @@ use std::{
     pin::pin,
 };
 
+use futures::TryStreamExt;
 use tokio::{
     fs::File,
     io::{AsyncRead, AsyncSeek, AsyncWriteExt, BufReader, BufWriter},
 };
+use tokio_util::io::ReaderStream;
 
 use crate::{
     fs::{dir, rename_exclusive},
+    result::{Result, StorageError},
     utils::futures::asyncify,
 };
 
@@ -40,7 +43,7 @@ impl StagedFile {
     ///
     /// The operation fails if the target already exists. On failure, the
     /// staged file remains owned by the operation and is cleaned up on drop
-    pub async fn commit(mut self) -> std::io::Result<()> {
+    pub async fn commit(mut self) -> Result<()> {
         let from = self.temp_path.clone();
         let to = self.target_path.clone();
 
@@ -54,7 +57,7 @@ impl StagedFile {
     /// Aborts the staged file and removes its temporary file
     ///
     /// Aborting an already removed temporary file succeeds without error
-    pub async fn abort(mut self) -> std::io::Result<()> {
+    pub async fn abort(mut self) -> Result<()> {
         match tokio::fs::remove_file(&self.temp_path).await {
             Ok(_) => {
                 self.remove_on_drop = false;
@@ -66,9 +69,14 @@ impl StagedFile {
             }
             Err(e) => {
                 tracing::error!(err = ?e, "Failed to delete staged file on abort");
-                Err(e)
+                Err(e.into())
             }
         }
+    }
+
+    /// Returns the size bytes of this [`StagedFile`]
+    pub fn size_bytes(&self) -> u64 {
+        self.size_bytes
     }
 }
 
@@ -107,27 +115,61 @@ impl FileWriter {
     }
 
     /// Writes data to the staged file
-    pub async fn write(&mut self, data: impl AsRef<[u8]>) -> std::io::Result<()> {
-        self._write(data.as_ref()).await
+    pub async fn write(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
+        let bytes = data.as_ref();
+
+        self.writer.write_all(bytes).await?;
+        self.size_bytes += bytes.len() as u64;
+
+        Ok(())
     }
 
-    async fn _write(&mut self, data: &[u8]) -> std::io::Result<()> {
-        self.writer.write_all(data).await?;
-        self.size_bytes += data.len() as u64;
+    /// Writers data from the asynchronous readet into the staged file
+    ///
+    /// The reader is consumed until EOF
+    pub async fn write_reader<R>(&mut self, reader: R) -> Result<()>
+    where
+        R: AsyncRead + Unpin,
+    {
+        self.write_reader_callback(reader, |_| Ok(())).await
+    }
+
+    /// Writers data from the asynchronous readet into the staged file
+    ///
+    /// The callback is called for each chunk from the reader, before
+    /// the chunk is written to the staged file
+    ///
+    /// The operation stops if reading, writing, or the callback returns an error
+    pub async fn write_reader_callback<R, F, E>(
+        &mut self,
+        reader: R,
+        mut callback: F,
+    ) -> std::result::Result<(), E>
+    where
+        R: AsyncRead + Unpin,
+        F: FnMut(&[u8]) -> Result<()>,
+        E: From<StorageError>,
+    {
+        let mut reader = ReaderStream::with_capacity(reader, 32 * 1024);
+        while let Some(chunk) = reader.try_next().await.map_err(StorageError::from)? {
+            callback(&chunk)?;
+            self.write(chunk).await?;
+        }
+
         Ok(())
     }
 
     /// Finishes writing and returns the staged file
     ///
     /// The buffered data is flushed before the staged file is returned
-    pub async fn finish(mut self) -> std::io::Result<StagedFile> {
+    pub async fn finish(mut self) -> Result<StagedFile> {
         self.writer.flush().await?;
         self.staged.size_bytes = self.size_bytes;
         Ok(self.staged)
     }
 
     /// Aborts the writer and removes its temporary file
-    pub async fn abort(self) -> std::io::Result<()> {
+    pub async fn abort(self) -> Result<()> {
         self.staged.abort().await
     }
 }
@@ -153,14 +195,14 @@ impl ForeignUploader {
     }
 
     /// Finishes the upload and returns the staged file
-    pub async fn finish(mut self) -> std::io::Result<StagedFile> {
+    pub async fn finish(mut self) -> Result<StagedFile> {
         let meta = tokio::fs::metadata(&self.staged.temp_path).await?;
         self.staged.size_bytes = meta.len();
         Ok(self.staged)
     }
 
     /// Aborts the uploader and removes its temporary file
-    pub async fn abort(self) -> std::io::Result<()> {
+    pub async fn abort(self) -> Result<()> {
         self.staged.abort().await
     }
 }

@@ -9,7 +9,7 @@ use crate::{
     file::{FileReader, FileWriter, ForeignUploader, LocalFile, StagedFile},
     fs::{dir, rename_exclusive},
     mount::StorageMountPoint,
-    path::StoragePath,
+    path::{StoragePath, validate_path},
     result::{Result, StorageError},
     types::{DiskUsageStats, FileMetadata},
     utils::futures::asyncify,
@@ -29,6 +29,11 @@ pub struct Storage {
 }
 
 impl Storage {
+    /// Creates a new [`Storage`]
+    pub fn new(root: StorageMountPoint) -> Self {
+        Storage { root }
+    }
+
     /// Resolves a logical storage path to its physical filesystem path
     #[inline]
     fn realpath(&self, path: impl AsRef<StoragePath>) -> PathBuf {
@@ -73,6 +78,7 @@ impl Storage {
     /// The target path must not already exists
     async fn stage(&self, path: impl AsRef<StoragePath>) -> Result<StagedFile> {
         let path = path.as_ref();
+        validate_path(path)?;
 
         let temp_name = path
             .file_name()
@@ -99,6 +105,7 @@ impl Storage {
     /// Returns a [`LocalFile`] containing the physical filesystem path of the
     /// stored file
     pub async fn local_file(&self, path: impl AsRef<StoragePath>) -> Result<LocalFile> {
+        validate_path(&path)?;
         let path = self.realpath(path);
 
         let meta = tokio::fs::metadata(&path).await?;
@@ -128,6 +135,7 @@ impl Storage {
         start: u64,
         end: Option<u64>,
     ) -> Result<FileReader> {
+        validate_path(&path)?;
         let path = self.realpath(path);
 
         let mut file = File::open(&path).await?;
@@ -162,16 +170,23 @@ impl Storage {
     ///
     /// The returned metadata includes the file length and modification time
     pub async fn meta(&self, path: impl AsRef<StoragePath>) -> Result<FileMetadata> {
+        validate_path(&path)?;
         let path = self.realpath(path);
 
         let meta = tokio::fs::metadata(&path).await?;
 
-        let metadata = FileMetadata {
-            len: meta.len(),
-            modified: meta.modified().map(Some).unwrap_or(None),
-        };
+        let metadata = FileMetadata::new(meta.len(), meta.modified().ok());
 
         Ok(metadata)
+    }
+
+    pub async fn exists(&self, path: impl AsRef<StoragePath>) -> Result<bool> {
+        validate_path(&path)?;
+        let path = self.realpath(path);
+
+        let exists = tokio::fs::try_exists(path).await?;
+
+        Ok(exists)
     }
 
     /// Returns disk usage statistics for the storage filesystem
@@ -190,6 +205,9 @@ impl Storage {
         path: impl AsRef<StoragePath>,
         dest: impl AsRef<StoragePath>,
     ) -> Result<()> {
+        validate_path(&path)?;
+        validate_path(&dest)?;
+
         let from = self.realpath(path);
         let to = self.realpath(dest);
 
@@ -206,6 +224,7 @@ impl Storage {
     /// Empty parent directories are removed after successful deletion when
     /// they can be safely removed
     pub async fn remove(&self, path: impl AsRef<StoragePath>) -> Result<bool> {
+        validate_path(&path)?;
         let path = self.realpath(path);
 
         match tokio::fs::remove_file(&path).await {

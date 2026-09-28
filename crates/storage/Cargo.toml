@@ -8,11 +8,15 @@ edition = "2024"
 base62.workspace = true
 
 # External
-bytes = { workspace = true }
+bytes.workspace = true
 futures.workspace = true
 tokio = { workspace = true, features = ["io-util", "fs", "time", "rt"] }
 tokio-util = { workspace = true, features = ["io"] }
-tracing = { workspace = true }
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
 libc.workspace = true
