@@ -231,7 +231,7 @@ impl Storage {
                     path = ?path,
                     "File removed"
                 );
-                dir::delete_parents_safely(self.root.path(), &path).await;
+                dir::remove_parents_safely(self.root.path(), &path).await;
                 Ok(true)
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-/// Creates all parent directories for the specified path.
+/// Creates all parent directories for the specified path
 pub async fn create_parents(path: impl AsRef<Path>) -> std::io::Result<()> {
     let path = path.as_ref();
     if let Some(parent) = path.parent() {
@@ -9,9 +9,10 @@ pub async fn create_parents(path: impl AsRef<Path>) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Deletes all empty parent directories for the specified path.
+/// Removes all empty parent directories for the specified path
+///
 /// Stops deletion if a directory contains files
-pub async fn delete_parents_safely(root: &Path, path: &Path) {
+pub async fn remove_parents_safely(root: &Path, path: &Path) {
     let mut p = path;
     while let Some(parent) = p.parent() {
         if parent == root {

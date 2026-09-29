@@ -1410,6 +1410,7 @@ dependencies = [
  "bytes",
  "futures",
  "libc",
+ "schema",
  "tempfile",
  "tokio",
  "tokio-util",
