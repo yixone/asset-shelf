@@ -1,0 +1,33 @@
+[package]
+name = "storage"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Workspace
+base62.workspace = true
+schema.workspace = true
+
+# External
+bytes.workspace = true
+futures.workspace = true
+tokio = { workspace = true, features = ["io-util", "fs", "time", "rt"] }
+tokio-util = { workspace = true, features = ["io"] }
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+libc.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winapi = { workspace = true, features = [
+    "handleapi",
+    "processthreadsapi",
+    "winerror",
+    "fileapi",
+    "winbase",
+    "std",
+] }
