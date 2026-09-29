@@ -17,12 +17,9 @@ compile_error!("Unsupported operating system");
 
 pub mod file;
 pub mod layout;
-pub mod path;
 
 pub(crate) mod fs;
 pub(crate) mod utils;
-
-pub mod types;
 
 pub mod result;
 

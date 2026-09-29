@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
-use storage::{
-    mount::StorageMountPoint, path::StoragePath, result::StorageError, storage::Storage,
-};
+use storage::{mount::StorageMountPoint, result::StorageError, storage::Storage};
+use storage_types::StoragePath;
 use tempfile::TempDir;
 
 const DATA: &[u8] = &[0x0, 0xFF, 0xD, 0xAB, 0xF, 0x67, 0x43];

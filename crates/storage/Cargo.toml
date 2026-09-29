@@ -7,6 +7,7 @@ edition = "2024"
 # Workspace
 base62.workspace = true
 schema.workspace = true
+storage-types.workspace = true
 
 # External
 bytes.workspace = true

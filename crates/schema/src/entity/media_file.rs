@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
 use mime::MimeType;
+use storage_types::StoragePath;
 
 use crate::{
     id::{MediaFileId, MediaId},
-    types::{MediaFileKey, MediaVariant},
+    types::MediaVariant,
 };
 
 /// Represents a stored file associated with a `Media` object
@@ -23,8 +24,8 @@ pub struct MediaFile {
 
     /// Variant of this file
     pub variant: MediaVariant,
-    /// File blob key in application storage
-    pub file_key: MediaFileKey,
+    /// File path in application storage
+    pub storage_path: StoragePath,
 
     /// File size in bytes
     pub size_bytes: i64,
@@ -41,7 +42,7 @@ impl MediaFile {
         id: MediaFileId,
         media_id: MediaId,
         variant: MediaVariant,
-        file_key: MediaFileKey,
+        storage_path: StoragePath,
         size_bytes: i64,
         mime_type: MimeType,
         duration_ms: Option<i64>,
@@ -51,7 +52,7 @@ impl MediaFile {
             media_id,
             created_at: Utc::now(),
             variant,
-            file_key,
+            storage_path,
             size_bytes,
             mime_type,
             duration_ms,

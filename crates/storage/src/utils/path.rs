@@ -1,7 +1,6 @@
-use crate::{
-    path::StoragePath,
-    result::{Result, StorageError},
-};
+use storage_types::StoragePath;
+
+use crate::result::{Result, StorageError};
 
 /// Creates a temporary path based on the specified storage path
 ///
@@ -17,6 +16,30 @@ pub fn make_temp_path(mut p: StoragePath) -> Result<StoragePath> {
 
     p.set_file_name(temp_name);
     Ok(p)
+}
+
+/// Validates a storage path for use with the filesystem
+///
+/// A valid path may contains only ASCII alphanumeric characters
+/// and the following separators: `/`, `~` and `-`
+///
+/// Returns [`StorageError::InvalidPath`] if the path contains
+/// unsupported characters
+pub(crate) fn validate_path(path: impl AsRef<StoragePath>) -> Result<()> {
+    let path = path.as_ref().as_str();
+
+    if path.is_empty()
+        || path.starts_with('/')
+        || path.ends_with('/')
+        || path.contains("//")
+        || !path
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '~' | '_' | '/'))
+    {
+        return Err(StorageError::InvalidPath);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

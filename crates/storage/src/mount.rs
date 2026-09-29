@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-use crate::{fs::statvfs, types::DiskUsageStats, utils::futures::asyncify};
+use storage_types::DiskUsageStats;
+
+use crate::{fs::statvfs, utils::futures::asyncify};
 
 /// A physical root directory of the storage
 ///

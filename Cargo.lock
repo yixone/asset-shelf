@@ -1063,6 +1063,7 @@ dependencies = [
  "serde",
  "snowflake",
  "sqlx",
+ "storage-types",
 ]
 
 [[package]]
@@ -1411,11 +1412,19 @@ dependencies = [
  "futures",
  "libc",
  "schema",
+ "storage-types",
  "tempfile",
  "tokio",
  "tokio-util",
  "tracing",
  "winapi",
+]
+
+[[package]]
+name = "storage-types"
+version = "0.1.0"
+dependencies = [
+ "sqlx",
 ]
 
 [[package]]

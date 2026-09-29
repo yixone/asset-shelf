@@ -6,6 +6,7 @@ members = [
     "crates/schema",
     "crates/snowflake",
     "crates/storage",
+    "crates/storage-types",
 ]
 
 [workspace.dependencies]
@@ -20,7 +21,10 @@ mime.path = "crates/mime"
 # Snowflake id generator
 snowflake.path = "crates/snowflake"
 
+# Managed file storage for AssetShelf
 storage.path = "crates/storage"
+# Value types used by the managed file storage subsystem
+storage-types.path = "crates/storage-types"
 
 
 # --- Extern crates ---
