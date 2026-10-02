@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 # Workspace
 base62.workspace = true
-schema.workspace = true
+models.workspace = true
 storage-types.workspace = true
 
 # External

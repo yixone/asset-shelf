@@ -15,5 +15,13 @@
 pub mod event;
 pub mod id;
 
-pub mod entity;
+pub mod entities;
 pub mod types;
+
+/*
+    let original = File::builder(id, path, size, ...)
+                            .with_duration(duration)
+                            .build();
+
+
+*/
