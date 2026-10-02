@@ -6,7 +6,7 @@ use crate::id::FileId;
 
 /// Represents a stored file
 ///
-/// Contains the file's storage location, variant, MIME type, size
+/// Contains the file's storage location, size, MIME type
 /// and optional duration for time-based media
 #[derive(Debug)]
 pub struct File {
@@ -24,9 +24,32 @@ pub struct File {
 
     /// File MIME type
     pub mime_type: MimeType,
-    /// File MIME kind
-    pub mime_kind: MimeKind,
 
     /// File duration in milliseconds (for supported files)
     pub duration_ms: Option<i64>,
+}
+
+impl File {
+    /// Creates a new [`File`]
+    pub fn new(
+        id: FileId,
+        path: StoragePath,
+        size_bytes: i64,
+        mime_type: MimeType,
+        duration_ms: Option<i64>,
+    ) -> Self {
+        Self {
+            id,
+            created_at: Utc::now(),
+            path,
+            size_bytes,
+            mime_type,
+            duration_ms,
+        }
+    }
+
+    /// Returns the mime kind of this [`File`]
+    pub fn mime_kind(&self) -> MimeKind {
+        self.mime_type.kind()
+    }
 }

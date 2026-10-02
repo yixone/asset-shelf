@@ -26,3 +26,7 @@ impl AssetFileVariant {
         }
     }
 }
+
+pub enum AssetState {
+    Pending,
+}
