@@ -3,9 +3,9 @@ resolver = "2"
 members = [
     "lib/base62",
     "lib/mime",
+    "lib/snowflake",
 
     "crates/models",
-    "crates/snowflake",
     "crates/storage",
     "crates/storage-types",
 ]
@@ -17,11 +17,11 @@ members = [
 base62.path = "lib/base62"
 # MIME types and detector 
 mime.path = "lib/mime"
+# Snowflake id generator
+snowflake.path = "lib/snowflake"
 
 # Domain types and structures used in the application
 models.path = "crates/models"
-# Snowflake id generator
-snowflake.path = "crates/snowflake"
 
 # Managed file storage for AssetShelf
 storage.path = "crates/storage"
