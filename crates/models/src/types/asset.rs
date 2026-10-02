@@ -1,4 +1,4 @@
-/// Variant of a media file
+/// Variant of an asset file
 ///
 /// May represent the original media file or a generated
 /// derivative optimized for a specific use case
@@ -8,25 +8,21 @@
     derive(serde::Serialize, serde::Deserialize),
     serde(rename_all = "snake_case")
 )]
-#[derive(Debug)]
-pub enum MediaVariant {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AssetFileVariant {
     /// Original media file uploaded by the user
     Original,
 
     /// Low-resolution preview for quick asset display
     Thumbnail,
-
-    /// Short looped video preview generated from the original video
-    LoopPreview,
 }
 
-impl MediaVariant {
-    /// Returns the media variant as a string
+impl AssetFileVariant {
+    /// Returns the file variant as a string
     pub fn as_str(&self) -> &'static str {
         match self {
-            MediaVariant::Original => "original",
-            MediaVariant::Thumbnail => "thumbnail",
-            MediaVariant::LoopPreview => "loop_preview",
+            AssetFileVariant::Original => "original",
+            AssetFileVariant::Thumbnail => "thumbnail",
         }
     }
 }

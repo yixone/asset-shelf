@@ -1,7 +1,4 @@
-use crate::{
-    id::{AssetId, CollectionId},
-    types::AssetState,
-};
+use crate::id::{AssetId, CollectionId};
 
 /// New asset creation event
 ///
@@ -18,7 +15,6 @@ pub struct AssetCreatedEvent {
 #[derive(Debug)]
 pub struct AssetReadyEvent {
     pub id: AssetId,
-    pub state: AssetState,
 }
 
 /// Asset deletion event

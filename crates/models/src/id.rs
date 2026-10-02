@@ -33,10 +33,10 @@ macro_rules! id_type_copy {
     };
 }
 
-id_type_copy!(AssetId as snowflake::SnowflakeId);
+id_type!(AssetId as snowflake::SnowflakeIdStr);
 
-id_type_copy!(CollectionId as snowflake::SnowflakeId);
+id_type!(CollectionId as snowflake::SnowflakeIdStr);
+
 id_type_copy!(CollectionAssetId as snowflake::SnowflakeId);
 
-id_type_copy!(MediaFileId as snowflake::SnowflakeId);
-id_type!(MediaId as snowflake::SnowflakeIdStr);
+id_type_copy!(FileId as snowflake::SnowflakeId);
