@@ -9,6 +9,13 @@ use crate::{
     types::{AssetFileVariant, AssetState, Color, PerceptualHash},
 };
 
+/// Represents an asset and its current state within the media library
+///
+/// An asset is a logical media item that may have multiple associated
+/// file variants and derived features
+///
+/// `Asset` is an immutable domain model. Changes to an asset are performed
+/// through repository operations rather than by mutating the model directly
 pub struct Asset {
     /// Unique asset identifier
     pub id: AssetId,
@@ -39,6 +46,33 @@ pub struct Asset {
     pub meta: AssetMeta,
 }
 
+impl Asset {
+    /// Returns `true` if the asset has been marked as deleted
+    pub fn is_deleted(&self) -> bool {
+        self.deleted_at.is_some()
+    }
+
+    /// Returns `true` if the asset is not marked as deleted
+    pub fn is_active(&self) -> bool {
+        self.deleted_at.is_none()
+    }
+
+    /// Returns `true` if the asset is marked as a duplicate of another asset
+    pub fn is_duplicate(&self) -> bool {
+        self.duplicate_of.is_some()
+    }
+
+    /// Returns `true` if the asset has all data
+    /// required for use
+    pub fn is_available(&self) -> bool {
+        !self.is_deleted() && !self.media.is_offline
+    }
+}
+
+/// Derived features calculated from an asset's media
+///
+/// Features are generated from the asset's media and may be unavailable
+/// while media processing has not completed
 pub struct AssetFeatures {
     /// Asset accent color
     pub accent_color: Option<Color>,
@@ -58,12 +92,12 @@ pub struct AssetFeatures {
 }
 
 impl AssetFeatures {
-    /// Returns the width of `Asset`
+    /// Returns the asset width in pixels
     pub fn width(&self) -> Option<u32> {
         self.dimension.map(|(w, _)| w)
     }
 
-    /// Returns the height of `Asset`
+    /// Returns the asset height in pixels
     pub fn height(&self) -> Option<u32> {
         self.dimension.map(|(_, h)| h)
     }
@@ -76,8 +110,21 @@ impl AssetFeatures {
             None
         }
     }
+
+    /// Returns `true` if all required derived
+    /// features have been calculated
+    pub fn enough_fields(&self) -> bool {
+        self.accent_color.is_some()
+            && self.p_hash.is_some()
+            && self.a_hash.is_some()
+            && self.dimension.is_some()
+    }
 }
 
+/// Information about the media files associated with an asset
+///
+/// Contains the available file variants together with metadata describing
+/// the asset's original media and its storage availability
 pub struct AssetMedia {
     /// Files associated with the asset
     pub files: HashMap<AssetFileVariant, File>,
@@ -93,15 +140,28 @@ pub struct AssetMedia {
 }
 
 impl AssetMedia {
+    /// Returns the file associated with the specified variant
+    pub fn file(&self, variant: AssetFileVariant) -> Option<&File> {
+        self.files.get(&variant)
+    }
+
+    /// Returns `true` if the specified file variant is present
+    pub fn has_file(&self, variant: AssetFileVariant) -> bool {
+        self.files.contains_key(&variant)
+    }
+
+    /// Returns the original media file
     pub fn original(&self) -> Option<&File> {
         self.files.get(&AssetFileVariant::Original)
     }
 
+    /// Returns the thumbnail media file
     pub fn thumbnail(&self) -> Option<&File> {
         self.files.get(&AssetFileVariant::Thumbnail)
     }
 }
 
+/// User-provided metadata associated with an asset
 pub struct AssetMeta {
     /// Optional name for the asset
     pub name: Option<String>,
@@ -110,6 +170,7 @@ pub struct AssetMeta {
     pub caption: Option<String>,
 }
 
+/// A lightweight representation of an asset containing only its core state
 pub struct AssetDehydrated {
     /// Unique asset identifier
     pub id: AssetId,
