@@ -1,4 +1,4 @@
-use models::{id::AssetId, types::AssetFileVariant};
+use models::{id::AssetId, types::FileVariant};
 use storage_types::StoragePath;
 
 /// Generates storage paths for AssetShelf files
@@ -9,7 +9,7 @@ impl StorageLayout {
     ///
     /// Media files are grouped under `media` and sharded by
     /// the first two characters of the asset ID
-    pub fn media(id: impl AsRef<AssetId>, variant: AssetFileVariant) -> StoragePath {
+    pub fn media(id: impl AsRef<AssetId>, variant: FileVariant) -> StoragePath {
         StoragePath::new("media")
             .push(shard(id.as_ref().to_string(), 2))
             .push(variant.as_str())

@@ -1,8 +1,44 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use mime::{MimeKind, MimeType};
 use storage_types::StoragePath;
 
-use crate::id::FileId;
+use crate::{
+    id::{FileGroupId, FileId},
+    types::FileVariant,
+};
+
+#[derive(Debug)]
+pub struct FileGroup {
+    /// File group identifier
+    pub id: FileGroupId,
+
+    /// Files included in the group
+    pub files: HashMap<FileVariant, File>,
+}
+
+impl FileGroup {
+    /// Returns the file associated with the specified variant
+    pub fn file(&self, variant: FileVariant) -> Option<&File> {
+        self.files.get(&variant)
+    }
+
+    /// Returns `true` if the specified file variant is present
+    pub fn has_file(&self, variant: FileVariant) -> bool {
+        self.files.contains_key(&variant)
+    }
+
+    /// Returns the original media file
+    pub fn original(&self) -> Option<&File> {
+        self.files.get(&FileVariant::Original)
+    }
+
+    /// Returns the thumbnail media file
+    pub fn thumbnail(&self) -> Option<&File> {
+        self.files.get(&FileVariant::Thumbnail)
+    }
+}
 
 /// Represents a stored file
 ///

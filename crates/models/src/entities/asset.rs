@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-
 use chrono::{DateTime, Utc};
 use mime::MimeKind;
 
 use crate::{
-    entities::File,
+    entities::file::FileGroup,
     id::AssetId,
-    types::{AssetFileVariant, AssetState, Color, PerceptualHash},
+    types::{AssetState, Color, PerceptualHash},
 };
 
 /// Represents an asset and its current state within the media library
@@ -16,6 +14,7 @@ use crate::{
 ///
 /// `Asset` is an immutable domain model. Changes to an asset are performed
 /// through repository operations rather than by mutating the model directly
+#[derive(Debug)]
 pub struct Asset {
     /// Unique asset identifier
     pub id: AssetId,
@@ -36,14 +35,24 @@ pub struct Asset {
 
     /// Asset features
     pub features: AssetFeatures,
-    /// Information about media associated with the asset
-    pub media: AssetMedia,
+
+    /// Files associated with the asset
+    pub files: FileGroup,
 
     /// Identifier of the asset that this asset is considered a duplicate of
     pub duplicate_of: Option<AssetId>,
 
     /// Asset metadata
     pub meta: AssetMeta,
+
+    /// If `true`, the original file has been lost from storage and the asset cannot be used
+    pub is_offline: bool,
+
+    /// File name of the asset's original media file
+    pub original_file_name: Option<String>,
+
+    /// Type of the asset's original media file
+    pub original_mime: MimeKind,
 }
 
 impl Asset {
@@ -65,7 +74,7 @@ impl Asset {
     /// Returns `true` if the asset has all data
     /// required for use
     pub fn is_available(&self) -> bool {
-        !self.is_deleted() && !self.media.is_offline
+        !self.is_deleted() && !self.is_offline
     }
 }
 
@@ -73,6 +82,7 @@ impl Asset {
 ///
 /// Features are generated from the asset's media and may be unavailable
 /// while media processing has not completed
+#[derive(Debug)]
 pub struct AssetFeatures {
     /// Asset accent color
     pub accent_color: Option<Color>,
@@ -121,47 +131,8 @@ impl AssetFeatures {
     }
 }
 
-/// Information about the media files associated with an asset
-///
-/// Contains the available file variants together with metadata describing
-/// the asset's original media and its storage availability
-pub struct AssetMedia {
-    /// Files associated with the asset
-    pub files: HashMap<AssetFileVariant, File>,
-
-    /// If `true`, the original file has been lost from storage and the asset cannot be used
-    pub is_offline: bool,
-
-    /// File name of the asset's original media file
-    pub original_file_name: Option<String>,
-
-    /// Type of the asset's original media file
-    pub original_mime: MimeKind,
-}
-
-impl AssetMedia {
-    /// Returns the file associated with the specified variant
-    pub fn file(&self, variant: AssetFileVariant) -> Option<&File> {
-        self.files.get(&variant)
-    }
-
-    /// Returns `true` if the specified file variant is present
-    pub fn has_file(&self, variant: AssetFileVariant) -> bool {
-        self.files.contains_key(&variant)
-    }
-
-    /// Returns the original media file
-    pub fn original(&self) -> Option<&File> {
-        self.files.get(&AssetFileVariant::Original)
-    }
-
-    /// Returns the thumbnail media file
-    pub fn thumbnail(&self) -> Option<&File> {
-        self.files.get(&AssetFileVariant::Thumbnail)
-    }
-}
-
 /// User-provided metadata associated with an asset
+#[derive(Debug)]
 pub struct AssetMeta {
     /// Optional name for the asset
     pub name: Option<String>,
@@ -171,6 +142,7 @@ pub struct AssetMeta {
 }
 
 /// A lightweight representation of an asset containing only its core state
+#[derive(Debug)]
 pub struct AssetDehydrated {
     /// Unique asset identifier
     pub id: AssetId,
