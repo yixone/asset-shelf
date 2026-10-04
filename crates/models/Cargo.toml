@@ -7,6 +7,8 @@ edition = "2024"
 sqlx = ["dep:sqlx", "snowflake/sqlx", "mime/sqlx", "storage-types/sqlx"]
 serde = ["dep:serde", "chrono/serde", "snowflake/serde", "mime/serde"]
 
+dev = []
+
 [dependencies]
 # Workspace
 mime.workspace = true

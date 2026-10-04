@@ -14,24 +14,27 @@ use crate::{
 
 /// Represents a logical group of files belonging to the same media item
 ///
+/// A file group owns its files. Each file belongs to exactly one file group
+/// and is identified by its group and variant
+///
 /// A file group may contain multiple variants of the same media, such as
 /// an original file, thumbnail, or preview
 #[derive(Debug)]
 pub struct FileGroup {
     /// File group identifier
-    pub id: FileGroupId,
+    id: FileGroupId,
 
     /// Files included in the group
-    pub files: HashMap<FileVariant, File>,
+    files: HashMap<FileVariant, File>,
 
     /// Original file name provided with the media
-    pub original_file_name: Option<String>,
+    original_file_name: Option<String>,
 }
 
 impl FileGroup {
     /// Creates and persists a new [`FileGroup`]
     ///
-    /// The group is creating without any files
+    /// The group is created without any files
     pub async fn create<DB>(
         id: FileGroupId,
         original_file_name: Option<String>,
@@ -56,7 +59,7 @@ impl FileGroup {
     pub async fn create_with_file<DB>(
         id: FileGroupId,
         original_file_name: Option<String>,
-        data: NewFileData,
+        data: FileData,
         db: &DB,
     ) -> Result<Self>
     where
@@ -116,9 +119,9 @@ impl FileGroup {
     ///
     /// Returns [`EntityError::AlreadyExists`] if the specified variant is
     /// already present in the group
-    pub async fn create_file<DB>(&mut self, data: NewFileData, db: &DB) -> Result<()>
+    pub async fn create_file<DB>(&mut self, data: FileData, db: &DB) -> Result<()>
     where
-        DB: FileGroupDatabase + FileDatabase,
+        DB: FileDatabase,
     {
         if self.has_file(data.variant) {
             return Err(EntityError::AlreadyExists);
@@ -169,41 +172,124 @@ impl FileGroup {
     pub fn thumbnail(&self) -> Option<&File> {
         self.files.get(&FileVariant::Thumbnail)
     }
+
+    /// Returns a reference to the id of this [`FileGroup`]
+    pub fn id(&self) -> &FileGroupId {
+        &self.id
+    }
+
+    /// Returns the original file name of this [`FileGroup`]
+    pub fn original_file_name(&self) -> Option<&String> {
+        self.original_file_name.as_ref()
+    }
 }
 
-/// Represents a stored file
+#[cfg(feature = "dev")]
+impl FileGroup {
+    /// Creates [`FileGroup`] from persisted data
+    ///
+    /// This constructor is intended for reconstructing a file group
+    /// from persistence-layer data
+    pub fn from_persistence(
+        id: FileGroupId,
+        files: impl IntoIterator<Item = File>,
+        original_file_name: Option<String>,
+    ) -> Self {
+        let files = files.into_iter().map(|f| (f.key.1, f)).collect();
+        FileGroup {
+            id,
+            files,
+            original_file_name,
+        }
+    }
+}
+
+/// Represents a file owned by [`FileGroup`]
 ///
 /// Contains the file's storage location, size, MIME type
 /// and optional duration for time-based media
 #[derive(Debug)]
 pub struct File {
     /// File key
-    pub key: (FileGroupId, FileVariant),
+    key: (FileGroupId, FileVariant),
 
     /// File creation time
-    pub created_at: DateTime<Utc>,
+    created_at: DateTime<Utc>,
 
     /// File path in application storage
-    pub path: StoragePath,
+    path: StoragePath,
 
     /// File size in bytes
-    pub size_bytes: i64,
+    size_bytes: i64,
 
     /// File MIME type
-    pub mime_type: MimeType,
+    mime_type: MimeType,
 
     /// File duration in milliseconds (for supported files)
-    pub duration_ms: Option<i64>,
+    duration_ms: Option<i64>,
 }
 
 impl File {
+    /// Returns a reference to the key of this [`File`]
+    pub fn key(&self) -> &(FileGroupId, FileVariant) {
+        &self.key
+    }
+
+    /// Returns the [`File`] creation time
+    pub fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+
+    /// Returns a reference to the [`File`] path in
+    /// application storage
+    pub fn path(&self) -> &StoragePath {
+        &self.path
+    }
+
+    /// Returns the [`File`] size in bytes
+    pub fn size_bytes(&self) -> i64 {
+        self.size_bytes
+    }
+
+    /// Returns the mime type of this [`File`]
+    pub fn mime_type(&self) -> MimeType {
+        self.mime_type
+    }
+
     /// Returns the mime kind of this [`File`]
     pub fn mime_kind(&self) -> MimeKind {
         self.mime_type.kind()
     }
+
+    /// Returns the [`File`] duration in milliseconds
+    pub fn duration_ms(&self) -> Option<i64> {
+        self.duration_ms
+    }
 }
 
-pub struct NewFileData {
+#[cfg(feature = "dev")]
+impl File {
+    /// Creates [`File`] from persisted data
+    ///
+    /// This constructor is intended for reconstructing a file
+    /// from persistence-layer data
+    pub fn from_persistence(
+        key: (FileGroupId, FileVariant),
+        created_at: DateTime<Utc>,
+        data: FileData,
+    ) -> Self {
+        File {
+            key,
+            created_at,
+            path: data.path,
+            size_bytes: data.size_bytes,
+            mime_type: data.mime_type,
+            duration_ms: data.duration_ms,
+        }
+    }
+}
+
+pub struct FileData {
     pub variant: FileVariant,
     pub path: StoragePath,
     pub size_bytes: i64,
