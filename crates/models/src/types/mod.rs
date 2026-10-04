@@ -5,5 +5,5 @@ pub mod hash;
 
 pub use asset::AssetState;
 pub use color::Color;
-pub use file::FileVariant;
+pub use file::{FileKey, FileVariant};
 pub use hash::PerceptualHash;

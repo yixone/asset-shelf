@@ -10,7 +10,7 @@ use crate::{
     patches::FilePatch,
     ports::{FileDatabase, FileGroupDatabase},
     result::Result,
-    types::FileVariant,
+    types::{FileKey, FileVariant},
 };
 
 /// Represents a logical group of files belonging to the same media item
@@ -73,7 +73,7 @@ impl FileGroup {
         };
 
         let file = File {
-            key: FileKey(group.id.clone(), data.variant),
+            key: FileKey::new(group.id.clone(), data.variant),
             created_at: Utc::now(),
             path: data.path,
             size_bytes: data.size_bytes,
@@ -111,7 +111,7 @@ impl FileGroup {
     where
         DB: FileDatabase,
     {
-        db.get_file(&FileKey(id.as_ref().clone(), variant))
+        db.get_file(&FileKey::new(id.as_ref().clone(), variant))
             .await?
             .ok_or(EntityError::NotFound)
     }
@@ -129,7 +129,7 @@ impl FileGroup {
         }
 
         let file = File {
-            key: FileKey(self.id.clone(), data.variant),
+            key: FileKey::new(self.id.clone(), data.variant),
             created_at: Utc::now(),
             path: data.path,
             size_bytes: data.size_bytes,
@@ -162,7 +162,10 @@ impl FileGroup {
     where
         DB: FileDatabase,
     {
-        if !db.delete_file(&FileKey(self.id.clone(), variant)).await? {
+        if !db
+            .delete_file(&FileKey::new(self.id.clone(), variant))
+            .await?
+        {
             return Err(EntityError::NotFound);
         }
 
@@ -243,28 +246,12 @@ impl FileGroup {
         files: impl IntoIterator<Item = File>,
         original_file_name: Option<String>,
     ) -> Self {
-        let files = files.into_iter().map(|f| (f.key.1, f)).collect();
+        let files = files.into_iter().map(|f| (f.key.variant(), f)).collect();
         FileGroup {
             id,
             files,
             original_file_name,
         }
-    }
-}
-
-/// Identifies a [`File`] by its owning [`FileGroup`] and variant
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FileKey(FileGroupId, FileVariant);
-
-impl FileKey {
-    /// Returns a reference to the identifier of the owning [`FileGroup`]
-    pub fn group_id(&self) -> &FileGroupId {
-        &self.0
-    }
-
-    /// Returns the file variant
-    pub fn variant(&self) -> FileVariant {
-        self.1
     }
 }
 
@@ -343,7 +330,7 @@ impl File {
         data: FileData,
     ) -> Self {
         File {
-            key: FileKey(key.0, key.1),
+            key: FileKey::new(key.0, key.1),
             created_at,
             path: data.path,
             size_bytes: data.size_bytes,

@@ -1,8 +1,9 @@
 use crate::{
-    entities::{File, FileKey, file::FileGroup},
+    entities::{File, FileGroup},
     id::FileGroupId,
     patches::FilePatch,
     result::Result,
+    types::FileKey,
 };
 
 #[async_trait::async_trait]

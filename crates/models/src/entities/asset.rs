@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use mime::MimeKind;
 
 use crate::{
-    entities::file::FileGroup,
+    entities::FileGroup,
     id::AssetId,
     types::{AssetState, Color, PerceptualHash},
 };
@@ -47,7 +47,6 @@ pub struct Asset {
 
     /// Type of the asset's original media file
     pub original_mime: MimeKind,
-    pub(crate) state: AssetState,
 }
 
 impl Asset {
