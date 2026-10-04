@@ -7,6 +7,7 @@ use storage_types::StoragePath;
 use crate::{
     EntityError,
     id::FileGroupId,
+    patches::FilePatch,
     ports::{FileDatabase, FileGroupDatabase},
     result::Result,
     types::FileVariant,
@@ -72,7 +73,7 @@ impl FileGroup {
         };
 
         let file = File {
-            key: (group.id.clone(), data.variant),
+            key: FileKey(group.id.clone(), data.variant),
             created_at: Utc::now(),
             path: data.path,
             size_bytes: data.size_bytes,
@@ -81,7 +82,7 @@ impl FileGroup {
         };
         group.files.insert(data.variant, file);
 
-        db.insert_file_group_cascade(&group).await?;
+        db.insert_file_group_with_files(&group).await?;
 
         Ok(group)
     }
@@ -102,15 +103,15 @@ impl FileGroup {
     ///
     /// Returns [`EntityError::NotFound`] if the file group
     /// or the specified variant does not exist
-    pub async fn load_variant<DB>(
+    pub async fn load_file<DB>(
         id: impl AsRef<FileGroupId>,
         variant: FileVariant,
         db: &DB,
     ) -> Result<File>
     where
-        DB: FileGroupDatabase,
+        DB: FileDatabase,
     {
-        db.get_file_group_variant(id.as_ref(), variant)
+        db.get_file(&FileKey(id.as_ref().clone(), variant))
             .await?
             .ok_or(EntityError::NotFound)
     }
@@ -128,7 +129,7 @@ impl FileGroup {
         }
 
         let file = File {
-            key: (self.id.clone(), data.variant),
+            key: FileKey(self.id.clone(), data.variant),
             created_at: Utc::now(),
             path: data.path,
             size_bytes: data.size_bytes,
@@ -150,12 +151,59 @@ impl FileGroup {
     where
         DB: FileGroupDatabase,
     {
-        db.delete_file_group(&self.id).await
+        db.delete_file_group(&self.id).await?;
+        Ok(())
+    }
+
+    /// Deletes the [`File`] with the specified variant from this [`FileGroup`]
+    ///
+    /// Returns [`EntityError::NotFound`] if the specified file does not exist
+    pub async fn delete_file<DB>(&mut self, variant: FileVariant, db: &DB) -> Result<()>
+    where
+        DB: FileDatabase,
+    {
+        if !db.delete_file(&FileKey(self.id.clone(), variant)).await? {
+            return Err(EntityError::NotFound);
+        }
+
+        self.files.remove(&variant);
+
+        Ok(())
+    }
+
+    /// Updates the [`File`] with the specified variant using the given patch
+    ///
+    /// Returns [`EntityError::NotFound`] if the specified file does not exist
+    ///
+    /// The domain model is updated only after the persistence operation succeeds
+    pub async fn update_file<DB>(
+        &mut self,
+        variant: FileVariant,
+        patch: FilePatch,
+        db: &DB,
+    ) -> Result<()>
+    where
+        DB: FileDatabase,
+    {
+        let file = self.file_mut(variant).ok_or(EntityError::NotFound)?;
+
+        if !db.update_file(file.key(), &patch).await? {
+            return Err(EntityError::NotFound);
+        }
+
+        patch.apply_domain(file);
+
+        Ok(())
     }
 
     /// Returns the file associated with the specified variant
     pub fn file(&self, variant: FileVariant) -> Option<&File> {
         self.files.get(&variant)
+    }
+
+    /// Returns the file associated with the specified variant as mutable reference
+    fn file_mut(&mut self, variant: FileVariant) -> Option<&mut File> {
+        self.files.get_mut(&variant)
     }
 
     /// Returns `true` if the specified file variant is present
@@ -179,8 +227,8 @@ impl FileGroup {
     }
 
     /// Returns the original file name of this [`FileGroup`]
-    pub fn original_file_name(&self) -> Option<&String> {
-        self.original_file_name.as_ref()
+    pub fn original_file_name(&self) -> Option<&str> {
+        self.original_file_name.as_deref()
     }
 }
 
@@ -204,6 +252,22 @@ impl FileGroup {
     }
 }
 
+/// Identifies a [`File`] by its owning [`FileGroup`] and variant
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FileKey(FileGroupId, FileVariant);
+
+impl FileKey {
+    /// Returns a reference to the identifier of the owning [`FileGroup`]
+    pub fn group_id(&self) -> &FileGroupId {
+        &self.0
+    }
+
+    /// Returns the file variant
+    pub fn variant(&self) -> FileVariant {
+        self.1
+    }
+}
+
 /// Represents a file owned by [`FileGroup`]
 ///
 /// Contains the file's storage location, size, MIME type
@@ -211,27 +275,27 @@ impl FileGroup {
 #[derive(Debug)]
 pub struct File {
     /// File key
-    key: (FileGroupId, FileVariant),
+    pub(crate) key: FileKey,
 
     /// File creation time
-    created_at: DateTime<Utc>,
+    pub(crate) created_at: DateTime<Utc>,
 
     /// File path in application storage
-    path: StoragePath,
+    pub(crate) path: StoragePath,
 
     /// File size in bytes
-    size_bytes: i64,
+    pub(crate) size_bytes: u64,
 
     /// File MIME type
-    mime_type: MimeType,
+    pub(crate) mime_type: MimeType,
 
     /// File duration in milliseconds (for supported files)
-    duration_ms: Option<i64>,
+    pub(crate) duration_ms: Option<i64>,
 }
 
 impl File {
     /// Returns a reference to the key of this [`File`]
-    pub fn key(&self) -> &(FileGroupId, FileVariant) {
+    pub fn key(&self) -> &FileKey {
         &self.key
     }
 
@@ -247,7 +311,7 @@ impl File {
     }
 
     /// Returns the [`File`] size in bytes
-    pub fn size_bytes(&self) -> i64 {
+    pub fn size_bytes(&self) -> u64 {
         self.size_bytes
     }
 
@@ -279,7 +343,7 @@ impl File {
         data: FileData,
     ) -> Self {
         File {
-            key,
+            key: FileKey(key.0, key.1),
             created_at,
             path: data.path,
             size_bytes: data.size_bytes,
@@ -289,10 +353,20 @@ impl File {
     }
 }
 
+/// Data required to create or reconstruct a [`File`]
 pub struct FileData {
+    /// File variant within its [`FileGroup`]
     pub variant: FileVariant,
+
+    /// File path in application storage
     pub path: StoragePath,
-    pub size_bytes: i64,
+
+    /// File size in bytes
+    pub size_bytes: u64,
+
+    /// File MIME type
     pub mime_type: MimeType,
+
+    /// File duration in milliseconds (for supported files)
     pub duration_ms: Option<i64>,
 }

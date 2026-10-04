@@ -47,6 +47,7 @@ pub struct Asset {
 
     /// Type of the asset's original media file
     pub original_mime: MimeKind,
+    pub(crate) state: AssetState,
 }
 
 impl Asset {
