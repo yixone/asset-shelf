@@ -11,9 +11,6 @@ use crate::{
 ///
 /// An asset is a logical media item that may have multiple associated
 /// file variants and derived features
-///
-/// `Asset` is an immutable domain model. Changes to an asset are performed
-/// through repository operations rather than by mutating the model directly
 #[derive(Debug)]
 pub struct Asset {
     /// Unique asset identifier
@@ -37,7 +34,7 @@ pub struct Asset {
     pub features: AssetFeatures,
 
     /// Files associated with the asset
-    pub files: FileGroup,
+    pub file: FileGroup,
 
     /// Identifier of the asset that this asset is considered a duplicate of
     pub duplicate_of: Option<AssetId>,
@@ -47,9 +44,6 @@ pub struct Asset {
 
     /// If `true`, the original file has been lost from storage and the asset cannot be used
     pub is_offline: bool,
-
-    /// File name of the asset's original media file
-    pub original_file_name: Option<String>,
 
     /// Type of the asset's original media file
     pub original_mime: MimeKind,

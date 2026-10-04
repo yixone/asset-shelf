@@ -12,17 +12,12 @@
 //! - `serde`: Enables [`serde::Serialize`] and [`serde::Deserialize`]
 //!   implementations for supported types, excluding domain entities
 
-pub mod event;
+pub mod result;
+pub use result::{EntityError, ToEntityError};
+
 pub mod id;
 
 pub mod entities;
+pub mod patches;
 pub mod ports;
 pub mod types;
-
-/*
-    let original = File::builder(id, path, size, ...)
-                            .with_duration(duration)
-                            .build();
-
-
-*/

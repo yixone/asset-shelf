@@ -15,6 +15,7 @@ storage-types.workspace = true
 
 
 # External
+async-trait.workspace = true
 chrono.workspace = true
 serde = { workspace = true, features = ["derive"], optional = true }
 sqlx = { workspace = true, features = ["chrono"], optional = true }

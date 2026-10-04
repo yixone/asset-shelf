@@ -6,4 +6,7 @@
 //!
 //! Infrastructure crates provide concrete implementations of these contracts
 
-// TODO!
+pub mod asset;
+pub mod file;
+
+pub use file::*;
