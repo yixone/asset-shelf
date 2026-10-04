@@ -40,3 +40,9 @@ id_type_copy!(CollectionId as snowflake::SnowflakeId);
 id_type_copy!(CollectionAssetId as snowflake::SnowflakeId);
 
 id_type!(FileGroupId as snowflake::SnowflakeIdStr);
+
+impl From<snowflake::SnowflakeId> for FileGroupId {
+    fn from(id: snowflake::SnowflakeId) -> Self {
+        FileGroupId(id.into())
+    }
+}

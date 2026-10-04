@@ -9,4 +9,27 @@
 pub mod asset;
 pub mod file;
 
+pub use asset::*;
 pub use file::*;
+
+use crate::result::Result;
+
+/// Represents a unit of work whose changes can be commited or discarded
+///
+/// A unit of work groups one or more persistence operations into a single
+/// atomic operation. Implementations must ensure that changes are either
+/// commited together or discarded when the unit of work is rolled back
+#[async_trait::async_trait]
+pub trait UnitOfWork {
+    /// Commits all changes made within this unit of work
+    ///
+    /// After a successful commit, the changes becomes permanent and the
+    /// unit of work can no longer be used
+    async fn commit(self) -> Result<()>;
+
+    /// Rolls back all changes made within this unit of work
+    ///
+    /// After a successful rollback, none of the changes made within this
+    /// unit of work are persisted and the unit of work can no longer be used
+    async fn rollback(self) -> Result<()>;
+}

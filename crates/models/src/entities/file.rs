@@ -8,7 +8,7 @@ use crate::{
     EntityError,
     id::FileGroupId,
     patches::FilePatch,
-    ports::{FileDatabase, FileGroupDatabase},
+    ports::{FileDatabase, FileGroupDatabase, FileGroupWriter, FileWriter},
     result::Result,
     types::{FileKey, FileVariant},
 };
@@ -39,10 +39,10 @@ impl FileGroup {
     pub async fn create<DB>(
         id: FileGroupId,
         original_file_name: Option<String>,
-        db: &DB,
+        db: &mut DB,
     ) -> Result<Self>
     where
-        DB: FileGroupDatabase,
+        DB: FileGroupWriter,
     {
         let group = FileGroup {
             id,
@@ -55,22 +55,18 @@ impl FileGroup {
 
     /// Creates and persists a [`FileGroup`] with an initial [`File`]
     ///
-    /// The file group and its file are persisted atomically.
+    /// The file group and its file are persisted as part of the same operation.
     /// The returned group contains the persisted file
     pub async fn create_with_file<DB>(
         id: FileGroupId,
         original_file_name: Option<String>,
         data: FileData,
-        db: &DB,
+        db: &mut DB,
     ) -> Result<Self>
     where
-        DB: FileGroupDatabase,
+        DB: FileGroupWriter + FileWriter,
     {
-        let mut group = FileGroup {
-            id,
-            files: HashMap::new(),
-            original_file_name,
-        };
+        let mut group = FileGroup::create(id, original_file_name, db).await?;
 
         let file = File {
             key: FileKey::new(group.id.clone(), data.variant),
@@ -80,9 +76,9 @@ impl FileGroup {
             mime_type: data.mime_type,
             duration_ms: data.duration_ms,
         };
-        group.files.insert(data.variant, file);
 
-        db.insert_file_group_with_files(&group).await?;
+        db.insert_file(&file).await?;
+        group.files.insert(data.variant, file);
 
         Ok(group)
     }
@@ -90,13 +86,11 @@ impl FileGroup {
     /// Loads a [`FileGroup`] by its identifier
     ///
     /// Returns [`EntityError::NotFound`] if the file group does not exist
-    pub async fn load<DB>(id: impl AsRef<FileGroupId>, db: &DB) -> Result<Self>
+    pub async fn load<DB>(id: &FileGroupId, db: &DB) -> Result<Self>
     where
         DB: FileGroupDatabase,
     {
-        db.get_file_group(id.as_ref())
-            .await?
-            .ok_or(EntityError::NotFound)
+        db.get_file_group(id).await?.ok_or(EntityError::NotFound)
     }
 
     /// Loads a [`File`] with the specified variant from a [`FileGroup`]
@@ -120,9 +114,9 @@ impl FileGroup {
     ///
     /// Returns [`EntityError::AlreadyExists`] if the specified variant is
     /// already present in the group
-    pub async fn create_file<DB>(&mut self, data: FileData, db: &DB) -> Result<()>
+    pub async fn create_file<DB>(&mut self, data: FileData, db: &mut DB) -> Result<()>
     where
-        DB: FileDatabase,
+        DB: FileWriter,
     {
         if self.has_file(data.variant) {
             return Err(EntityError::AlreadyExists);
@@ -207,6 +201,11 @@ impl FileGroup {
     /// Returns the file associated with the specified variant as mutable reference
     fn file_mut(&mut self, variant: FileVariant) -> Option<&mut File> {
         self.files.get_mut(&variant)
+    }
+
+    /// Returns the files iter of this [`FileGroup`]
+    pub fn files_iter(&self) -> impl Iterator<Item = &File> {
+        self.files.values()
     }
 
     /// Returns `true` if the specified file variant is present

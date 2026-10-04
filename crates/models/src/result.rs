@@ -4,6 +4,7 @@ pub enum EntityError {
     NotFound,
     BadInput,
     AlreadyExists,
+    Deleted,
     Other(Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
