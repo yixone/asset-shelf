@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::types::DiskUsageStats;
+use storage_types::DiskUsageStats;
 
 /// Returns file system statistics for the file system containing specified [`Path`]
 ///

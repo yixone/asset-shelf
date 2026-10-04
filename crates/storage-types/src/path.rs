@@ -1,6 +1,4 @@
-use crate::result::StorageError;
-
-pub(crate) const SEP_CHAR: char = '/';
+pub const SEP_CHAR: char = '/';
 
 /// A path identifying the file in the storage
 ///
@@ -8,6 +6,7 @@ pub(crate) const SEP_CHAR: char = '/';
 /// represent a file system path. It identifies a stored file within
 /// the application's storage namespace
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::Type), sqlx(transparent))]
 pub struct StoragePath(pub(crate) String);
 
 impl StoragePath {
@@ -71,28 +70,4 @@ impl AsRef<StoragePath> for StoragePath {
     fn as_ref(&self) -> &StoragePath {
         self
     }
-}
-
-/// Validates a storage path for use with the filesystem
-///
-/// A valid path may contains only ASCII alphanumeric characters
-/// and the following separators: `/`, `~` and `-`
-///
-/// Returns [`StorageError::InvalidPath`] if the path contains
-/// unsupported characters
-pub(crate) fn validate_path(path: impl AsRef<StoragePath>) -> Result<(), StorageError> {
-    let path = path.as_ref().as_str();
-
-    if path.is_empty()
-        || path.starts_with('/')
-        || path.ends_with('/')
-        || path.contains("//")
-        || !path
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '~' | '_' | '/'))
-    {
-        return Err(StorageError::InvalidPath);
-    }
-
-    Ok(())
 }

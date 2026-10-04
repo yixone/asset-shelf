@@ -1,5 +1,6 @@
 use std::{io::SeekFrom, path::PathBuf};
 
+use storage_types::{DiskUsageStats, FileMetadata, StoragePath};
 use tokio::{
     fs::File,
     io::{AsyncSeekExt, BufReader, BufWriter},
@@ -9,10 +10,11 @@ use crate::{
     file::{FileReader, FileWriter, ForeignUploader, LocalFile, StagedFile},
     fs::{dir, rename_exclusive},
     mount::StorageMountPoint,
-    path::{StoragePath, validate_path},
     result::{Result, StorageError},
-    types::{DiskUsageStats, FileMetadata},
-    utils::{futures::asyncify, path::make_temp_path},
+    utils::{
+        futures::asyncify,
+        path::{make_temp_path, validate_path},
+    },
 };
 
 /// Managed file storage

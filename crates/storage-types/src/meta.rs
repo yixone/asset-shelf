@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 
+/// Metadata of a file stored in managed storage
 pub struct FileMetadata {
     len: u64,
     modified: Option<SystemTime>,

@@ -1,6 +1,5 @@
-use schema::{id::AssetId, types::MediaVariant};
-
-use crate::path::{self, StoragePath};
+use models::{id::AssetId, types::FileVariant};
+use storage_types::StoragePath;
 
 /// Generates storage paths for AssetShelf files
 pub struct StorageLayout;
@@ -10,7 +9,7 @@ impl StorageLayout {
     ///
     /// Media files are grouped under `media` and sharded by
     /// the first two characters of the asset ID
-    pub fn media(id: impl AsRef<AssetId>, variant: MediaVariant) -> StoragePath {
+    pub fn media(id: impl AsRef<AssetId>, variant: FileVariant) -> StoragePath {
         StoragePath::new("media")
             .push(shard(id.as_ref().to_string(), 2))
             .push(variant.as_str())
@@ -31,7 +30,7 @@ fn shard(value: impl AsRef<str>, steps: usize) -> String {
             break;
         }
         res.push_str(&path[idx..idx + 2]);
-        res.push(path::SEP_CHAR);
+        res.push(storage_types::path::SEP_CHAR);
     }
 
     res.push_str(path);

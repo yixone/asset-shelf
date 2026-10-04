@@ -1,4 +1,4 @@
-// TODO: Move to `media` crate
+// TODO: Move to `media-types` crate
 
 const RED_SHIFT: usize = 16;
 const GREEN_SHIFT: usize = 8;

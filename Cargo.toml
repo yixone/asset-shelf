@@ -1,26 +1,32 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/base62",
-    "crates/mime",
-    "crates/schema",
-    "crates/snowflake",
+    "lib/base62",
+    "lib/mime",
+    "lib/snowflake",
+
+    "crates/models",
     "crates/storage",
+    "crates/storage-types",
 ]
 
 [workspace.dependencies]
 # --- Workspace crates ---
 
 # Base62 encoder/decoder
-base62.path = "crates/base62"
-# Domain types and structures used in the application
-schema.path = "crates/schema"
+base62.path = "lib/base62"
 # MIME types and detector 
-mime.path = "crates/mime"
+mime.path = "lib/mime"
 # Snowflake id generator
-snowflake.path = "crates/snowflake"
+snowflake.path = "lib/snowflake"
 
+# Domain types and structures used in the application
+models.path = "crates/models"
+
+# Managed file storage for AssetShelf
 storage.path = "crates/storage"
+# Value types used by the managed file storage subsystem
+storage-types.path = "crates/storage-types"
 
 
 # --- Extern crates ---
