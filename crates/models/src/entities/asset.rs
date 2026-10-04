@@ -257,6 +257,60 @@ impl Asset {
     }
 }
 
+/// Persisted representation of an [`Asset`] used to reconstruct
+/// the domain entity
+///
+/// This type is intended for use by persistence implementations
+/// and is not part of the regular domain API
+#[cfg(feature = "dev")]
+pub struct AssetPersistence {
+    pub id: AssetId,
+    pub state: AssetState,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub file_group_id: FileGroupId,
+    pub meta: AssetData,
+    pub is_offline: bool,
+    pub accent_color: Option<Color>,
+    pub p_hash: Option<PerceptualHash>,
+    pub a_hash: Option<PerceptualHash>,
+    pub dimension: Option<(u32, u32)>,
+    pub original_mime: MimeKind,
+}
+
+#[cfg(feature = "dev")]
+impl Asset {
+    /// Creates [`Asset`] from persisted data
+    ///
+    /// This method is intended for use by persistence implementations
+    /// when loading an asset from storage
+    pub fn from_persistence(p: AssetPersistence) -> Self {
+        Asset {
+            id: p.id,
+            state: p.state,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            deleted_at: p.deleted_at,
+            features: AssetFeatures {
+                accent_color: p.accent_color,
+                p_hash: p.p_hash,
+                a_hash: p.a_hash,
+                dimension: p.dimension,
+            },
+            file_group_id: p.file_group_id,
+            duplicate_of: p.meta.duplicate_of,
+            meta: AssetMeta {
+                name: p.meta.name,
+                caption: p.meta.caption,
+                source_url: p.meta.source_url,
+            },
+            is_offline: p.is_offline,
+            original_mime: p.original_mime,
+        }
+    }
+}
+
 /// Derived features calculated from an asset's media
 ///
 /// Features are generated from the asset's media and may be unavailable

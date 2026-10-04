@@ -238,8 +238,8 @@ impl FileGroup {
 impl FileGroup {
     /// Creates [`FileGroup`] from persisted data
     ///
-    /// This constructor is intended for reconstructing a file group
-    /// from persistence-layer data
+    /// This method is intended for use by persistence implementations
+    /// when loading a file group from storage
     pub fn from_persistence(
         id: FileGroupId,
         files: impl IntoIterator<Item = File>,
@@ -321,8 +321,8 @@ impl File {
 impl File {
     /// Creates [`File`] from persisted data
     ///
-    /// This constructor is intended for reconstructing a file
-    /// from persistence-layer data
+    /// This method is intended for use by persistence implementations
+    /// when loading a file from storage
     pub fn from_persistence(
         key: (FileGroupId, FileVariant),
         created_at: DateTime<Utc>,
