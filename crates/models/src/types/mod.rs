@@ -2,6 +2,7 @@ pub mod asset;
 pub mod color;
 pub mod file;
 pub mod hash;
+pub mod query;
 
 pub use asset::AssetState;
 pub use color::Color;
