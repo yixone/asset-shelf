@@ -28,7 +28,8 @@ patch! {
         state: AssetState,
         deleted_at: Option<DateTime<Utc>>,
         duplicate_of: Option<AssetId>,
-        is_offline: bool
+        is_offline: bool,
+        parent_id: Option<AssetId>,
     },
     Asset
 }

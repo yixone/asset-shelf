@@ -8,7 +8,9 @@ use crate::{
     patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch},
     ports::{AssetDatabase, AssetWriter, FileGroupDatabase},
     result::Result,
-    types::{AssetState, Color, PerceptualHash},
+    types::{
+        AssetSortBy, AssetState, Color, DeletedVisibility, Pagination, PerceptualHash, SortOrder,
+    },
 };
 
 /// Represents an asset and its current state within the media library
@@ -19,6 +21,9 @@ use crate::{
 pub struct Asset {
     /// Unique asset identifier
     pub(crate) id: AssetId,
+
+    /// Parrent asset id
+    pub(crate) parent_id: Option<AssetId>,
 
     /// Current lifecycle state of the asset
     pub(crate) state: AssetState,
@@ -60,6 +65,7 @@ impl Asset {
     /// an original file
     pub async fn create<DB>(
         id: AssetId,
+        parent: Option<&Asset>,
         data: AssetData,
         file_group: &FileGroup,
         db: &mut DB,
@@ -67,6 +73,15 @@ impl Asset {
     where
         DB: AssetWriter,
     {
+        let parent_id = parent.map(|p| p.id());
+
+        if let Some(parent_id) = parent_id
+            && parent_id == id
+        {
+            // An asset cannot have itself as a parent
+            return Err(EntityError::InvalidRelation);
+        }
+
         let meta = AssetMeta {
             name: data.name,
             caption: data.caption,
@@ -85,6 +100,7 @@ impl Asset {
 
         let asset = Asset {
             id,
+            parent_id,
             state: AssetState::Pending,
             created_at: now,
             updated_at: now,
@@ -112,10 +128,22 @@ impl Asset {
         db.get_asset(id).await?.ok_or(EntityError::NotFound)
     }
 
+    pub async fn list<DB>(
+        pagination: Pagination,
+        order: (AssetSortBy, SortOrder),
+        deleted: DeletedVisibility,
+        db: &DB,
+    ) -> Result<Vec<(Asset, FileGroup)>>
+    where
+        DB: AssetDatabase,
+    {
+        db.list_assets(pagination, order, deleted).await
+    }
+
     /// Updates the [`Asset`] using the specified patch
     ///
     /// The domain model is updated only after the persistence operation succeeds
-    pub async fn update<DB>(&mut self, patch: AssetPatch, db: &DB) -> Result<()>
+    pub(crate) async fn update<DB>(&mut self, patch: AssetPatch, db: &DB) -> Result<()>
     where
         DB: AssetDatabase,
     {
@@ -201,13 +229,26 @@ impl Asset {
         self.is_offline
     }
 
+    pub async fn set_offline<DB>(&mut self, db: &DB) -> Result<()>
+    where
+        DB: AssetDatabase,
+    {
+        self.update(AssetPatch::new().is_offline(true), db).await
+    }
+
+    pub async fn unset_offline<DB>(&mut self, db: &DB) -> Result<()>
+    where
+        DB: AssetDatabase,
+    {
+        self.update(AssetPatch::new().is_offline(false), db).await
+    }
+
     /// Returns `true` if the asset is marked as a duplicate of another asset
     pub fn is_duplicate(&self) -> bool {
         self.duplicate_of.is_some()
     }
 
-    /// Returns `true` if the asset has all data
-    /// required for use
+    /// Returns `true` if the asset has all data required for use
     pub fn is_available(&self) -> bool {
         !self.is_deleted() && !self.is_offline
     }
@@ -255,6 +296,11 @@ impl Asset {
     pub fn original_mime(&self) -> MimeKind {
         self.original_mime
     }
+
+    /// Returns the parent id of this [`Asset`]
+    pub fn parent_id(&self) -> Option<AssetId> {
+        self.parent_id
+    }
 }
 
 /// Persisted representation of an [`Asset`] used to reconstruct
@@ -265,6 +311,7 @@ impl Asset {
 #[cfg(feature = "dev")]
 pub struct AssetPersistence {
     pub id: AssetId,
+    pub parent: Option<AssetId>,
     pub state: AssetState,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -288,6 +335,7 @@ impl Asset {
     pub fn from_persistence(p: AssetPersistence) -> Self {
         Asset {
             id: p.id,
+            parent_id: p.parent,
             state: p.state,
             created_at: p.created_at,
             updated_at: p.updated_at,

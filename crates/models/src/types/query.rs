@@ -6,6 +6,7 @@ pub enum SortOrder {
 pub const DEFAULT_LIMIT: u32 = 100;
 pub const DEFAULT_OFFSET: u32 = 0;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Pagination {
     limit: u32,
     offset: u32,
@@ -34,4 +35,16 @@ impl Pagination {
     pub fn offset(&self) -> u32 {
         self.offset
     }
+}
+
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DeletedVisibility {
+    HideDeleted,
+    IncludeDeleted,
+    DeletedOnly,
 }

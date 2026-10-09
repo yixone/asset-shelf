@@ -4,18 +4,22 @@ use crate::{
     patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch},
     ports::UnitOfWork,
     result::Result,
+    types::{AssetSortBy, DeletedVisibility, Pagination, SortOrder},
 };
 
-/// Provides read and write access to [`Asset`] data
-///
-/// Implementations are responsible for loading assets and applying changes
-/// to their persisted state
 #[async_trait::async_trait]
 pub trait AssetDatabase {
     /// Loads an [`Asset`] together with its associated [`FileGroup`]
     ///
     /// Returns `None` if the asset does not exist
     async fn get_asset(&self, id: AssetId) -> Result<Option<(Asset, FileGroup)>>;
+
+    async fn list_assets(
+        &self,
+        pagination: Pagination,
+        order: (AssetSortBy, SortOrder),
+        deleted: DeletedVisibility,
+    ) -> Result<Vec<(Asset, FileGroup)>>;
 
     /// Updates the specified [`Asset`] using the given patch
     ///

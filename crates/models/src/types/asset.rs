@@ -1,7 +1,7 @@
 /// Represents the lifecycle state of an asset
 #[cfg_attr(
     feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
+    derive(serde::Serialize),
     serde(rename_all = "snake_case", tag = "state", content = "state_details")
 )]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -22,7 +22,7 @@ pub enum AssetState {
 /// Describes why processing of an asset failed
 #[cfg_attr(
     feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
+    derive(serde::Serialize,),
     serde(rename_all = "snake_case")
 )]
 #[cfg_attr(feature = "sqlx", derive(sqlx::Type), sqlx(rename_all = "snake_case"))]
@@ -44,4 +44,16 @@ pub enum AssetFailure {
     ///
     /// See the logs for underlying details
     Unknown,
+}
+
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize),
+    serde(rename_all = "snake_case")
+)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AssetSortBy {
+    CreatedAt,
+    DeletedAt,
+    OriginalSize,
 }
