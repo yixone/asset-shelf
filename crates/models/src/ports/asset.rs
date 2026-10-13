@@ -1,45 +1,54 @@
 use crate::{
-    entities::{Asset, FileGroup},
+    Result,
+    entities::{Asset, AssetFeatures, AssetMeta, FileGroup},
     id::AssetId,
-    patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch},
-    ports::UnitOfWork,
-    result::Result,
+    patches,
     types::{AssetSortBy, DeletedVisibility, Pagination, SortOrder},
 };
 
 #[async_trait::async_trait]
 pub trait AssetDatabase {
+    /// Persists a new [`Asset`]
+    async fn insert_asset(&mut self, asset: &Asset) -> Result<()>;
+
     /// Loads an [`Asset`] together with its associated [`FileGroup`]
     ///
     /// Returns `None` if the asset does not exist
-    async fn get_asset(&self, id: AssetId) -> Result<Option<(Asset, FileGroup)>>;
+    async fn get_asset(&mut self, id: AssetId) -> Result<Option<(Asset, FileGroup)>>;
 
+    /// Lists assets matching the given pagination, ordering and deletion visibility
     async fn list_assets(
-        &self,
+        &mut self,
         pagination: Pagination,
         order: (AssetSortBy, SortOrder),
         deleted: DeletedVisibility,
     ) -> Result<Vec<(Asset, FileGroup)>>;
 
     /// Updates the specified [`Asset`] using the given patch
-    ///
-    /// Returns `true` if the asset was updated, or `false` if it does not exist
-    async fn update_asset(&self, id: AssetId, patch: &AssetPatch) -> Result<bool>;
+    async fn update_asset(&mut self, id: AssetId, patch: &patches::AssetPatch) -> Result<Asset>;
 
     /// Updates the user-provided metadata of the specified [`Asset`]
-    ///
-    /// Returns `true` if the asset was updated, or `false` if it does not exist
-    async fn update_asset_meta(&self, id: AssetId, patch: &AssetMetaPatch) -> Result<bool>;
+    async fn update_asset_meta(
+        &mut self,
+        id: AssetId,
+        patch: &patches::AssetMetaPatch,
+    ) -> Result<AssetMeta>;
 
     /// Updates the derived features of the specified [`Asset`]
-    ///
-    /// Returns `true` if the asset was updated, or `false` if it does not exist
-    async fn update_asset_features(&self, id: AssetId, patch: &AssetFeaturesPatch) -> Result<bool>;
-}
+    async fn update_asset_features(
+        &mut self,
+        id: AssetId,
+        patch: &patches::AssetFeaturesPatch,
+    ) -> Result<AssetFeatures>;
 
-/// Provides operations for creating persisted [`Asset`]s
-#[async_trait::async_trait]
-pub trait AssetWriter: UnitOfWork {
-    /// Persists a new [`Asset`]
-    async fn insert_asset(&mut self, asset: &Asset) -> Result<()>;
+    /// Replace references to one asset with references to another
+    ///
+    /// - `from` identifies the asset whose references are to be replaced;
+    /// - `to` identifies the asset that will be referenced instead
+    ///
+    /// Returns the number of references replaced
+    async fn replace_asset_refs(&mut self, from: AssetId, to: AssetId) -> Result<u32>;
+
+    /// Deletes an [`Asset`] by its identifier
+    async fn delete_asset(&mut self, id: AssetId) -> Result<bool>;
 }
