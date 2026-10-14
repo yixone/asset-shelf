@@ -5,7 +5,7 @@ use crate::{
     EntityError, Result,
     entities::FileGroup,
     id::{AssetId, FileGroupId},
-    patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch},
+    patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch, PatchField},
     ports::{AssetDatabase, file::FileGroupDatabase},
     types::{
         AssetSortBy, AssetState, Color, DeletedVisibility, Pagination, PerceptualHash, SortOrder,
@@ -405,7 +405,7 @@ impl Asset {
 ///
 /// Features are generated from the asset's media and may be unavailable
 /// while media processing has not completed
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AssetFeatures {
     /// Asset accent color
     pub(crate) accent_color: Option<Color>,
