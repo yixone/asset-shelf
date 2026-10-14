@@ -232,6 +232,20 @@ impl Asset {
     where
         DB: AssetDatabase,
     {
+        if let Some(Some(parent_id)) = &patch.parent_id.set()
+            && *parent_id == self.id
+        {
+            // An asset cannot have itself as a parent
+            return Err(EntityError::InvalidRelation);
+        }
+
+        if let Some(Some(duplicate_id)) = &patch.duplicate_of.set()
+            && *duplicate_id == self.id
+        {
+            // An asset cannot duplicate itself
+            return Err(EntityError::InvalidRelation);
+        }
+
         let updated = db.update_asset(self.id, &patch, Utc::now()).await?;
         *self = updated;
 
