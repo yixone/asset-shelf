@@ -86,7 +86,7 @@ impl FileGroup {
     /// Loads a [`FileGroup`] by its identifier
     ///
     /// Returns [`EntityError::NotFound`] if the file group does not exist
-    pub async fn load<DB>(id: &FileGroupId, db: &DB) -> Result<Self>
+    pub async fn load<DB>(id: &FileGroupId, db: &mut DB) -> Result<Self>
     where
         DB: FileGroupDatabase,
     {

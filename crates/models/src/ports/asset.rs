@@ -1,3 +1,5 @@
+use chrono::{DateTime, Utc};
+
 use crate::{
     Result,
     entities::{Asset, AssetFeatures, AssetMeta, FileGroup},
@@ -25,13 +27,19 @@ pub trait AssetDatabase {
     ) -> Result<Vec<(Asset, FileGroup)>>;
 
     /// Updates the specified [`Asset`] using the given patch
-    async fn update_asset(&mut self, id: AssetId, patch: &patches::AssetPatch) -> Result<Asset>;
+    async fn update_asset(
+        &mut self,
+        id: AssetId,
+        patch: &patches::AssetPatch,
+        updated_at: DateTime<Utc>,
+    ) -> Result<Asset>;
 
     /// Updates the user-provided metadata of the specified [`Asset`]
     async fn update_asset_meta(
         &mut self,
         id: AssetId,
         patch: &patches::AssetMetaPatch,
+        updated_at: DateTime<Utc>,
     ) -> Result<AssetMeta>;
 
     /// Updates the derived features of the specified [`Asset`]
@@ -39,6 +47,7 @@ pub trait AssetDatabase {
         &mut self,
         id: AssetId,
         patch: &patches::AssetFeaturesPatch,
+        updated_at: DateTime<Utc>,
     ) -> Result<AssetFeatures>;
 
     /// Replace references to one asset with references to another

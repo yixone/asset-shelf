@@ -2,12 +2,11 @@ use chrono::{DateTime, Utc};
 use mime::MimeKind;
 
 use crate::{
-    EntityError,
+    EntityError, Result,
     entities::FileGroup,
     id::{AssetId, FileGroupId},
     patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch},
-    ports::{AssetDatabase, AssetWriter, FileGroupDatabase},
-    result::Result,
+    ports::{AssetDatabase, file::FileGroupDatabase},
     types::{
         AssetSortBy, AssetState, Color, DeletedVisibility, Pagination, PerceptualHash, SortOrder,
     },
@@ -25,31 +24,31 @@ pub struct Asset {
     /// Parrent asset id
     pub(crate) parent_id: Option<AssetId>,
 
+    /// Identifier of the file group associated with the asset
+    pub(crate) file_group_id: FileGroupId,
+
     /// Current lifecycle state of the asset
     pub(crate) state: AssetState,
+
+    /// Asset features
+    pub(crate) features: AssetFeatures,
+
+    /// Asset metadata
+    pub(crate) meta: AssetMeta,
+
+    /// Identifier of the asset that this asset is considered a duplicate of
+    pub(crate) duplicate_of: Option<AssetId>,
 
     /// Asset creation time
     pub(crate) created_at: DateTime<Utc>,
 
     /// Time of the asset's last modification
-    pub(crate) updated_at: DateTime<Utc>,
+    pub(crate) updated_at: Option<DateTime<Utc>>,
 
     /// Optional asset deletion time
     ///
     /// If `Some`, the asset is considered deleted
     pub(crate) deleted_at: Option<DateTime<Utc>>,
-
-    /// Asset features
-    pub(crate) features: AssetFeatures,
-
-    /// Identifier of the file group associated with the asset
-    pub(crate) file_group_id: FileGroupId,
-
-    /// Identifier of the asset that this asset is considered a duplicate of
-    pub(crate) duplicate_of: Option<AssetId>,
-
-    /// Asset metadata
-    pub(crate) meta: AssetMeta,
 
     /// If `true`, the original file has been lost from storage and the asset cannot be used
     pub(crate) is_offline: bool,
@@ -59,10 +58,87 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// Returns the ID of this [`Asset`]
+    pub fn id(&self) -> AssetId {
+        self.id
+    }
+
+    /// Returns the ID of the parent [`Asset`]
+    pub fn parent_id(&self) -> Option<AssetId> {
+        self.parent_id
+    }
+
+    #[inline]
+    /// Returns `true` if the [`Asset`] has a parent
+    pub fn is_child(&self) -> bool {
+        self.parent_id().is_some()
+    }
+
+    /// Returns the lifecycle state of this [`Asset`]
+    pub fn state(&self) -> AssetState {
+        self.state
+    }
+
+    /// Returns a reference to the derived features of this [`Asset`]
+    pub fn features(&self) -> &AssetFeatures {
+        &self.features
+    }
+
+    /// Returns a reference to the user-provided metadata of this [`Asset`]
+    pub fn meta(&self) -> &AssetMeta {
+        &self.meta
+    }
+
+    /// Returns the ID of the asset this [`Asset`] duplicates
+    pub fn duplicate_of(&self) -> Option<AssetId> {
+        self.duplicate_of
+    }
+
+    #[inline]
+    /// Returns `true` if this [`Asset`] is marked as a duplicate
+    pub fn is_duplicate(&self) -> bool {
+        self.duplicate_of().is_some()
+    }
+
+    /// Returns the creation timestamp of this [`Asset`]
+    pub fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+
+    /// Returns the last update timestamp of this [`Asset`]
+    pub fn updated_at(&self) -> Option<DateTime<Utc>> {
+        self.updated_at
+    }
+
+    /// Returns the deletion timestamp of this [`Asset`]
+    pub fn deleted_at(&self) -> Option<DateTime<Utc>> {
+        self.deleted_at
+    }
+
+    #[inline]
+    /// Returns `true` if this [`Asset`] is marked as deleted
+    pub fn is_deleted(&self) -> bool {
+        self.deleted_at().is_some()
+    }
+
+    /// Returns `true` if this [`Asset`] is marked as offline
+    pub fn is_offline(&self) -> bool {
+        self.is_offline
+    }
+
+    /// Returns the MIME kind of the original file associated with this [`Asset`]
+    pub fn original_mime(&self) -> MimeKind {
+        self.original_mime
+    }
+
     /// Creates and persists a new [`Asset`] associated with the given [`FileGroup`]
     ///
-    /// Returns [`EntityError::NotFound`] if the file group does not contain
-    /// an original file
+    /// The new asset stats in the [`AssetState::Pending`] state
+    ///
+    /// Returns [`EntityError::InvalidRelation`] if the asset references itself
+    /// as its parent or as the asset it duplicates
+    ///
+    /// Returns [`EntityError::NotFound`] if the file group has no original file
     pub async fn create<DB>(
         id: AssetId,
         parent: Option<&Asset>,
@@ -71,10 +147,9 @@ impl Asset {
         db: &mut DB,
     ) -> Result<Self>
     where
-        DB: AssetWriter,
+        DB: AssetDatabase,
     {
         let parent_id = parent.map(|p| p.id());
-
         if let Some(parent_id) = parent_id
             && parent_id == id
         {
@@ -82,31 +157,29 @@ impl Asset {
             return Err(EntityError::InvalidRelation);
         }
 
+        if data.duplicate_of == Some(id) {
+            // An asset cannot duplicate itself
+            return Err(EntityError::InvalidRelation);
+        }
+
+        let original = file_group.original().ok_or(EntityError::NotFound)?;
+
         let meta = AssetMeta {
             name: data.name,
             caption: data.caption,
             source_url: data.source_url,
         };
-
-        let features = AssetFeatures {
-            accent_color: None,
-            p_hash: None,
-            a_hash: None,
-            dimension: None,
-        };
-
-        let original = file_group.original().ok_or(EntityError::NotFound)?;
-        let now = Utc::now();
+        let features = AssetFeatures::default();
 
         let asset = Asset {
             id,
             parent_id,
             state: AssetState::Pending,
-            created_at: now,
-            updated_at: now,
+            created_at: Utc::now(),
+            updated_at: None,
             deleted_at: None,
             features,
-            file_group_id: file_group.id().clone(),
+            file_group_id: file_group.id.clone(),
             duplicate_of: data.duplicate_of,
             meta,
             is_offline: false,
@@ -118,21 +191,33 @@ impl Asset {
         Ok(asset)
     }
 
-    /// Loads an [`Asset`] together with its associated [`FileGroup`]
+    /// Loads an [`Asset`] and its associated [`FileGroup`] by ID
     ///
     /// Returns [`EntityError::NotFound`] if the asset does not exist
-    pub async fn get<DB>(id: AssetId, db: &DB) -> Result<(Asset, FileGroup)>
+    pub async fn load<DB>(id: AssetId, db: &mut DB) -> Result<(Self, FileGroup)>
     where
         DB: AssetDatabase,
     {
         db.get_asset(id).await?.ok_or(EntityError::NotFound)
     }
 
+    /// Loads the [`FileGroup`] associated with this [`Asset`]
+    ///
+    /// Returns [`EntityError::NotFound`] if the file group does not exist
+    pub async fn load_file_group<DB>(&self, db: &mut DB) -> Result<FileGroup>
+    where
+        DB: FileGroupDatabase,
+    {
+        FileGroup::load(&self.file_group_id, db).await
+    }
+
+    /// Lists assets and their associated file groups using the specified
+    /// pagination, ordering and deletion visibility
     pub async fn list<DB>(
         pagination: Pagination,
         order: (AssetSortBy, SortOrder),
         deleted: DeletedVisibility,
-        db: &DB,
+        db: &mut DB,
     ) -> Result<Vec<(Asset, FileGroup)>>
     where
         DB: AssetDatabase,
@@ -143,163 +228,106 @@ impl Asset {
     /// Updates the [`Asset`] using the specified patch
     ///
     /// The domain model is updated only after the persistence operation succeeds
-    pub(crate) async fn update<DB>(&mut self, patch: AssetPatch, db: &DB) -> Result<()>
+    pub async fn update<DB>(&mut self, patch: AssetPatch, db: &mut DB) -> Result<()>
     where
         DB: AssetDatabase,
     {
-        db.update_asset(self.id(), &patch).await?;
-        patch.apply_domain(self);
+        let updated = db.update_asset(self.id, &patch, Utc::now()).await?;
+        *self = updated;
+
         Ok(())
     }
 
     /// Updates the lifecycle state of this [`Asset`]
-    pub async fn update_state<DB>(&mut self, state: AssetState, db: &DB) -> Result<()>
+    pub async fn update_state<DB>(&mut self, state: AssetState, db: &mut DB) -> Result<()>
     where
         DB: AssetDatabase,
     {
-        let patch = AssetPatch::new().state(state);
-        self.update(patch, db).await
+        self.update(AssetPatch::new().state(state), db).await
     }
 
     /// Marks this [`Asset`] as deleted
-    pub async fn mark_deleted<DB>(&mut self, db: &DB) -> Result<()>
+    pub async fn mark_deleted<DB>(&mut self, db: &mut DB) -> Result<()>
     where
         DB: AssetDatabase,
     {
-        let patch = AssetPatch::new().deleted_at(Some(Utc::now()));
-        self.update(patch, db).await
+        self.update(AssetPatch::new().deleted_at(Some(Utc::now())), db)
+            .await
     }
 
     /// Restores this [`Asset`] from the deleted state
-    pub async fn restore_deleted<DB>(&mut self, db: &DB) -> Result<()>
+    pub async fn restore_deleted<DB>(&mut self, db: &mut DB) -> Result<()>
     where
         DB: AssetDatabase,
     {
-        let patch = AssetPatch::new().deleted_at(None);
-        self.update(patch, db).await
+        self.update(AssetPatch::new().deleted_at(None), db).await
     }
 
-    /// Loads the [`FileGroup`] associated with this [`Asset`]
+    /// Updates the user-provided metadata of this [`Asset`] using the specified patch
     ///
-    /// Returns [`EntityError::NotFound`] if the file group does not exist
-    pub async fn file_group<DB>(&self, db: &DB) -> Result<FileGroup>
+    /// The domain model is updated only after the persistence operation succeeds
+    pub async fn update_meta<DB>(&mut self, patch: AssetMetaPatch, db: &mut DB) -> Result<()>
     where
-        DB: FileGroupDatabase,
+        DB: AssetDatabase,
     {
-        FileGroup::load(self.file_group_id(), db).await
+        let now = Utc::now();
+
+        let updated = db.update_asset_meta(self.id, &patch, now).await?;
+
+        self.meta = updated;
+        self.updated_at = Some(now);
+
+        Ok(())
     }
 
-    /// Returns the id of this [`Asset`]
-    pub fn id(&self) -> AssetId {
-        self.id
+    /// Updates the derived features of this [`Asset`] using the specified patch
+    ///
+    /// The domain model is updated only after the persistence operation succeeds
+    pub async fn update_features<DB>(
+        &mut self,
+        patch: AssetFeaturesPatch,
+        db: &mut DB,
+    ) -> Result<()>
+    where
+        DB: AssetDatabase,
+    {
+        let now = Utc::now();
+
+        let updated = db.update_asset_features(self.id, &patch, now).await?;
+
+        self.features = updated;
+        self.updated_at = Some(now);
+
+        Ok(())
     }
 
-    /// Returns the state of this [`Asset`]
-    pub fn state(&self) -> AssetState {
-        self.state
-    }
-
-    /// Returns this [`Asset`] creation time
-    pub fn created_at(&self) -> DateTime<Utc> {
-        self.created_at
-    }
-
-    /// Returns this [`Asset`] update time
-    pub fn updated_at(&self) -> DateTime<Utc> {
-        self.updated_at
-    }
-
-    /// Returns this [`Asset`] deletion time
-    pub fn deleted_at(&self) -> Option<DateTime<Utc>> {
-        self.deleted_at
-    }
-
-    /// Returns `true` if the asset has been marked as deleted
-    pub fn is_deleted(&self) -> bool {
-        self.deleted_at.is_some()
-    }
-
-    /// Returns `true` if the asset is not marked as deleted
-    pub fn is_active(&self) -> bool {
-        self.deleted_at.is_none()
-    }
-
-    /// Returns `true` if the asset is offline
-    pub fn is_offline(&self) -> bool {
-        self.is_offline
-    }
-
-    pub async fn set_offline<DB>(&mut self, db: &DB) -> Result<()>
+    /// Marks this [`Asset`] as offline
+    pub async fn set_offline<DB>(&mut self, db: &mut DB) -> Result<()>
     where
         DB: AssetDatabase,
     {
         self.update(AssetPatch::new().is_offline(true), db).await
     }
 
-    pub async fn unset_offline<DB>(&mut self, db: &DB) -> Result<()>
+    /// Unmarks this [`Asset`] as offline
+    pub async fn unset_offline<DB>(&mut self, db: &mut DB) -> Result<()>
     where
         DB: AssetDatabase,
     {
         self.update(AssetPatch::new().is_offline(false), db).await
     }
 
-    /// Returns `true` if the asset is marked as a duplicate of another asset
-    pub fn is_duplicate(&self) -> bool {
-        self.duplicate_of.is_some()
-    }
-
-    /// Returns `true` if the asset has all data required for use
-    pub fn is_available(&self) -> bool {
-        !self.is_deleted() && !self.is_offline
-    }
-
-    /// Returns a reference to the features of this [`Asset`]
-    pub fn features(&self) -> &AssetFeatures {
-        &self.features
-    }
-
-    /// Updates the derived features of this [`Asset`] using the specified patch
+    /// Deletes this [`Asset`] from persistent storage
     ///
-    /// The domain model is updated only after the persistence operation succeeds
-    pub async fn update_features<DB>(&mut self, patch: AssetFeaturesPatch, db: &DB) -> Result<()>
+    /// Consumes the instance
+    pub async fn delete<DB>(self, db: &mut DB) -> Result<()>
     where
         DB: AssetDatabase,
     {
-        db.update_asset_features(self.id(), &patch).await?;
-        patch.apply_domain(&mut self.features);
+        if !db.delete_asset(self.id).await? {
+            return Err(EntityError::NotFound);
+        }
         Ok(())
-    }
-
-    /// Returns a reference to the file group id of this [`Asset`]
-    pub fn file_group_id(&self) -> &FileGroupId {
-        &self.file_group_id
-    }
-
-    /// Returns a reference to the meta of this [`Asset`]
-    pub fn meta(&self) -> &AssetMeta {
-        &self.meta
-    }
-
-    /// Updates the user-provided metadata of this [`Asset`] using the specified patch
-    ///
-    /// The domain model is updated only after the persistence operation succeeds
-    pub async fn update_meta<DB>(&mut self, patch: AssetMetaPatch, db: &DB) -> Result<()>
-    where
-        DB: AssetDatabase,
-    {
-        db.update_asset_meta(self.id(), &patch).await?;
-        patch.apply_domain(&mut self.meta);
-        Ok(())
-    }
-
-    /// Returns the MIME kind of this [`Asset`]'s original media file
-    pub fn original_mime(&self) -> MimeKind {
-        self.original_mime
-    }
-
-    /// Returns the parent id of this [`Asset`]
-    pub fn parent_id(&self) -> Option<AssetId> {
-        self.parent_id
     }
 }
 
@@ -311,18 +339,18 @@ impl Asset {
 #[cfg(feature = "dev")]
 pub struct AssetPersistence {
     pub id: AssetId,
-    pub parent: Option<AssetId>,
-    pub state: AssetState,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub deleted_at: Option<DateTime<Utc>>,
+    pub parent_id: Option<AssetId>,
     pub file_group_id: FileGroupId,
-    pub meta: AssetData,
-    pub is_offline: bool,
+    pub state: AssetState,
     pub accent_color: Option<Color>,
     pub p_hash: Option<PerceptualHash>,
     pub a_hash: Option<PerceptualHash>,
     pub dimension: Option<(u32, u32)>,
+    pub meta: AssetData,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub is_offline: bool,
     pub original_mime: MimeKind,
 }
 
@@ -335,24 +363,24 @@ impl Asset {
     pub fn from_persistence(p: AssetPersistence) -> Self {
         Asset {
             id: p.id,
-            parent_id: p.parent,
+            parent_id: p.parent_id,
+            file_group_id: p.file_group_id,
             state: p.state,
-            created_at: p.created_at,
-            updated_at: p.updated_at,
-            deleted_at: p.deleted_at,
             features: AssetFeatures {
                 accent_color: p.accent_color,
                 p_hash: p.p_hash,
                 a_hash: p.a_hash,
                 dimension: p.dimension,
             },
-            file_group_id: p.file_group_id,
-            duplicate_of: p.meta.duplicate_of,
             meta: AssetMeta {
                 name: p.meta.name,
                 caption: p.meta.caption,
                 source_url: p.meta.source_url,
             },
+            duplicate_of: p.meta.duplicate_of,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            deleted_at: p.deleted_at,
             is_offline: p.is_offline,
             original_mime: p.original_mime,
         }

@@ -6,6 +6,7 @@ pub enum EntityError {
     AlreadyExists,
     Deleted,
     InvalidRelation,
+    Unavailable,
     Other(Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
