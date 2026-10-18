@@ -14,6 +14,9 @@
 
 pub mod result;
 
+pub use result::EntityError;
+pub(crate) use result::Result;
+
 pub mod id;
 
 pub mod entities;

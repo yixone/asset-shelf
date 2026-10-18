@@ -57,6 +57,18 @@ impl FileGroup {
     }
 }
 
+#[cfg(feature = "dev")]
+impl FileGroup {
+    /// Creates [`FileGroup`] from persisted data
+    ///
+    /// This method is intended for use by persistence implementations
+    /// when loading a file group from storage
+    pub fn from_persistence(id: FileGroupId, files: impl IntoIterator<Item = File>) -> Self {
+        let files = files.into_iter().map(|f| (f.key.variant(), f)).collect();
+        FileGroup { id, files }
+    }
+}
+
 /// Represents a file owned by [`FileGroup`]
 ///
 /// Contains the file's storage location, size, MIME type
@@ -64,22 +76,22 @@ impl FileGroup {
 #[derive(Debug)]
 pub struct File {
     /// File key
-    key: FileKey,
+    pub(crate) key: FileKey,
 
     /// File creation time
-    created_at: DateTime<Utc>,
+    pub(crate) created_at: DateTime<Utc>,
 
     /// File path in application storage
-    path: StoragePath,
+    pub(crate) path: StoragePath,
 
     /// File size in bytes
-    size_bytes: u64,
+    pub(crate) size_bytes: u64,
 
     /// File MIME type
-    mime_type: MimeType,
+    pub(crate) mime_type: MimeType,
 
     /// File duration (for supported files)
-    duration: Option<Duration>,
+    pub(crate) duration: Option<Duration>,
 }
 
 /// Data required to create a [`File`]
@@ -156,5 +168,27 @@ impl File {
     /// Returns the duration of this [`File`] (if supported)
     pub fn duration(&self) -> Option<Duration> {
         self.duration
+    }
+}
+
+#[cfg(feature = "dev")]
+impl File {
+    /// Creates [`File`] from persisted data
+    ///
+    /// This method is intended for use by persistence implementations
+    /// when loading a file from storage
+    pub fn from_persistence(
+        key: (FileGroupId, FileVariant),
+        created_at: DateTime<Utc>,
+        data: FileData,
+    ) -> Self {
+        File {
+            key: FileKey::new(key.0, key.1),
+            created_at,
+            path: data.path,
+            size_bytes: data.size_bytes,
+            mime_type: data.mime_type,
+            duration: data.duration,
+        }
     }
 }

@@ -2,7 +2,10 @@ use chrono::{DateTime, Utc};
 use mime::MimeKind;
 
 use crate::{
+    EntityError, Result,
+    entities::FileGroup,
     id::{AssetId, FileGroupId},
+    patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch, PatchField},
     types::{AssetState, Color, PerceptualHash},
 };
 
@@ -13,38 +16,38 @@ use crate::{
 #[derive(Debug)]
 pub struct Asset {
     /// Unique asset ID
-    id: AssetId,
+    pub(crate) id: AssetId,
 
     /// Asset features
-    features: AssetFeatures,
+    pub(crate) features: AssetFeatures,
     /// User-provided asset metadata
-    meta: AssetMeta,
+    pub(crate) meta: AssetMeta,
 
     /// Parrent asset ID
-    parent_id: Option<AssetId>,
+    pub(crate) parent_id: Option<AssetId>,
     /// ID of the asset that this asset is considered a duplicate of
-    duplicate_of: Option<AssetId>,
+    pub(crate) duplicate_of: Option<AssetId>,
 
     /// Identifier of the file group associated with the asset
-    file_group_id: FileGroupId,
+    pub(crate) file_group_id: FileGroupId,
     //// Original asset file name
-    original_filename: Option<String>,
+    pub(crate) original_filename: Option<String>,
     /// Type of the asset's original media file
-    original_mime: MimeKind,
+    pub(crate) original_mime: MimeKind,
 
     /// Current lifecycle state of the asset
-    state: AssetState,
+    pub(crate) state: AssetState,
     /// If `true`, the original file has been lost from storage and the asset cannot be used
-    is_offline: bool,
+    pub(crate) is_offline: bool,
 
     /// Asset creation time
-    created_at: DateTime<Utc>,
+    pub(crate) created_at: DateTime<Utc>,
     /// Time of the asset's last modification
-    updated_at: Option<DateTime<Utc>>,
+    pub(crate) updated_at: Option<DateTime<Utc>>,
     /// Optional asset deletion time
     ///
     /// If `Some`, the asset is considered deleted
-    deleted_at: Option<DateTime<Utc>>,
+    pub(crate) deleted_at: Option<DateTime<Utc>>,
 }
 
 /// Derived features calculated from an asset's media
@@ -54,30 +57,116 @@ pub struct Asset {
 #[derive(Debug, Default)]
 pub struct AssetFeatures {
     /// Asset accent color
-    accent_color: Option<Color>,
-
-    /// Asset perceptual hash
-    p_hash: Option<PerceptualHash>,
-    /// Average asset hash
-    a_hash: Option<PerceptualHash>,
+    pub(crate) accent_color: Option<Color>,
 
     /// Asset width and height in pixels
-    dimension: Option<(u32, u32)>,
+    pub(crate) dimension: Option<(u32, u32)>,
+
+    /// Asset perceptual hash
+    pub(crate) p_hash: Option<PerceptualHash>,
+    /// Average asset hash
+    pub(crate) a_hash: Option<PerceptualHash>,
 }
 
 /// User-provided metadata associated with an asset
 #[derive(Debug)]
 pub struct AssetMeta {
     /// Optional name for the asset
-    name: Option<String>,
+    pub(crate) name: Option<String>,
     /// Optional caption for the asset
-    caption: Option<String>,
+    pub(crate) caption: Option<String>,
 
     /// URL from which the asset was obtained
-    source_url: Option<String>,
+    pub(crate) source_url: Option<String>,
+}
+
+/// Data required to create an [`Asset`]
+pub struct AssetData {
+    /// Optional name for the asset
+    pub name: Option<String>,
+
+    /// Optional caption for the asset
+    pub caption: Option<String>,
+
+    /// URL from which the asset was obtained
+    pub source_url: Option<String>,
 }
 
 impl Asset {
+    /// Creates a new [`Asset`]
+    pub fn new(
+        id: AssetId,
+        parent_id: Option<AssetId>,
+        duplicate_of: Option<AssetId>,
+        original_filename: Option<String>,
+        data: AssetData,
+        files: &FileGroup,
+    ) -> Result<Self> {
+        if parent_id == Some(id) {
+            return Err(EntityError::InvalidRelation);
+        }
+        if duplicate_of == Some(id) {
+            return Err(EntityError::InvalidRelation);
+        }
+
+        let Some(original) = files.original() else {
+            return Err(EntityError::NotFound);
+        };
+
+        let features = AssetFeatures::default();
+        let meta = AssetMeta {
+            name: data.name,
+            caption: data.caption,
+            source_url: data.source_url,
+        };
+
+        let asset = Asset {
+            id,
+            features,
+            meta,
+            parent_id,
+            duplicate_of,
+            file_group_id: files.id().clone(),
+            original_filename,
+            original_mime: original.mime_kind(),
+            state: AssetState::Pending,
+            is_offline: false,
+            created_at: Utc::now(),
+            updated_at: None,
+            deleted_at: None,
+        };
+
+        Ok(asset)
+    }
+
+    /// Applies a patch to the asset
+    ///
+    /// Rejects changes that make asset its own parent or duplicate
+    pub fn apply_patch(&mut self, patch: AssetPatch) -> Result<()> {
+        if let PatchField::Set(Some(p)) = patch.parent_id
+            && p == self.id
+        {
+            return Err(EntityError::InvalidRelation);
+        }
+
+        if let PatchField::Set(Some(d)) = patch.duplicate_of
+            && d == self.id
+        {
+            return Err(EntityError::InvalidRelation);
+        }
+
+        patch.apply_domain(self);
+        Ok(())
+    }
+
+    /// Applies a patch without validating domain invariants
+    ///
+    /// The caller is responsible for ensuring that the resulting asset
+    /// satisfies all domain invariants
+    pub fn apply_patch_unchecked(&mut self, patch: AssetPatch) {
+        patch.apply_domain(self);
+    }
+
     /// Returns the ID of this [`Asset`]
     pub fn id(&self) -> AssetId {
         self.id
@@ -88,9 +177,19 @@ impl Asset {
         &self.features
     }
 
+    /// Returns a mutable reference to the derived features of this [`Asset`]
+    pub fn features_mut(&mut self) -> &mut AssetFeatures {
+        &mut self.features
+    }
+
     /// Returns a reference to the user-provided metadata of this [`Asset`]
     pub fn meta(&self) -> &AssetMeta {
         &self.meta
+    }
+
+    /// Returns a mutable reference to the user-provided metadata of this [`Asset`]
+    pub fn meta_mut(&mut self) -> &mut AssetMeta {
+        &mut self.meta
     }
 
     /// Returns the ID of the parent [`Asset`]
@@ -162,7 +261,71 @@ impl Asset {
     }
 }
 
+/// Persisted representation of an [`Asset`] used to reconstruct
+/// the domain entity
+///
+/// This type is intended for use by persistence implementations
+/// and is not part of the regular domain API
+#[cfg(feature = "dev")]
+pub struct AssetPersistence {
+    pub id: AssetId,
+    pub parent_id: Option<AssetId>,
+    pub duplicate_of: Option<AssetId>,
+    pub file_group_id: FileGroupId,
+    pub state: AssetState,
+    pub accent_color: Option<Color>,
+    pub p_hash: Option<PerceptualHash>,
+    pub a_hash: Option<PerceptualHash>,
+    pub dimension: Option<(u32, u32)>,
+    pub data: AssetData,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub is_offline: bool,
+    pub original_mime: MimeKind,
+    pub original_filename: Option<String>,
+}
+
+#[cfg(feature = "dev")]
+impl Asset {
+    /// Creates [`Asset`] from persisted data
+    ///
+    /// This method is intended for use by persistence implementations
+    /// when loading an asset from storage
+    pub fn from_persistence(p: AssetPersistence) -> Self {
+        Asset {
+            id: p.id,
+            parent_id: p.parent_id,
+            duplicate_of: p.duplicate_of,
+            file_group_id: p.file_group_id,
+            state: p.state,
+            features: AssetFeatures {
+                accent_color: p.accent_color,
+                p_hash: p.p_hash,
+                a_hash: p.a_hash,
+                dimension: p.dimension,
+            },
+            meta: AssetMeta {
+                name: p.data.name,
+                caption: p.data.caption,
+                source_url: p.data.source_url,
+            },
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            deleted_at: p.deleted_at,
+            is_offline: p.is_offline,
+            original_mime: p.original_mime,
+            original_filename: p.original_filename,
+        }
+    }
+}
+
 impl AssetFeatures {
+    /// Applies a patch to the asset features
+    pub fn apply_patch(&mut self, patch: AssetFeaturesPatch) {
+        patch.apply_domain(self);
+    }
+
     /// Returns the accent color of this [`AssetFeatures`]
     pub fn accent_color(&self) -> Option<Color> {
         self.accent_color
@@ -173,20 +336,15 @@ impl AssetFeatures {
     /// Returns `None` if the asset dimensions are unavailable
     pub fn aspect_ratio(&self) -> Option<f32> {
         if let Some((w, h)) = self.dimension {
+            // Prevents division by `0`
+            if h == 0 {
+                return None;
+            }
+
             Some(w as f32 / h as f32)
         } else {
             None
         }
-    }
-
-    /// Returns the pHash of this [`AssetFeatures`]
-    pub fn p_hash(&self) -> Option<PerceptualHash> {
-        self.p_hash
-    }
-
-    /// Returns the aHash of this [`AssetFeatures`]
-    pub fn a_hash(&self) -> Option<PerceptualHash> {
-        self.a_hash
     }
 
     /// Returns the asset width in pixels
@@ -198,9 +356,24 @@ impl AssetFeatures {
     pub fn height(&self) -> Option<u32> {
         self.dimension.map(|(_, h)| h)
     }
+
+    /// Returns the pHash of this [`AssetFeatures`]
+    pub fn p_hash(&self) -> Option<PerceptualHash> {
+        self.p_hash
+    }
+
+    /// Returns the aHash of this [`AssetFeatures`]
+    pub fn a_hash(&self) -> Option<PerceptualHash> {
+        self.a_hash
+    }
 }
 
 impl AssetMeta {
+    /// Applies a patch to the asset features
+    pub fn apply_patch(&mut self, patch: AssetMetaPatch) {
+        patch.apply_domain(self);
+    }
+
     /// Returns the name of this [`AssetMeta`]
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
