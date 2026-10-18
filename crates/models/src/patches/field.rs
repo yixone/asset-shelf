@@ -17,13 +17,6 @@ impl<T> PatchField<T> {
     pub fn is_unset(&self) -> bool {
         matches!(self, PatchField::Unset)
     }
-
-    pub fn set(&self) -> Option<&T> {
-        match self {
-            PatchField::Set(t) => Some(t),
-            PatchField::Unset => None,
-        }
-    }
 }
 
 impl From<Option<String>> for PatchField<Option<String>> {

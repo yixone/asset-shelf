@@ -1,10 +1,13 @@
 pub(crate) type Result<T> = std::result::Result<T, EntityError>;
 
+#[derive(Debug)]
 pub enum EntityError {
     NotFound,
     BadInput,
     AlreadyExists,
     Deleted,
+    InvalidRelation,
+    Unavailable,
     Other(Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 

@@ -42,7 +42,7 @@ macro_rules! patch {
             }
 
             /// Applies the model patch to the domain model
-            pub fn apply_domain(self, domain: &mut $domain) {
+            pub(crate) fn apply_domain(self, domain: &mut $domain) {
                 $(
                     if let crate::patches::PatchField::Set(v) = self.$f_id {
                         domain.$f_id = v;

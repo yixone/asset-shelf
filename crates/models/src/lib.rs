@@ -7,17 +7,18 @@
 //!
 //! Support for third-party crates is optional and enabled via dependency features:
 //!
-//! - `sqlx`: Enables [`sqlx::Type`] and [`sqlx::FromRow`]
+//! - `sqlx`: Enables [`sqlx::Type`]
 //!   implementations for types defined in this crate
 //! - `serde`: Enables [`serde::Serialize`] and [`serde::Deserialize`]
 //!   implementations for supported types, excluding domain entities
 
 pub mod result;
-pub use result::{EntityError, ToEntityError};
+
+pub use result::EntityError;
+pub(crate) use result::Result;
 
 pub mod id;
 
 pub mod entities;
 pub mod patches;
-pub mod ports;
 pub mod types;

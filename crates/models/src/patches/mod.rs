@@ -1,23 +1,23 @@
-#[macro_use]
-mod _macro;
+use std::time::Duration;
 
-mod field;
 use chrono::{DateTime, Utc};
-pub use field::PatchField;
 
 use crate::{
-    entities::{
-        Asset, File,
-        asset::{AssetFeatures, AssetMeta},
-    },
+    entities::{Asset, AssetFeatures, AssetMeta, File},
     id::AssetId,
     types::{AssetState, Color, PerceptualHash},
 };
 
+#[macro_use]
+mod _macro;
+
+mod field;
+pub use field::PatchField;
+
 patch! {
-    /// Partial update for a [`File`]
+     /// Partial update for a [`File`]
     FilePatch {
-        duration_ms: Option<i64>
+        duration: Option<Duration>
     },
     File
 }
@@ -26,9 +26,10 @@ patch! {
     /// Partial update for an [`Asset`]
     AssetPatch {
         state: AssetState,
-        deleted_at: Option<DateTime<Utc>>,
         duplicate_of: Option<AssetId>,
-        is_offline: bool
+        parent_id: Option<AssetId>,
+        deleted_at: Option<DateTime<Utc>>,
+        is_offline: bool,
     },
     Asset
 }
@@ -47,9 +48,9 @@ patch! {
     /// Partial update for an [`AssetFeatures`]
     AssetFeaturesPatch {
         accent_color: Option<Color>,
+        dimension: Option<(u32, u32)>,
         p_hash: Option<PerceptualHash>,
         a_hash: Option<PerceptualHash>,
-        dimension: Option<(u32, u32)>
     },
     AssetFeatures
 }

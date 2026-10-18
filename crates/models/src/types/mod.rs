@@ -3,7 +3,7 @@ pub mod color;
 pub mod file;
 pub mod hash;
 
-pub use asset::AssetState;
+pub use asset::{AssetFailure, AssetSortBy, AssetState};
 pub use color::Color;
 pub use file::{FileKey, FileVariant};
-pub use hash::PerceptualHash;
+pub use hash::{PerceptualHash, Sha256Checksum};

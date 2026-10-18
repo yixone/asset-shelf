@@ -2,13 +2,11 @@ use chrono::{DateTime, Utc};
 use mime::MimeKind;
 
 use crate::{
-    EntityError,
+    EntityError, Result,
     entities::FileGroup,
     id::{AssetId, FileGroupId},
-    patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch},
-    ports::{AssetDatabase, AssetWriter, FileGroupDatabase},
-    result::Result,
-    types::{AssetState, Color, PerceptualHash},
+    patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch, PatchField},
+    types::{AssetState, Color, PerceptualHash, Sha256Checksum},
 };
 
 /// Represents an asset and its current state within the media library
@@ -17,332 +15,259 @@ use crate::{
 /// file variants and derived features
 #[derive(Debug)]
 pub struct Asset {
-    /// Unique asset identifier
+    /// Unique asset ID
     pub(crate) id: AssetId,
+
+    /// Asset features
+    pub(crate) features: AssetFeatures,
+    /// User-provided asset metadata
+    pub(crate) meta: AssetMeta,
+
+    /// Parent asset ID
+    pub(crate) parent_id: Option<AssetId>,
+    /// ID of the asset that this asset is considered a duplicate of
+    pub(crate) duplicate_of: Option<AssetId>,
+
+    /// Identifier of the file group associated with the asset
+    pub(crate) file_group_id: FileGroupId,
+    /// SHA256 checksum of the original asset file
+    pub(crate) checksum: Sha256Checksum,
+    /// Original asset file name
+    pub(crate) original_filename: Option<String>,
+    /// Type of the asset's original media file
+    pub(crate) original_mime: MimeKind,
 
     /// Current lifecycle state of the asset
     pub(crate) state: AssetState,
+    /// If `true`, the original file has been lost from storage and the asset cannot be used
+    pub(crate) is_offline: bool,
 
     /// Asset creation time
     pub(crate) created_at: DateTime<Utc>,
-
     /// Time of the asset's last modification
-    pub(crate) updated_at: DateTime<Utc>,
-
+    pub(crate) updated_at: Option<DateTime<Utc>>,
     /// Optional asset deletion time
     ///
     /// If `Some`, the asset is considered deleted
     pub(crate) deleted_at: Option<DateTime<Utc>>,
-
-    /// Asset features
-    pub(crate) features: AssetFeatures,
-
-    /// Identifier of the file group associated with the asset
-    pub(crate) file_group_id: FileGroupId,
-
-    /// Identifier of the asset that this asset is considered a duplicate of
-    pub(crate) duplicate_of: Option<AssetId>,
-
-    /// Asset metadata
-    pub(crate) meta: AssetMeta,
-
-    /// If `true`, the original file has been lost from storage and the asset cannot be used
-    pub(crate) is_offline: bool,
-
-    /// Type of the asset's original media file
-    pub(crate) original_mime: MimeKind,
-}
-
-impl Asset {
-    /// Creates and persists a new [`Asset`] associated with the given [`FileGroup`]
-    ///
-    /// Returns [`EntityError::NotFound`] if the file group does not contain
-    /// an original file
-    pub async fn create<DB>(
-        id: AssetId,
-        data: AssetData,
-        file_group: &FileGroup,
-        db: &mut DB,
-    ) -> Result<Self>
-    where
-        DB: AssetWriter,
-    {
-        let meta = AssetMeta {
-            name: data.name,
-            caption: data.caption,
-            source_url: data.source_url,
-        };
-
-        let features = AssetFeatures {
-            accent_color: None,
-            p_hash: None,
-            a_hash: None,
-            dimension: None,
-        };
-
-        let original = file_group.original().ok_or(EntityError::NotFound)?;
-        let now = Utc::now();
-
-        let asset = Asset {
-            id,
-            state: AssetState::Pending,
-            created_at: now,
-            updated_at: now,
-            deleted_at: None,
-            features,
-            file_group_id: file_group.id().clone(),
-            duplicate_of: data.duplicate_of,
-            meta,
-            is_offline: false,
-            original_mime: original.mime_kind(),
-        };
-
-        db.insert_asset(&asset).await?;
-
-        Ok(asset)
-    }
-
-    /// Loads an [`Asset`] together with its associated [`FileGroup`]
-    ///
-    /// Returns [`EntityError::NotFound`] if the asset does not exist
-    pub async fn get<DB>(id: AssetId, db: &DB) -> Result<(Asset, FileGroup)>
-    where
-        DB: AssetDatabase,
-    {
-        db.get_asset(id).await?.ok_or(EntityError::NotFound)
-    }
-
-    /// Updates the [`Asset`] using the specified patch
-    ///
-    /// The domain model is updated only after the persistence operation succeeds
-    pub async fn update<DB>(&mut self, patch: AssetPatch, db: &DB) -> Result<()>
-    where
-        DB: AssetDatabase,
-    {
-        db.update_asset(self.id(), &patch).await?;
-        patch.apply_domain(self);
-        Ok(())
-    }
-
-    /// Updates the lifecycle state of this [`Asset`]
-    pub async fn update_state<DB>(&mut self, state: AssetState, db: &DB) -> Result<()>
-    where
-        DB: AssetDatabase,
-    {
-        let patch = AssetPatch::new().state(state);
-        self.update(patch, db).await
-    }
-
-    /// Marks this [`Asset`] as deleted
-    pub async fn mark_deleted<DB>(&mut self, db: &DB) -> Result<()>
-    where
-        DB: AssetDatabase,
-    {
-        let patch = AssetPatch::new().deleted_at(Some(Utc::now()));
-        self.update(patch, db).await
-    }
-
-    /// Restores this [`Asset`] from the deleted state
-    pub async fn restore_deleted<DB>(&mut self, db: &DB) -> Result<()>
-    where
-        DB: AssetDatabase,
-    {
-        let patch = AssetPatch::new().deleted_at(None);
-        self.update(patch, db).await
-    }
-
-    /// Loads the [`FileGroup`] associated with this [`Asset`]
-    ///
-    /// Returns [`EntityError::NotFound`] if the file group does not exist
-    pub async fn file_group<DB>(&self, db: &DB) -> Result<FileGroup>
-    where
-        DB: FileGroupDatabase,
-    {
-        FileGroup::load(self.file_group_id(), db).await
-    }
-
-    /// Returns the id of this [`Asset`]
-    pub fn id(&self) -> AssetId {
-        self.id
-    }
-
-    /// Returns the state of this [`Asset`]
-    pub fn state(&self) -> AssetState {
-        self.state
-    }
-
-    /// Returns this [`Asset`] creation time
-    pub fn created_at(&self) -> DateTime<Utc> {
-        self.created_at
-    }
-
-    /// Returns this [`Asset`] update time
-    pub fn updated_at(&self) -> DateTime<Utc> {
-        self.updated_at
-    }
-
-    /// Returns this [`Asset`] deletion time
-    pub fn deleted_at(&self) -> Option<DateTime<Utc>> {
-        self.deleted_at
-    }
-
-    /// Returns `true` if the asset has been marked as deleted
-    pub fn is_deleted(&self) -> bool {
-        self.deleted_at.is_some()
-    }
-
-    /// Returns `true` if the asset is not marked as deleted
-    pub fn is_active(&self) -> bool {
-        self.deleted_at.is_none()
-    }
-
-    /// Returns `true` if the asset is offline
-    pub fn is_offline(&self) -> bool {
-        self.is_offline
-    }
-
-    /// Returns `true` if the asset is marked as a duplicate of another asset
-    pub fn is_duplicate(&self) -> bool {
-        self.duplicate_of.is_some()
-    }
-
-    /// Returns `true` if the asset has all data
-    /// required for use
-    pub fn is_available(&self) -> bool {
-        !self.is_deleted() && !self.is_offline
-    }
-
-    /// Returns a reference to the features of this [`Asset`]
-    pub fn features(&self) -> &AssetFeatures {
-        &self.features
-    }
-
-    /// Updates the derived features of this [`Asset`] using the specified patch
-    ///
-    /// The domain model is updated only after the persistence operation succeeds
-    pub async fn update_features<DB>(&mut self, patch: AssetFeaturesPatch, db: &DB) -> Result<()>
-    where
-        DB: AssetDatabase,
-    {
-        db.update_asset_features(self.id(), &patch).await?;
-        patch.apply_domain(&mut self.features);
-        Ok(())
-    }
-
-    /// Returns a reference to the file group id of this [`Asset`]
-    pub fn file_group_id(&self) -> &FileGroupId {
-        &self.file_group_id
-    }
-
-    /// Returns a reference to the meta of this [`Asset`]
-    pub fn meta(&self) -> &AssetMeta {
-        &self.meta
-    }
-
-    /// Updates the user-provided metadata of this [`Asset`] using the specified patch
-    ///
-    /// The domain model is updated only after the persistence operation succeeds
-    pub async fn update_meta<DB>(&mut self, patch: AssetMetaPatch, db: &DB) -> Result<()>
-    where
-        DB: AssetDatabase,
-    {
-        db.update_asset_meta(self.id(), &patch).await?;
-        patch.apply_domain(&mut self.meta);
-        Ok(())
-    }
-
-    /// Returns the MIME kind of this [`Asset`]'s original media file
-    pub fn original_mime(&self) -> MimeKind {
-        self.original_mime
-    }
-}
-
-/// Persisted representation of an [`Asset`] used to reconstruct
-/// the domain entity
-///
-/// This type is intended for use by persistence implementations
-/// and is not part of the regular domain API
-#[cfg(feature = "dev")]
-pub struct AssetPersistence {
-    pub id: AssetId,
-    pub state: AssetState,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub deleted_at: Option<DateTime<Utc>>,
-    pub file_group_id: FileGroupId,
-    pub meta: AssetData,
-    pub is_offline: bool,
-    pub accent_color: Option<Color>,
-    pub p_hash: Option<PerceptualHash>,
-    pub a_hash: Option<PerceptualHash>,
-    pub dimension: Option<(u32, u32)>,
-    pub original_mime: MimeKind,
-}
-
-#[cfg(feature = "dev")]
-impl Asset {
-    /// Creates [`Asset`] from persisted data
-    ///
-    /// This method is intended for use by persistence implementations
-    /// when loading an asset from storage
-    pub fn from_persistence(p: AssetPersistence) -> Self {
-        Asset {
-            id: p.id,
-            state: p.state,
-            created_at: p.created_at,
-            updated_at: p.updated_at,
-            deleted_at: p.deleted_at,
-            features: AssetFeatures {
-                accent_color: p.accent_color,
-                p_hash: p.p_hash,
-                a_hash: p.a_hash,
-                dimension: p.dimension,
-            },
-            file_group_id: p.file_group_id,
-            duplicate_of: p.meta.duplicate_of,
-            meta: AssetMeta {
-                name: p.meta.name,
-                caption: p.meta.caption,
-                source_url: p.meta.source_url,
-            },
-            is_offline: p.is_offline,
-            original_mime: p.original_mime,
-        }
-    }
 }
 
 /// Derived features calculated from an asset's media
 ///
 /// Features are generated from the asset's media and may be unavailable
 /// while media processing has not completed
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AssetFeatures {
     /// Asset accent color
     pub(crate) accent_color: Option<Color>,
 
-    /// Asset perceptual hash
-    ///
-    /// Used to compare the visual similarity of media
-    pub(crate) p_hash: Option<PerceptualHash>,
-
-    /// Average asset hash
-    ///
-    /// Used to compare the visual similarity of media
-    pub(crate) a_hash: Option<PerceptualHash>,
-
     /// Asset width and height in pixels
     pub(crate) dimension: Option<(u32, u32)>,
+
+    /// Asset perceptual hash
+    pub(crate) p_hash: Option<PerceptualHash>,
+    /// Average asset hash
+    pub(crate) a_hash: Option<PerceptualHash>,
+}
+
+/// User-provided metadata associated with an asset
+#[derive(Debug)]
+pub struct AssetMeta {
+    /// Optional name for the asset
+    pub(crate) name: Option<String>,
+    /// Optional caption for the asset
+    pub(crate) caption: Option<String>,
+
+    /// URL from which the asset was obtained
+    pub(crate) source_url: Option<String>,
+}
+
+impl Asset {
+    /// Creates a new [`Asset`]
+    pub fn new(
+        id: AssetId,
+        rels: AssetRelData,
+        original_filename: Option<String>,
+        checksum: Sha256Checksum,
+        data: AssetData,
+        files: &FileGroup,
+    ) -> Result<Self> {
+        // Excludes links to itself
+        if rels.parent_id == Some(id) {
+            return Err(EntityError::InvalidRelation);
+        }
+        if rels.duplicate_of == Some(id) {
+            return Err(EntityError::InvalidRelation);
+        }
+
+        let Some(original) = files.original() else {
+            // Requires the original file
+            return Err(EntityError::NotFound);
+        };
+
+        let features = AssetFeatures::default();
+        let meta = AssetMeta {
+            name: data.name,
+            caption: data.caption,
+            source_url: data.source_url,
+        };
+
+        let asset = Asset {
+            id,
+            features,
+            meta,
+            parent_id: rels.parent_id,
+            duplicate_of: rels.duplicate_of,
+            file_group_id: files.id().clone(),
+            original_filename,
+            checksum,
+            original_mime: original.mime_kind(),
+            state: AssetState::Pending,
+            is_offline: false,
+            created_at: Utc::now(),
+            updated_at: None,
+            deleted_at: None,
+        };
+
+        Ok(asset)
+    }
+
+    /// Applies a patch to the [`Asset`]
+    ///
+    /// Rejects changes that make asset its own parent or duplicate
+    pub fn apply_patch(&mut self, patch: AssetPatch) -> Result<()> {
+        if let PatchField::Set(Some(p)) = patch.parent_id
+            && p == self.id
+        {
+            return Err(EntityError::InvalidRelation);
+        }
+
+        if let PatchField::Set(Some(d)) = patch.duplicate_of
+            && d == self.id
+        {
+            return Err(EntityError::InvalidRelation);
+        }
+
+        patch.apply_domain(self);
+        Ok(())
+    }
+
+    /// Applies a patch without validating domain invariants
+    ///
+    /// The caller is responsible for ensuring that the resulting asset
+    /// satisfies all domain invariants
+    pub fn apply_patch_unchecked(&mut self, patch: AssetPatch) {
+        patch.apply_domain(self);
+    }
+
+    /// Returns the ID of this [`Asset`]
+    pub fn id(&self) -> AssetId {
+        self.id
+    }
+
+    /// Returns a reference to the derived features of this [`Asset`]
+    pub fn features(&self) -> &AssetFeatures {
+        &self.features
+    }
+
+    /// Returns a mutable reference to the derived features of this [`Asset`]
+    pub fn features_mut(&mut self) -> &mut AssetFeatures {
+        &mut self.features
+    }
+
+    /// Returns a reference to the user-provided metadata of this [`Asset`]
+    pub fn meta(&self) -> &AssetMeta {
+        &self.meta
+    }
+
+    /// Returns a mutable reference to the user-provided metadata of this [`Asset`]
+    pub fn meta_mut(&mut self) -> &mut AssetMeta {
+        &mut self.meta
+    }
+
+    /// Returns the ID of the parent [`Asset`]
+    pub fn parent_id(&self) -> Option<AssetId> {
+        self.parent_id
+    }
+
+    #[inline]
+    /// Returns `true` if the [`Asset`] has a parent
+    pub fn is_child(&self) -> bool {
+        self.parent_id().is_some()
+    }
+
+    /// Returns the ID of the asset this [`Asset`] duplicates
+    pub fn duplicate_of(&self) -> Option<AssetId> {
+        self.duplicate_of
+    }
+
+    #[inline]
+    /// Returns `true` if this [`Asset`] is marked as a duplicate
+    pub fn is_duplicate(&self) -> bool {
+        self.duplicate_of().is_some()
+    }
+
+    /// Returns the ID of the group of files associated with this asset
+    pub fn file_group_id(&self) -> &FileGroupId {
+        &self.file_group_id
+    }
+
+    /// Returns the name of the original file associated with this [`Asset`]
+    pub fn original_filename(&self) -> Option<&str> {
+        self.original_filename.as_deref()
+    }
+
+    /// Returns the MIME kind of the original file associated with this [`Asset`]
+    pub fn original_mime(&self) -> MimeKind {
+        self.original_mime
+    }
+
+    /// Returns the lifecycle state of this [`Asset`]
+    pub fn state(&self) -> AssetState {
+        self.state
+    }
+
+    /// Returns the creation timestamp of this [`Asset`]
+    pub fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+
+    /// Returns the last update timestamp of this [`Asset`]
+    pub fn updated_at(&self) -> Option<DateTime<Utc>> {
+        self.updated_at
+    }
+
+    /// Returns the deletion timestamp of this [`Asset`]
+    pub fn deleted_at(&self) -> Option<DateTime<Utc>> {
+        self.deleted_at
+    }
+
+    #[inline]
+    /// Returns `true` if this [`Asset`] is marked as deleted
+    pub fn is_deleted(&self) -> bool {
+        self.deleted_at().is_some()
+    }
+
+    /// Returns `true` if this [`Asset`] is marked as offline
+    pub fn is_offline(&self) -> bool {
+        self.is_offline
+    }
+
+    /// Returns the checksum of this [`Asset`]
+    pub fn checksum(&self) -> Sha256Checksum {
+        self.checksum
+    }
 }
 
 impl AssetFeatures {
-    /// Returns the asset width in pixels
-    pub fn width(&self) -> Option<u32> {
-        self.dimension.map(|(w, _)| w)
+    /// Applies a patch to the [`AssetFeatures`]
+    pub fn apply_patch(&mut self, patch: AssetFeaturesPatch) {
+        patch.apply_domain(self);
     }
 
-    /// Returns the asset height in pixels
-    pub fn height(&self) -> Option<u32> {
-        self.dimension.map(|(_, h)| h)
+    /// Returns the accent color of this [`AssetFeatures`]
+    pub fn accent_color(&self) -> Option<Color> {
+        self.accent_color
     }
 
     /// Returns the aspect ratio of the asset
@@ -350,18 +275,25 @@ impl AssetFeatures {
     /// Returns `None` if the asset dimensions are unavailable
     pub fn aspect_ratio(&self) -> Option<f32> {
         if let Some((w, h)) = self.dimension {
+            // Prevents division by `0`
+            if h == 0 {
+                return None;
+            }
+
             Some(w as f32 / h as f32)
         } else {
             None
         }
     }
 
-    /// Returns `true` if all required derived features have been calculated
-    pub fn enough_fields(&self) -> bool {
-        self.accent_color.is_some()
-            && self.p_hash.is_some()
-            && self.a_hash.is_some()
-            && self.dimension.is_some()
+    /// Returns the asset width in pixels
+    pub fn width(&self) -> Option<u32> {
+        self.dimension.map(|(w, ..)| w)
+    }
+
+    /// Returns the asset height in pixels
+    pub fn height(&self) -> Option<u32> {
+        self.dimension.map(|(_, h)| h)
     }
 
     /// Returns the pHash of this [`AssetFeatures`]
@@ -373,27 +305,14 @@ impl AssetFeatures {
     pub fn a_hash(&self) -> Option<PerceptualHash> {
         self.a_hash
     }
-
-    /// Returns the accent color of this [`AssetFeatures`]
-    pub fn accent_color(&self) -> Option<Color> {
-        self.accent_color
-    }
-}
-
-/// User-provided metadata associated with an asset
-#[derive(Debug)]
-pub struct AssetMeta {
-    /// Optional name for the asset
-    pub(crate) name: Option<String>,
-
-    /// Optional caption for the asset
-    pub(crate) caption: Option<String>,
-
-    /// URL from which the asset was obtained
-    pub(crate) source_url: Option<String>,
 }
 
 impl AssetMeta {
+    /// Applies a patch to the [`AssetMeta`]
+    pub fn apply_patch(&mut self, patch: AssetMetaPatch) {
+        patch.apply_domain(self);
+    }
+
     /// Returns the name of this [`AssetMeta`]
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
@@ -410,32 +329,8 @@ impl AssetMeta {
     }
 }
 
-/// A lightweight representation of an asset containing only its core state
-#[derive(Debug)]
-pub struct AssetDehydrated {
-    /// Unique asset identifier
-    pub id: AssetId,
-
-    /// Current lifecycle state of the asset
-    pub state: AssetState,
-
-    /// Asset creation time
-    pub created_at: DateTime<Utc>,
-
-    /// Time of the asset's last modification
-    pub updated_at: DateTime<Utc>,
-
-    /// Optional asset deletion time
-    ///
-    /// If `Some`, the asset is considered deleted
-    pub deleted_at: Option<DateTime<Utc>>,
-}
-
 /// Data required to create an [`Asset`]
 pub struct AssetData {
-    /// Identifier of the asset that this asset is considered a duplicate of
-    pub duplicate_of: Option<AssetId>,
-
     /// Optional name for the asset
     pub name: Option<String>,
 
@@ -444,4 +339,73 @@ pub struct AssetData {
 
     /// URL from which the asset was obtained
     pub source_url: Option<String>,
+}
+
+/// Relationship data used when creating an [`Asset`]
+pub struct AssetRelData {
+    /// ID of the parent asset
+    pub parent_id: Option<AssetId>,
+
+    /// ID of the asset that this asset is considered a duplicate of
+    pub duplicate_of: Option<AssetId>,
+}
+
+/// Persisted representation of an [`Asset`] used to reconstruct
+/// the domain entity
+///
+/// This type is intended for use by persistence implementations
+/// and is not part of the regular domain API
+#[cfg(feature = "dev")]
+pub struct AssetPersistence {
+    pub id: AssetId,
+    pub rels: AssetRelData,
+    pub data: AssetData,
+    pub file_group_id: FileGroupId,
+    pub state: AssetState,
+    pub accent_color: Option<Color>,
+    pub p_hash: Option<PerceptualHash>,
+    pub a_hash: Option<PerceptualHash>,
+    pub dimension: Option<(u32, u32)>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub is_offline: bool,
+    pub original_mime: MimeKind,
+    pub checksum: Sha256Checksum,
+    pub original_filename: Option<String>,
+}
+
+#[cfg(feature = "dev")]
+impl Asset {
+    /// Creates [`Asset`] from persisted data
+    ///
+    /// This method is intended for use by persistence implementations
+    /// when loading an asset from storage
+    pub fn from_persistence(p: AssetPersistence) -> Self {
+        Asset {
+            id: p.id,
+            parent_id: p.rels.parent_id,
+            duplicate_of: p.rels.duplicate_of,
+            file_group_id: p.file_group_id,
+            state: p.state,
+            features: AssetFeatures {
+                accent_color: p.accent_color,
+                p_hash: p.p_hash,
+                a_hash: p.a_hash,
+                dimension: p.dimension,
+            },
+            meta: AssetMeta {
+                name: p.data.name,
+                caption: p.data.caption,
+                source_url: p.data.source_url,
+            },
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            deleted_at: p.deleted_at,
+            is_offline: p.is_offline,
+            checksum: p.checksum,
+            original_mime: p.original_mime,
+            original_filename: p.original_filename,
+        }
+    }
 }
