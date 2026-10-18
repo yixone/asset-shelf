@@ -6,6 +6,7 @@ use storage_types::StoragePath;
 
 use crate::{
     id::FileGroupId,
+    patches::FilePatch,
     types::{FileKey, FileVariant},
 };
 
@@ -32,6 +33,15 @@ impl FileGroup {
             id,
             files: HashMap::new(),
         }
+    }
+
+    /// Creates a new [`FileGroup`] containing a single [`File`] of the specified variant
+    pub fn with_file(id: FileGroupId, variant: FileVariant, data: FileData) -> Self {
+        let mut group = Self::new(id);
+        group
+            .files
+            .insert(variant, File::new(group.id.clone(), variant, data));
+        group
     }
 
     /// Returns a reference to the ID of this [`FileGroup`]
@@ -120,6 +130,11 @@ impl File {
             mime_type: data.mime_type,
             duration: data.duration,
         }
+    }
+
+    /// Applies a patch to the [`File`]
+    pub fn apply_patch(&mut self, patch: FilePatch) {
+        patch.apply_domain(self);
     }
 
     /// Returns a reference to the key of this [`File`]

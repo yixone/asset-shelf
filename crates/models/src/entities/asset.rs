@@ -80,36 +80,25 @@ pub struct AssetMeta {
     pub(crate) source_url: Option<String>,
 }
 
-/// Data required to create an [`Asset`]
-pub struct AssetData {
-    /// Optional name for the asset
-    pub name: Option<String>,
-
-    /// Optional caption for the asset
-    pub caption: Option<String>,
-
-    /// URL from which the asset was obtained
-    pub source_url: Option<String>,
-}
-
 impl Asset {
     /// Creates a new [`Asset`]
     pub fn new(
         id: AssetId,
-        parent_id: Option<AssetId>,
-        duplicate_of: Option<AssetId>,
+        rels: AssetRelData,
         original_filename: Option<String>,
         data: AssetData,
         files: &FileGroup,
     ) -> Result<Self> {
-        if parent_id == Some(id) {
+        // Excludes links to itself
+        if rels.parent_id == Some(id) {
             return Err(EntityError::InvalidRelation);
         }
-        if duplicate_of == Some(id) {
+        if rels.duplicate_of == Some(id) {
             return Err(EntityError::InvalidRelation);
         }
 
         let Some(original) = files.original() else {
+            // Requires the original file
             return Err(EntityError::NotFound);
         };
 
@@ -124,8 +113,8 @@ impl Asset {
             id,
             features,
             meta,
-            parent_id,
-            duplicate_of,
+            parent_id: rels.parent_id,
+            duplicate_of: rels.duplicate_of,
             file_group_id: files.id().clone(),
             original_filename,
             original_mime: original.mime_kind(),
@@ -139,7 +128,7 @@ impl Asset {
         Ok(asset)
     }
 
-    /// Applies a patch to the asset
+    /// Applies a patch to the [`Asset`]
     ///
     /// Rejects changes that make asset its own parent or duplicate
     pub fn apply_patch(&mut self, patch: AssetPatch) -> Result<()> {
@@ -261,67 +250,8 @@ impl Asset {
     }
 }
 
-/// Persisted representation of an [`Asset`] used to reconstruct
-/// the domain entity
-///
-/// This type is intended for use by persistence implementations
-/// and is not part of the regular domain API
-#[cfg(feature = "dev")]
-pub struct AssetPersistence {
-    pub id: AssetId,
-    pub parent_id: Option<AssetId>,
-    pub duplicate_of: Option<AssetId>,
-    pub file_group_id: FileGroupId,
-    pub state: AssetState,
-    pub accent_color: Option<Color>,
-    pub p_hash: Option<PerceptualHash>,
-    pub a_hash: Option<PerceptualHash>,
-    pub dimension: Option<(u32, u32)>,
-    pub data: AssetData,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: Option<DateTime<Utc>>,
-    pub deleted_at: Option<DateTime<Utc>>,
-    pub is_offline: bool,
-    pub original_mime: MimeKind,
-    pub original_filename: Option<String>,
-}
-
-#[cfg(feature = "dev")]
-impl Asset {
-    /// Creates [`Asset`] from persisted data
-    ///
-    /// This method is intended for use by persistence implementations
-    /// when loading an asset from storage
-    pub fn from_persistence(p: AssetPersistence) -> Self {
-        Asset {
-            id: p.id,
-            parent_id: p.parent_id,
-            duplicate_of: p.duplicate_of,
-            file_group_id: p.file_group_id,
-            state: p.state,
-            features: AssetFeatures {
-                accent_color: p.accent_color,
-                p_hash: p.p_hash,
-                a_hash: p.a_hash,
-                dimension: p.dimension,
-            },
-            meta: AssetMeta {
-                name: p.data.name,
-                caption: p.data.caption,
-                source_url: p.data.source_url,
-            },
-            created_at: p.created_at,
-            updated_at: p.updated_at,
-            deleted_at: p.deleted_at,
-            is_offline: p.is_offline,
-            original_mime: p.original_mime,
-            original_filename: p.original_filename,
-        }
-    }
-}
-
 impl AssetFeatures {
-    /// Applies a patch to the asset features
+    /// Applies a patch to the [`AssetFeatures`]
     pub fn apply_patch(&mut self, patch: AssetFeaturesPatch) {
         patch.apply_domain(self);
     }
@@ -369,7 +299,7 @@ impl AssetFeatures {
 }
 
 impl AssetMeta {
-    /// Applies a patch to the asset features
+    /// Applies a patch to the [`AssetMeta`]
     pub fn apply_patch(&mut self, patch: AssetMetaPatch) {
         patch.apply_domain(self);
     }
@@ -387,5 +317,84 @@ impl AssetMeta {
     /// Returns the source url of this [`AssetMeta`]
     pub fn source_url(&self) -> Option<&str> {
         self.source_url.as_deref()
+    }
+}
+
+/// Data required to create an [`Asset`]
+pub struct AssetData {
+    /// Optional name for the asset
+    pub name: Option<String>,
+
+    /// Optional caption for the asset
+    pub caption: Option<String>,
+
+    /// URL from which the asset was obtained
+    pub source_url: Option<String>,
+}
+
+/// Relationship data used when creating an [`Asset`]
+pub struct AssetRelData {
+    /// ID of the parent asset
+    pub parent_id: Option<AssetId>,
+
+    /// ID of the asset that this asset is considered a duplicate of
+    pub duplicate_of: Option<AssetId>,
+}
+
+/// Persisted representation of an [`Asset`] used to reconstruct
+/// the domain entity
+///
+/// This type is intended for use by persistence implementations
+/// and is not part of the regular domain API
+#[cfg(feature = "dev")]
+pub struct AssetPersistence {
+    pub id: AssetId,
+    pub rels: AssetRelData,
+    pub data: AssetData,
+    pub file_group_id: FileGroupId,
+    pub state: AssetState,
+    pub accent_color: Option<Color>,
+    pub p_hash: Option<PerceptualHash>,
+    pub a_hash: Option<PerceptualHash>,
+    pub dimension: Option<(u32, u32)>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub is_offline: bool,
+    pub original_mime: MimeKind,
+    pub original_filename: Option<String>,
+}
+
+#[cfg(feature = "dev")]
+impl Asset {
+    /// Creates [`Asset`] from persisted data
+    ///
+    /// This method is intended for use by persistence implementations
+    /// when loading an asset from storage
+    pub fn from_persistence(p: AssetPersistence) -> Self {
+        Asset {
+            id: p.id,
+            parent_id: p.rels.parent_id,
+            duplicate_of: p.rels.duplicate_of,
+            file_group_id: p.file_group_id,
+            state: p.state,
+            features: AssetFeatures {
+                accent_color: p.accent_color,
+                p_hash: p.p_hash,
+                a_hash: p.a_hash,
+                dimension: p.dimension,
+            },
+            meta: AssetMeta {
+                name: p.data.name,
+                caption: p.data.caption,
+                source_url: p.data.source_url,
+            },
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            deleted_at: p.deleted_at,
+            is_offline: p.is_offline,
+            original_mime: p.original_mime,
+            original_filename: p.original_filename,
+        }
     }
 }
