@@ -6,7 +6,7 @@ use crate::{
     entities::FileGroup,
     id::{AssetId, FileGroupId},
     patches::{AssetFeaturesPatch, AssetMetaPatch, AssetPatch, PatchField},
-    types::{AssetState, Color, PerceptualHash},
+    types::{AssetState, Color, PerceptualHash, Sha256Checksum},
 };
 
 /// Represents an asset and its current state within the media library
@@ -23,14 +23,16 @@ pub struct Asset {
     /// User-provided asset metadata
     pub(crate) meta: AssetMeta,
 
-    /// Parrent asset ID
+    /// Parent asset ID
     pub(crate) parent_id: Option<AssetId>,
     /// ID of the asset that this asset is considered a duplicate of
     pub(crate) duplicate_of: Option<AssetId>,
 
     /// Identifier of the file group associated with the asset
     pub(crate) file_group_id: FileGroupId,
-    //// Original asset file name
+    /// SHA256 checksum of the original asset file
+    pub(crate) checksum: Sha256Checksum,
+    /// Original asset file name
     pub(crate) original_filename: Option<String>,
     /// Type of the asset's original media file
     pub(crate) original_mime: MimeKind,
@@ -86,6 +88,7 @@ impl Asset {
         id: AssetId,
         rels: AssetRelData,
         original_filename: Option<String>,
+        checksum: Sha256Checksum,
         data: AssetData,
         files: &FileGroup,
     ) -> Result<Self> {
@@ -117,6 +120,7 @@ impl Asset {
             duplicate_of: rels.duplicate_of,
             file_group_id: files.id().clone(),
             original_filename,
+            checksum,
             original_mime: original.mime_kind(),
             state: AssetState::Pending,
             is_offline: false,
@@ -248,6 +252,11 @@ impl Asset {
     pub fn is_offline(&self) -> bool {
         self.is_offline
     }
+
+    /// Returns the checksum of this [`Asset`]
+    pub fn checksum(&self) -> Sha256Checksum {
+        self.checksum
+    }
 }
 
 impl AssetFeatures {
@@ -362,6 +371,7 @@ pub struct AssetPersistence {
     pub deleted_at: Option<DateTime<Utc>>,
     pub is_offline: bool,
     pub original_mime: MimeKind,
+    pub checksum: Sha256Checksum,
     pub original_filename: Option<String>,
 }
 
@@ -393,6 +403,7 @@ impl Asset {
             updated_at: p.updated_at,
             deleted_at: p.deleted_at,
             is_offline: p.is_offline,
+            checksum: p.checksum,
             original_mime: p.original_mime,
             original_filename: p.original_filename,
         }

@@ -21,7 +21,7 @@ impl FileKey {
     }
 }
 
-/// Variant of an media file
+/// Variant of a media file
 ///
 /// May represent the original media file or a generated
 /// derivative optimized for a specific use case
@@ -38,6 +38,10 @@ pub enum FileVariant {
 
     /// Low-resolution preview for quick asset display
     Thumbnail,
+
+    /// A short, looped preview of a video file,
+    /// in lower resolution and without sound
+    LoopPreview,
 }
 
 impl FileVariant {
@@ -46,6 +50,7 @@ impl FileVariant {
         match self {
             Self::Original => "original",
             Self::Thumbnail => "thumbnail",
+            Self::LoopPreview => "loop_preview",
         }
     }
 }

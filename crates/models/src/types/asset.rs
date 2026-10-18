@@ -38,7 +38,7 @@ pub enum AssetFailure {
     ProbeFailed,
 
     /// The asset's original file is unavailable in storage
-    FileOffline,
+    OriginalFileUnavailable,
 
     /// Unknown or otherwise unclassified processing error
     ///
@@ -46,6 +46,7 @@ pub enum AssetFailure {
     Unknown,
 }
 
+/// The field used for sorting assets
 #[cfg_attr(
     feature = "serde",
     derive(serde::Deserialize),
@@ -53,7 +54,11 @@ pub enum AssetFailure {
 )]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AssetSortBy {
+    /// Sorting assets by creation date
     CreatedAt,
+    /// Sorting assets by deletion date
     DeletedAt,
+    /// Sorting assets by original file size
+    /// (does not account for the size of derivatives)
     OriginalSize,
 }
