@@ -5,10 +5,19 @@ members = [
     "lib/mime",
     "lib/snowflake",
 
-    "crates/models",
+    "crates/db-api",
+    "crates/db-sqlite",
+
     "crates/storage",
     "crates/storage-types",
+
+    "crates/models",
 ]
+
+[workspace.package]
+edition = "2024"
+publish = false
+repository = "https://github.com/yixone/asset-shelf"
 
 [workspace.dependencies]
 # --- Workspace crates ---
@@ -20,13 +29,16 @@ mime.path = "lib/mime"
 # Snowflake id generator
 snowflake.path = "lib/snowflake"
 
-# Domain types and structures used in the application
-models.path = "crates/models"
+db-api.path = "crates/db-api"
+db-sqlite.path = "crates/db-sqlite"
 
 # Managed file storage for AssetShelf
 storage.path = "crates/storage"
 # Value types used by the managed file storage subsystem
 storage-types.path = "crates/storage-types"
+
+# Domain types and structures used in the application
+models.path = "crates/models"
 
 
 # --- Extern crates ---
