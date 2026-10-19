@@ -6,3 +6,8 @@ publish.workspace = true
 repository.workspace = true
 
 [dependencies]
+# Workspace
+models.workspace = true
+
+# External
+async-trait.workspace = true

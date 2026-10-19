@@ -6,3 +6,6 @@ publish.workspace = true
 repository.workspace = true
 
 [dependencies]
+# Workspace
+db-api.workspace = true
+models.workspace = true

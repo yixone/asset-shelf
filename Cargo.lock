@@ -212,10 +212,18 @@ dependencies = [
 [[package]]
 name = "db-api"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "models",
+]
 
 [[package]]
 name = "db-sqlite"
 version = "0.1.0"
+dependencies = [
+ "db-api",
+ "models",
+]
 
 [[package]]
 name = "der"
