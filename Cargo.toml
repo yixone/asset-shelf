@@ -8,6 +8,8 @@ members = [
     "crates/models",
     "crates/storage",
     "crates/storage-types",
+
+    "crates/media",
 ]
 
 [workspace.dependencies]
