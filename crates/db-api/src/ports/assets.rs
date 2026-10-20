@@ -2,12 +2,13 @@ use models::{
     entities::{Asset, FileGroup},
     id::AssetId,
     patches::AssetPatch,
+    types::AssetSortBy,
 };
 
 use crate::{
     Result,
     ports::{DeleteFn, UpdateFn},
-    types::tuples::AssetWithFiles,
+    types::{CursorPagination, DeletedVisibility, SortOrder, tuples::AssetWithFiles},
 };
 
 /// Database operations for assets
@@ -32,13 +33,23 @@ pub trait AssetDatabase: Send + Sync {
     /// Missing assets are omitted from the result
     async fn get_many_by_ids(&self, ids: &[AssetId]) -> Result<Vec<AssetWithFiles>>;
 
+    /// Retrieves a page of assets using cursor-based pagination and the specified ordering
+    ///
+    /// Returns the matching assets with their associated files
+    async fn list(
+        &self,
+        pagination: CursorPagination<AssetId>,
+        ordering: (AssetSortBy, SortOrder),
+        deleted: DeletedVisibility,
+    ) -> Result<Vec<AssetWithFiles>>;
+
     /// Retrieves a randomly selected [`Asset`] and its associated data
     ///
     /// Returns `None` if no asset can be selected
     async fn get_random(&self) -> Result<Option<AssetWithFiles>>;
 
     /// Returns the total number of assets
-    async fn count_total(&self) -> Result<u64>;
+    async fn count_total(&self, deleted: DeletedVisibility) -> Result<u64>;
 
     /// Applies a patch to an [`Asset`] and persists the result
     ///
@@ -78,7 +89,7 @@ pub trait AssetDatabase: Send + Sync {
 
 #[async_trait::async_trait]
 pub trait AssetDatabaseExt: AssetDatabase {
-    /// Updates the [`Asset`] using a validation and mutation callback
+    /// Updates the [`Asset`] using an [`UpdateFn`] callback
     ///
     /// See [`AssetDatabase::update_fn_boxed`] for the operation's guarantees
     async fn update_fn<Fn>(&self, id: AssetId, f: Fn) -> Result<Asset>
@@ -88,7 +99,7 @@ pub trait AssetDatabaseExt: AssetDatabase {
         self.update_fn_boxed(id, Box::new(f)).await
     }
 
-    /// Deletes an [`Asset`] after validating it with a callback
+    /// Deletes an [`Asset`] after validating it with an [`DeleteFn`] callback
     ///
     /// See [`AssetDatabase::delete_fn_boxed`] for the operation's guarantees
     async fn delete_fn<Fn>(&self, id: AssetId, f: Fn) -> Result<()>

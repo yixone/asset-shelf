@@ -38,13 +38,13 @@ impl Pagination {
 /// The cursor defines the boundary for the next page. The comparison
 /// direction depends on the query's sort order
 pub struct CursorPagination<I: Ord> {
-    cursor: I,
+    cursor: Option<I>,
     limit: u64,
 }
 
 impl<I: Ord> CursorPagination<I> {
     /// Creates a new [`CursorPagination`]
-    pub fn new(cursor: I, limit: u64) -> Self {
+    pub fn new(cursor: Option<I>, limit: u64) -> Self {
         Self { cursor, limit }
     }
 
@@ -54,7 +54,25 @@ impl<I: Ord> CursorPagination<I> {
     }
 
     /// Returns a reference to the cursor of this [`CursorPagination`]
-    pub fn cursor(&self) -> &I {
-        &self.cursor
+    pub fn cursor(&self) -> Option<&I> {
+        self.cursor.as_ref()
     }
+}
+
+/// Specifies the sort direction
+pub enum SortOrder {
+    /// Sorts in ascending order (A-Z)
+    Asc,
+    /// Sorts in descending order (Z-A)
+    Desc,
+}
+
+/// Specifies the visibility of the deleted entities
+pub enum DeletedVisibility {
+    /// Includes both deleted and non-deleted entities
+    Show,
+    /// Excludes deleted entities
+    Hide,
+    /// Includes only deleted entities
+    DeletedOnly,
 }

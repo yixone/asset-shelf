@@ -1,6 +1,9 @@
 pub mod assets;
 pub mod files;
 
+pub use assets::{AssetDatabase, AssetDatabaseExt};
+pub use files::{FilesDatabase, FilesDatabaseExt};
+
 /// A one-shot operation that validates and modifies an entity
 ///
 /// Returning an error aborts the update
