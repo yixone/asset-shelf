@@ -6,7 +6,7 @@ macro_rules! id_type {
         $( #[$meta] )*
         #[cfg_attr(feature = "sqlx", derive(sqlx::Type), sqlx(transparent))]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $id(pub $id_ty);
 
         impl std::fmt::Display for $id {

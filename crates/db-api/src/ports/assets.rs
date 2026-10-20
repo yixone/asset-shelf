@@ -4,17 +4,11 @@ use models::{
     patches::AssetPatch,
 };
 
-use crate::{Result, types::tuples::JoinedAsset};
-
-/// A one-shot operation that validates and modifies an [`Asset`]
-///
-/// Returning an error aborts the update
-type UpdateFn = dyn FnOnce(&mut Asset) -> std::result::Result<(), models::EntityError>;
-
-/// A one-shot operation that validates whether an [`Asset`] can be deleted
-///
-/// Returning an error aborts the deletion
-type DeleteFn = dyn FnOnce(&Asset) -> std::result::Result<(), models::EntityError>;
+use crate::{
+    Result,
+    ports::{DeleteFn, UpdateFn},
+    types::tuples::AssetWithFiles,
+};
 
 /// Database operations for assets
 #[async_trait::async_trait]
@@ -27,7 +21,7 @@ pub trait AssetDatabase: Send + Sync {
     /// Retrieves an [`Asset`] and its associated data by ID
     ///
     /// Returns `None` if the asset does not exist
-    async fn get_by_id(&self, id: AssetId) -> Result<Option<JoinedAsset>> {
+    async fn get_by_id(&self, id: AssetId) -> Result<Option<AssetWithFiles>> {
         self.get_many_by_ids(&[id])
             .await
             .map(|a| a.into_iter().next())
@@ -36,12 +30,12 @@ pub trait AssetDatabase: Send + Sync {
     /// Retrieves [`assets`](Asset) and its associated data by IDs
     ///
     /// Missing assets are omitted from the result
-    async fn get_many_by_ids(&self, ids: &[AssetId]) -> Result<Vec<JoinedAsset>>;
+    async fn get_many_by_ids(&self, ids: &[AssetId]) -> Result<Vec<AssetWithFiles>>;
 
     /// Retrieves a randomly selected [`Asset`] and its associated data
     ///
     /// Returns `None` if no asset can be selected
-    async fn get_random(&self) -> Result<Option<JoinedAsset>>;
+    async fn get_random(&self) -> Result<Option<AssetWithFiles>>;
 
     /// Returns the total number of assets
     async fn count_total(&self) -> Result<u64>;
@@ -65,7 +59,7 @@ pub trait AssetDatabase: Send + Sync {
     ///
     /// Returns the updated asset, or an error if the asset does not exist,
     /// validation fails, or persistence fails
-    async fn update_fn_boxed(&self, id: AssetId, f: Box<UpdateFn>) -> Result<Asset>;
+    async fn update_fn_boxed(&self, id: AssetId, f: Box<UpdateFn<Asset>>) -> Result<Asset>;
 
     /// Deletes an [`Asset`]
     async fn delete(&self, id: AssetId) -> Result<()> {
@@ -79,12 +73,12 @@ pub trait AssetDatabase: Send + Sync {
     ///
     /// Returns an error if the asset does not exist, validation fails,
     /// or deletion fails
-    async fn delete_fn_boxed(&self, id: AssetId, f: Box<DeleteFn>) -> Result<()>;
+    async fn delete_fn_boxed(&self, id: AssetId, f: Box<DeleteFn<Asset>>) -> Result<()>;
 }
 
 #[async_trait::async_trait]
 pub trait AssetDatabaseExt: AssetDatabase {
-    /// Updates the [`Asset`] using a one-shot validation and mutation callback
+    /// Updates the [`Asset`] using a validation and mutation callback
     ///
     /// See [`AssetDatabase::update_fn_boxed`] for the operation's guarantees
     async fn update_fn<Fn>(&self, id: AssetId, f: Fn) -> Result<Asset>
@@ -94,7 +88,7 @@ pub trait AssetDatabaseExt: AssetDatabase {
         self.update_fn_boxed(id, Box::new(f)).await
     }
 
-    /// Deletes an [`Asset`] after validating it with a one-shot callback
+    /// Deletes an [`Asset`] after validating it with a callback
     ///
     /// See [`AssetDatabase::delete_fn_boxed`] for the operation's guarantees
     async fn delete_fn<Fn>(&self, id: AssetId, f: Fn) -> Result<()>
