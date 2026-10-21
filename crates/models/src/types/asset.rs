@@ -19,6 +19,33 @@ pub enum AssetState {
     Failed(AssetFailure),
 }
 
+impl AssetState {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            AssetState::Pending => "pending",
+            AssetState::Processing => "processing",
+            AssetState::Ready => "ready",
+            AssetState::Failed(..) => "failed",
+        }
+    }
+
+    pub fn from_persistence(str: &str, failure: Option<AssetFailure>) -> Option<Self> {
+        match str {
+            "pending" => Some(Self::Pending),
+            "processing" => Some(Self::Processing),
+            "ready" => Some(Self::Ready),
+            "failed" => Some(AssetState::Failed(failure.unwrap_or(AssetFailure::Unknown))),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for AssetState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Describes why processing of an asset failed
 #[cfg_attr(
     feature = "serde",

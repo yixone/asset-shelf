@@ -30,7 +30,7 @@ CREATE TABLE assets (
 
     file_group_id       VARCHAR(32)     NOT NULL,
     checksum            BLOB            NOT NULL,
-    original_file_name  VARCHAR(255),
+    original_filename   VARCHAR(255),
     original_mime_kind  VARCHAR(128)    NOT NULL,
 
     state               VARCHAR(32)     NOT NULL,
@@ -74,7 +74,7 @@ CREATE TABLE assets_features (
 CREATE TABLE assets_meta (
     id                  BIGINT          NOT NULL,
 
-    title               VARCHAR(255),
+    name                VARCHAR(255),
     caption             VARCHAR(512),
     source_url          VARCHAR(512),
 

@@ -224,6 +224,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "db-api",
+ "mime",
  "models",
  "sqlx",
  "tracing",

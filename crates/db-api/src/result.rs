@@ -3,6 +3,7 @@ pub(crate) type Result<T> = std::result::Result<T, DatabaseError>;
 pub enum DatabaseError {
     Entity(models::EntityError),
     PaginationOverflow,
+    InvalidStoredData,
     Other(Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 

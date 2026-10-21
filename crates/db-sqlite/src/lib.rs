@@ -1,4 +1,4 @@
 pub mod impls;
-pub mod schema;
+pub(crate) mod schema;
 
 pub mod driver;

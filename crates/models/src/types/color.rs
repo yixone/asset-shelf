@@ -42,4 +42,14 @@ impl Color {
         let (r, g, b) = self.rgb();
         format!("#{r:02x}{g:02x}{b:02x}")
     }
+
+    pub fn as_int(self) -> i32 {
+        self.0
+    }
+}
+
+impl From<i32> for Color {
+    fn from(value: i32) -> Self {
+        Color(value)
+    }
 }
