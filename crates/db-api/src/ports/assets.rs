@@ -2,7 +2,7 @@ use models::{
     entities::{Asset, FileGroup},
     id::AssetId,
     patches::AssetPatch,
-    types::AssetSortBy,
+    types::{AssetSortBy, Sha256Checksum},
 };
 
 use crate::{
@@ -32,6 +32,11 @@ pub trait AssetDatabase: Send + Sync {
     ///
     /// Missing assets are omitted from the result
     async fn get_many_by_ids(&self, ids: &[AssetId]) -> Result<Vec<AssetWithFiles>>;
+
+    /// Retrieves an [`Asset`] by its SHA-256 checksum
+    ///
+    /// Used to identify duplicates during the upload stage
+    async fn get_by_checksum(&self, checksum: &Sha256Checksum) -> Result<Option<Asset>>;
 
     /// Retrieves a page of assets using cursor-based pagination and the specified ordering
     ///

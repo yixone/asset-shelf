@@ -9,3 +9,9 @@ repository.workspace = true
 # Workspace
 db-api.workspace = true
 models.workspace = true
+
+# External
+async-trait = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite", "chrono", "runtime-tokio"] }
+tracing = { workspace = true }
