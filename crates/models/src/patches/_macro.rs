@@ -49,24 +49,6 @@ macro_rules! patch {
                     }
                 )*
             }
-
-            /// Appends changed fields to the SQL `SET` clause
-            #[cfg(feature = "sqlx")]
-            pub fn apply_sql<'a, DB>(&'a self, qb: &mut sqlx::QueryBuilder<'a, DB>)
-            where
-                DB: sqlx::Database,
-                $(
-                    $f_ty: sqlx::Encode<'a, DB> + sqlx::Type<DB>
-                ),+
-            {
-                let mut sep = qb.separated(",");
-                $(
-                    if let crate::patches::PatchField::Set(v) = &self.$f_id {
-                        sep.push(concat!(stringify!($f_id), " = "));
-                        sep.push_bind_unseparated(v);
-                    }
-                )*
-            }
         }
     };
 }

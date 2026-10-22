@@ -227,6 +227,7 @@ dependencies = [
  "mime",
  "models",
  "sqlx",
+ "storage-types",
  "tracing",
 ]
 

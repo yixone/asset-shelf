@@ -65,6 +65,11 @@ impl FileGroup {
     pub fn file(&self, variant: FileVariant) -> Option<&File> {
         self.files.get(&variant)
     }
+
+    /// Returns a reference to the files of this [`FileGroup`]
+    pub fn files(&self) -> &HashMap<FileVariant, File> {
+        &self.files
+    }
 }
 
 #[cfg(feature = "dev")]

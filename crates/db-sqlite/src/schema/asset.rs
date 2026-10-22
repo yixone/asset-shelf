@@ -11,6 +11,7 @@ use models::{
 };
 use sqlx::prelude::FromRow;
 
+/// Persisted [`Asset`] data stored in the `assets` table
 #[derive(FromRow)]
 pub struct DbAsset {
     pub id: AssetId,
@@ -32,6 +33,7 @@ pub struct DbAsset {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
+/// Persisted features of the [`Asset`] stored in the `assets_features` table
 #[derive(FromRow)]
 pub struct DbAssetFeatures {
     pub id: AssetId,
@@ -45,6 +47,7 @@ pub struct DbAssetFeatures {
     pub a_hash: Option<i64>,
 }
 
+/// Persisted user-provided metadata of the [`Asset`] stored in the `asset_meta` table
 #[derive(FromRow)]
 pub struct DbAssetMeta {
     pub id: AssetId,
@@ -55,6 +58,7 @@ pub struct DbAssetMeta {
 }
 
 impl DbAsset {
+    /// Converts a domain asset into records for the SQLite schema
     pub fn from_domain(a: &Asset) -> (DbAsset, DbAssetFeatures, DbAssetMeta) {
         let features = a.features();
         let db_features = DbAssetFeatures {
@@ -96,6 +100,7 @@ impl DbAsset {
         (db_asset, db_features, db_meta)
     }
 
+    /// Reconstructs a domain asset from its persisted records
     pub fn into_domain(
         (a, f, m): (DbAsset, DbAssetFeatures, DbAssetMeta),
     ) -> Result<Asset, DatabaseError> {
