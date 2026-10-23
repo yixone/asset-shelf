@@ -65,14 +65,16 @@ impl DbFile {
 
 impl DbFileGroup {
     /// Converts a domain file group into records for the SQLite schema
-    pub fn from_domain(g: FileGroup) -> (DbFileGroup, Vec<DbFile>) {
+    pub fn from_domain(g: &FileGroup) -> (DbFileGroup, Vec<DbFile>) {
         let group = DbFileGroup { id: g.id().clone() };
         let files = g.files().values().map(DbFile::from_domain).collect();
         (group, files)
     }
 
     /// Reconstructs a domain file group from its persisted records
-    pub fn into_domain(group: DbFileGroup, files: Vec<DbFile>) -> Result<FileGroup, DatabaseError> {
+    pub fn into_domain(
+        (group, files): (DbFileGroup, Vec<DbFile>),
+    ) -> Result<FileGroup, DatabaseError> {
         let files = files
             .into_iter()
             .map(DbFile::into_domain)

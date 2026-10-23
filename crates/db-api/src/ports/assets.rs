@@ -8,7 +8,7 @@ use models::{
 use crate::{
     Result,
     ports::{DeleteFn, UpdateFn},
-    types::{CursorPagination, DeletedVisibility, SortOrder, tuples::AssetWithFiles},
+    types::{CursorPagination, DeletedVisibility, SortOrder, tuples::AssetFull},
 };
 
 /// Database operations for assets
@@ -22,7 +22,7 @@ pub trait AssetDatabase: Send + Sync {
     /// Retrieves an [`Asset`] and its associated data by ID
     ///
     /// Returns `None` if the asset does not exist
-    async fn get_by_id(&self, id: AssetId) -> Result<Option<AssetWithFiles>> {
+    async fn get_by_id(&self, id: AssetId) -> Result<Option<AssetFull>> {
         self.get_many_by_ids(&[id])
             .await
             .map(|a| a.into_iter().next())
@@ -31,7 +31,7 @@ pub trait AssetDatabase: Send + Sync {
     /// Retrieves [`assets`](Asset) and its associated data by IDs
     ///
     /// Missing assets are omitted from the result
-    async fn get_many_by_ids(&self, ids: &[AssetId]) -> Result<Vec<AssetWithFiles>>;
+    async fn get_many_by_ids(&self, ids: &[AssetId]) -> Result<Vec<AssetFull>>;
 
     /// Retrieves an [`Asset`] by its SHA-256 checksum
     ///
@@ -46,12 +46,12 @@ pub trait AssetDatabase: Send + Sync {
         pagination: CursorPagination<AssetId>,
         ordering: (AssetSortBy, SortOrder),
         deleted: DeletedVisibility,
-    ) -> Result<Vec<AssetWithFiles>>;
+    ) -> Result<Vec<AssetFull>>;
 
     /// Retrieves a randomly selected [`Asset`] and its associated data
     ///
     /// Returns `None` if no asset can be selected
-    async fn get_random(&self) -> Result<Option<AssetWithFiles>>;
+    async fn get_random(&self) -> Result<Option<AssetFull>>;
 
     /// Returns the total number of assets
     async fn count_total(&self, deleted: DeletedVisibility) -> Result<u64>;

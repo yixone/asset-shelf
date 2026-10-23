@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use db_api::{
     DatabaseError,
     ports::{DeleteFn, FilesDatabase, UpdateFn},
@@ -9,7 +11,7 @@ use models::{
     id::FileGroupId,
     types::FileKey,
 };
-use sqlx::{Executor, QueryBuilder, Sqlite};
+use sqlx::{Executor, QueryBuilder, Sqlite, SqliteConnection};
 
 use crate::{
     driver::SqliteDatabase,
@@ -35,7 +37,7 @@ impl FilesDatabase for SqliteFilesRepository {
 
         let id = std::slice::from_ref(id);
 
-        let Some(group) = get_file_groups_by_ids(id, &mut *conn)
+        let Some(group) = get_file_groups_by_ids(id, &mut conn)
             .await?
             .into_iter()
             .next()
@@ -43,14 +45,15 @@ impl FilesDatabase for SqliteFilesRepository {
             return Ok(None);
         };
 
-        let files = get_files_by_groups_ids(id, &mut *conn).await?;
+        let files = get_files_by_groups_ids(id, &mut conn).await?;
 
-        let domain = DbFileGroup::into_domain(group, files)?;
+        let domain = DbFileGroup::into_domain((group, files))?;
         Ok(Some(domain))
     }
 
     async fn get_file_by_key(&self, key: &FileKey) -> Result<Option<File>, DatabaseError> {
-        get_file(key, self.db.pool())
+        let mut conn = self.db.acquire().await?;
+        get_file(key, &mut conn)
             .await?
             .map(DbFile::into_domain)
             .transpose()
@@ -63,7 +66,7 @@ impl FilesDatabase for SqliteFilesRepository {
     ) -> Result<File, DatabaseError> {
         let mut tx = self.db.begin().await?;
 
-        let mut file = get_file(key, &mut *tx)
+        let mut file = get_file(key, &mut tx)
             .await?
             .map(DbFile::into_domain)
             .transpose()?
@@ -103,7 +106,7 @@ impl FilesDatabase for SqliteFilesRepository {
     ) -> Result<(), DatabaseError> {
         let mut tx = self.db.begin().await?;
 
-        let file = get_file(key, &mut *tx)
+        let file = get_file(key, &mut tx)
             .await?
             .ok_or(DatabaseError::Entity(EntityError::NotFound))?;
         let domain = DbFile::into_domain(file)?;
@@ -136,14 +139,14 @@ impl FilesDatabase for SqliteFilesRepository {
 
         let id_arr = std::slice::from_ref(id);
 
-        let group = get_file_groups_by_ids(id_arr, &mut *tx)
+        let group = get_file_groups_by_ids(id_arr, &mut tx)
             .await?
             .into_iter()
             .next()
             .ok_or(DatabaseError::Entity(EntityError::NotFound))?;
-        let files = get_files_by_groups_ids(id_arr, &mut *tx).await?;
+        let files = get_files_by_groups_ids(id_arr, &mut tx).await?;
 
-        let domain = DbFileGroup::into_domain(group, files)?;
+        let domain = DbFileGroup::into_domain((group, files))?;
 
         f(&domain)?;
 
@@ -200,10 +203,35 @@ where
     Ok(())
 }
 
-pub(crate) async fn get_file<'a, E>(key: &FileKey, exec: E) -> Result<Option<DbFile>, DatabaseError>
+pub(crate) async fn insert_file_group<'a, E>(
+    group: &DbFileGroup,
+    exec: E,
+) -> Result<(), DatabaseError>
 where
     E: Executor<'a, Database = Sqlite>,
 {
+    sqlx::query(
+        "
+        INSERT INTO file_groups (
+            id
+        )
+        VALUES (
+            ?
+        )
+        ",
+    )
+    .bind(&group.id)
+    .execute(exec)
+    .await
+    .to_db_error()?;
+
+    Ok(())
+}
+
+pub(crate) async fn get_file(
+    key: &FileKey,
+    conn: &mut SqliteConnection,
+) -> Result<Option<DbFile>, DatabaseError> {
     sqlx::query_as(
         "
         SELECT * FROM files
@@ -212,18 +240,15 @@ where
     )
     .bind(key.group_id())
     .bind(key.variant())
-    .fetch_optional(exec)
+    .fetch_optional(conn)
     .await
     .to_db_error()
 }
 
-pub(crate) async fn get_file_groups_by_ids<'a, E>(
+pub(crate) async fn get_file_groups_by_ids(
     ids: &[FileGroupId],
-    exec: E,
-) -> Result<Vec<DbFileGroup>, DatabaseError>
-where
-    E: Executor<'a, Database = Sqlite>,
-{
+    conn: &mut SqliteConnection,
+) -> Result<Vec<DbFileGroup>, DatabaseError> {
     if ids.is_empty() {
         return Ok(Vec::new());
     }
@@ -238,16 +263,13 @@ where
         qb.push_bind(id);
     });
 
-    qb.build_query_as().fetch_all(exec).await.to_db_error()
+    qb.build_query_as().fetch_all(conn).await.to_db_error()
 }
 
-pub(crate) async fn get_files_by_groups_ids<'a, E>(
+pub(crate) async fn get_files_by_groups_ids(
     ids: &[FileGroupId],
-    exec: E,
-) -> Result<Vec<DbFile>, DatabaseError>
-where
-    E: Executor<'a, Database = Sqlite>,
-{
+    conn: &mut SqliteConnection,
+) -> Result<Vec<DbFile>, DatabaseError> {
     if ids.is_empty() {
         return Ok(Vec::new());
     }
@@ -262,5 +284,32 @@ where
         qb.push_bind(id);
     });
 
-    qb.build_query_as().fetch_all(exec).await.to_db_error()
+    qb.build_query_as().fetch_all(conn).await.to_db_error()
+}
+
+pub(crate) fn unit_files_domain(
+    groups: Vec<DbFileGroup>,
+    files: Vec<DbFile>,
+) -> Result<Vec<FileGroup>, DatabaseError> {
+    if groups.is_empty() || files.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let mut files_idx: HashMap<FileGroupId, Vec<DbFile>> = HashMap::with_capacity(groups.len());
+    for f in files {
+        if let Some(fm) = files_idx.get_mut(&f.group_id) {
+            fm.push(f);
+        } else {
+            files_idx.insert(f.group_id.clone(), vec![f]);
+        }
+    }
+
+    groups
+        .into_iter()
+        .filter_map(|g| {
+            let files = files_idx.remove(&g.id)?;
+            Some((g, files))
+        })
+        .map(DbFileGroup::into_domain)
+        .collect::<Result<Vec<_>, DatabaseError>>()
 }

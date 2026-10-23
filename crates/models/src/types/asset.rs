@@ -85,7 +85,7 @@ pub enum AssetSortBy {
     CreatedAt,
     /// Sorting assets by deletion date
     DeletedAt,
-    /// Sorting assets by original file size
-    /// (does not account for the size of derivatives)
-    OriginalSize,
+    // /// Sorting assets by original file size
+    // /// (does not account for the size of derivatives)
+    // OriginalSize,
 }
