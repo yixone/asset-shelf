@@ -125,8 +125,7 @@ impl AssetDatabase for SqliteAssetsRepository {
                 ",
         );
 
-        let (order_by, ordering) = ordering;
-
+        // Applies the visibility of deleted items
         match deleted {
             DeletedVisibility::Show => (),
             DeletedVisibility::Hide => {
@@ -137,34 +136,46 @@ impl AssetDatabase for SqliteAssetsRepository {
             }
         }
 
+        let (order_by, ordering) = ordering;
+
+        let order_by_col = match order_by {
+            AssetSortBy::CreatedAt => "created_at",
+            AssetSortBy::DeletedAt => "deleted_at",
+        };
+        let ordering_sql = ordering.as_str();
+
+        // Applies cursor-based pagination
         if let Some(cursor) = pagination.cursor() {
-            if matches!(ordering, SortOrder::Asc) {
-                qb.push(" AND id > ");
-            } else {
-                qb.push(" AND id < ");
-            }
+            qb.push(" AND ( ");
+            qb.push(order_by_col);
+            qb.push(", id )");
+
+            match ordering {
+                SortOrder::Asc => qb.push(" > "),
+                SortOrder::Desc => qb.push(" < "),
+            };
+
+            // Executes a subquery to retrieve cursor data
+            qb.push("( SELECT ");
+            qb.push(order_by_col);
+            qb.push(", id FROM assets WHERE id = ");
             qb.push_bind(cursor);
+            qb.push(")");
         }
 
         qb.push(" ORDER BY ");
 
-        match order_by {
-            AssetSortBy::CreatedAt => qb.push("created_at"),
-            AssetSortBy::DeletedAt => qb.push("deleted_at"),
-        };
-        match ordering {
-            SortOrder::Asc => qb.push(" ASC "),
-            SortOrder::Desc => qb.push(" DESC "),
-        };
+        qb.push(order_by_col);
+        qb.push(" ");
+        qb.push(ordering_sql);
 
         qb.push(", id ");
-        match ordering {
-            SortOrder::Asc => qb.push(" ASC "),
-            SortOrder::Desc => qb.push(" DESC "),
-        };
+        qb.push(ordering_sql);
 
         qb.push(" LIMIT ");
-        qb.push_bind(pagination.limit() as i64);
+        qb.push_bind(
+            i64::try_from(pagination.limit()).map_err(|_| DatabaseError::PaginationOverflow)?,
+        );
 
         // Uses a transaction to obtain a consistent collectable domain
         let mut tx = self.db.begin().await?;
@@ -191,6 +202,7 @@ impl AssetDatabase for SqliteAssetsRepository {
             SELECT * FROM assets
             WHERE deleted_at IS null
             ORDER BY RANDOM()
+            LIMIT 1
             ",
         )
         .fetch_optional(&mut *tx)

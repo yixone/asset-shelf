@@ -1,3 +1,5 @@
+//! Loads related database records and combines them into domain entities
+
 use std::collections::HashMap;
 
 use db_api::{DatabaseError, types::AssetFull};
@@ -11,6 +13,86 @@ use crate::{
     operations,
     schema::{DbAsset, DbAssetFeatures, DbAssetMeta, DbFile, DbFileGroup},
 };
+
+/// Loads file groups together with their files
+pub async fn hydrate_file_groups(
+    groups: Vec<DbFileGroup>,
+    conn: &mut SqliteConnection,
+) -> Result<Vec<FileGroup>, DatabaseError> {
+    let ids = groups.iter().map(|g| g.id.clone()).collect::<Vec<_>>();
+    let files = operations::load_files_by_groups(&ids, conn).await?;
+    unit_files_domain(groups, files)
+}
+
+/// Loads a file group together with its files
+pub async fn hydrate_file_group(
+    group: DbFileGroup,
+    conn: &mut SqliteConnection,
+) -> Result<FileGroup, DatabaseError> {
+    let files = operations::load_files_by_group(&group.id, conn).await?;
+    DbFileGroup::into_domain((group, files))
+}
+
+/// Loads assets together with their features and metadata
+pub async fn hydrate_assets(
+    assets: Vec<DbAsset>,
+    conn: &mut SqliteConnection,
+) -> Result<Vec<Asset>, DatabaseError> {
+    let ids = assets.iter().map(|a| a.id).collect::<Vec<_>>();
+    let features = operations::load_asset_features_many(&ids, conn).await?;
+    let meta = operations::load_asset_meta_many(&ids, conn).await?;
+    unit_assets_domain(assets, features, meta)
+}
+
+/// Loads an assets together with its features and metadata
+pub async fn hydrate_asset(
+    asset: DbAsset,
+    conn: &mut SqliteConnection,
+) -> Result<Asset, DatabaseError> {
+    let features = operations::load_asset_features(asset.id, conn)
+        .await?
+        .ok_or(DatabaseError::NotFound)?;
+    let meta = operations::load_asset_meta(asset.id, conn)
+        .await?
+        .ok_or(DatabaseError::NotFound)?;
+    DbAsset::into_domain((asset, features, meta))
+}
+
+/// Loads assets together with their features, metadata, and file groups
+pub async fn hydrate_assets_full(
+    assets: Vec<DbAsset>,
+    conn: &mut SqliteConnection,
+) -> Result<Vec<AssetFull>, DatabaseError> {
+    let assets = hydrate_assets(assets, conn).await?;
+
+    let file_groups_ids = assets
+        .iter()
+        .map(|a| a.file_group_id().clone())
+        .collect::<Vec<_>>();
+
+    let file_groups = operations::load_file_groups(&file_groups_ids, conn).await?;
+    let files = operations::load_files_by_groups(&file_groups_ids, conn).await?;
+
+    let files = unit_files_domain(file_groups, files)?;
+
+    Ok(unit_assets_full(assets, files))
+}
+
+/// Loads an asset together with its features, metadata, and file group
+pub async fn hydrate_asset_full(
+    asset: DbAsset,
+    conn: &mut SqliteConnection,
+) -> Result<AssetFull, DatabaseError> {
+    let asset = hydrate_asset(asset, conn).await?;
+
+    let file_group = operations::load_file_group(asset.file_group_id(), conn)
+        .await?
+        .ok_or(DatabaseError::NotFound)?;
+    let files = operations::load_files_by_group(asset.file_group_id(), conn).await?;
+    let files = DbFileGroup::into_domain((file_group, files))?;
+
+    Ok((asset, files))
+}
 
 fn unit_files_domain(
     groups: Vec<DbFileGroup>,
@@ -78,78 +160,4 @@ fn unit_assets_full(assets: Vec<Asset>, files: Vec<FileGroup>) -> Vec<AssetFull>
             Some((a, files))
         })
         .collect::<Vec<_>>()
-}
-
-pub async fn hydrate_file_groups(
-    groups: Vec<DbFileGroup>,
-    conn: &mut SqliteConnection,
-) -> Result<Vec<FileGroup>, DatabaseError> {
-    let ids = groups.iter().map(|g| g.id.clone()).collect::<Vec<_>>();
-    let files = operations::load_files_by_groups(&ids, conn).await?;
-    unit_files_domain(groups, files)
-}
-
-pub async fn hydrate_file_group(
-    group: DbFileGroup,
-    conn: &mut SqliteConnection,
-) -> Result<FileGroup, DatabaseError> {
-    let files = operations::load_files_by_group(&group.id, conn).await?;
-    DbFileGroup::into_domain((group, files))
-}
-
-pub async fn hydrate_assets(
-    assets: Vec<DbAsset>,
-    conn: &mut SqliteConnection,
-) -> Result<Vec<Asset>, DatabaseError> {
-    let ids = assets.iter().map(|a| a.id).collect::<Vec<_>>();
-    let features = operations::load_asset_features_many(&ids, conn).await?;
-    let meta = operations::load_asset_meta_many(&ids, conn).await?;
-    unit_assets_domain(assets, features, meta)
-}
-
-pub async fn hydrate_asset(
-    asset: DbAsset,
-    conn: &mut SqliteConnection,
-) -> Result<Asset, DatabaseError> {
-    let features = operations::load_asset_features(asset.id, conn)
-        .await?
-        .ok_or(DatabaseError::NotFound)?;
-    let meta = operations::load_asset_meta(asset.id, conn)
-        .await?
-        .ok_or(DatabaseError::NotFound)?;
-    DbAsset::into_domain((asset, features, meta))
-}
-
-pub async fn hydrate_assets_full(
-    assets: Vec<DbAsset>,
-    conn: &mut SqliteConnection,
-) -> Result<Vec<AssetFull>, DatabaseError> {
-    let assets = hydrate_assets(assets, conn).await?;
-
-    let file_groups_ids = assets
-        .iter()
-        .map(|a| a.file_group_id().clone())
-        .collect::<Vec<_>>();
-
-    let file_groups = operations::load_file_groups(&file_groups_ids, conn).await?;
-    let files = operations::load_files_by_groups(&file_groups_ids, conn).await?;
-
-    let files = unit_files_domain(file_groups, files)?;
-
-    Ok(unit_assets_full(assets, files))
-}
-
-pub async fn hydrate_asset_full(
-    asset: DbAsset,
-    conn: &mut SqliteConnection,
-) -> Result<AssetFull, DatabaseError> {
-    let asset = hydrate_asset(asset, conn).await?;
-
-    let file_group = operations::load_file_group(asset.file_group_id(), conn)
-        .await?
-        .ok_or(DatabaseError::NotFound)?;
-    let files = operations::load_files_by_group(asset.file_group_id(), conn).await?;
-    let files = DbFileGroup::into_domain((file_group, files))?;
-
-    Ok((asset, files))
 }

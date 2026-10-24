@@ -67,6 +67,15 @@ pub enum SortOrder {
     Desc,
 }
 
+impl SortOrder {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SortOrder::Asc => "ASC",
+            SortOrder::Desc => "DESC",
+        }
+    }
+}
+
 /// Specifies the visibility of the deleted entities
 pub enum DeletedVisibility {
     /// Includes both deleted and non-deleted entities
