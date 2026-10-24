@@ -6,7 +6,6 @@ use db_api::{
     types::{AssetFull, CursorPagination, DeletedVisibility, SortOrder},
 };
 use models::{
-    EntityError,
     entities::{Asset, FileGroup},
     id::AssetId,
     types::{AssetSortBy, Sha256Checksum},
@@ -259,7 +258,7 @@ impl AssetDatabase for SqliteAssetsRepository {
         .fetch_optional(&mut *tx)
         .await
         .to_db_error()?
-        .ok_or(DatabaseError::Entity(EntityError::NotFound))?;
+        .ok_or(DatabaseError::NotFound)?;
 
         let mut domain = coalesced::hydrate_asset(asset, &mut tx).await?;
 
@@ -354,7 +353,7 @@ impl AssetDatabase for SqliteAssetsRepository {
         .fetch_optional(&mut *tx)
         .await
         .to_db_error()?
-        .ok_or(DatabaseError::Entity(EntityError::NotFound))?;
+        .ok_or(DatabaseError::NotFound)?;
 
         let domain = coalesced::hydrate_asset(asset, &mut tx).await?;
 

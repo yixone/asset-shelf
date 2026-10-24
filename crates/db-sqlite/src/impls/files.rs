@@ -4,7 +4,6 @@ use db_api::{
     result::ToDatabaseError,
 };
 use models::{
-    EntityError,
     entities::{File, FileGroup},
     id::FileGroupId,
     types::FileKey,
@@ -65,7 +64,7 @@ impl FilesDatabase for SqliteFilesRepository {
 
         let file_row = operations::load_file(key, &mut tx)
             .await?
-            .ok_or(DatabaseError::Entity(EntityError::NotFound))?;
+            .ok_or(DatabaseError::NotFound)?;
         let mut file = DbFile::into_domain(file_row)?;
 
         f(&mut file)?;
@@ -104,7 +103,7 @@ impl FilesDatabase for SqliteFilesRepository {
 
         let file_row = operations::load_file(key, &mut tx)
             .await?
-            .ok_or(DatabaseError::Entity(EntityError::NotFound))?;
+            .ok_or(DatabaseError::NotFound)?;
         let file = DbFile::into_domain(file_row)?;
 
         f(&file)?;
@@ -135,7 +134,7 @@ impl FilesDatabase for SqliteFilesRepository {
 
         let group = operations::load_file_group(id, &mut tx)
             .await?
-            .ok_or(DatabaseError::Entity(EntityError::NotFound))?;
+            .ok_or(DatabaseError::NotFound)?;
         let domain = coalesced::hydrate_file_group(group, &mut tx).await?;
         f(&domain)?;
 
