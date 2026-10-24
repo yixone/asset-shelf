@@ -1,7 +1,7 @@
 use chrono::Utc;
 use db_api::{
     DatabaseError,
-    ports::{AssetDatabase, DeleteFn, UpdateFn},
+    ports::{AssetsDatabase, DeleteFn, UpdateFn},
     result::ToDatabaseError,
     types::{AssetFull, CursorPagination, DeletedVisibility, SortOrder},
 };
@@ -19,12 +19,17 @@ use crate::{
     schema::{DbAsset, DbAssetFeatures, DbAssetMeta, DbFileGroup},
 };
 
+/// SQLite implementation of [`AssetsDatabase`]
+///
+/// Provides database access to assets, including
+/// retrieving domain entities and performing transactional updates and
+/// deletions
 pub struct SqliteAssetsRepository {
     db: SqliteDatabase,
 }
 
 #[async_trait::async_trait]
-impl AssetDatabase for SqliteAssetsRepository {
+impl AssetsDatabase for SqliteAssetsRepository {
     async fn insert(&self, asset: &Asset, file_group: &FileGroup) -> Result<(), DatabaseError> {
         let mut tx = self.db.begin().await?;
 

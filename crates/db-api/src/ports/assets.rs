@@ -13,7 +13,7 @@ use crate::{
 
 /// Database operations for assets
 #[async_trait::async_trait]
-pub trait AssetDatabase: Send + Sync {
+pub trait AssetsDatabase: Send + Sync {
     /// Inserts an [`Asset`] and its associated [`FileGroup`]
     ///
     /// Implementation must preserve the consistency of the inserted data
@@ -93,10 +93,10 @@ pub trait AssetDatabase: Send + Sync {
 }
 
 #[async_trait::async_trait]
-pub trait AssetDatabaseExt: AssetDatabase {
+pub trait AssetsDatabaseExt: AssetsDatabase {
     /// Updates the [`Asset`] using an [`UpdateFn`] callback
     ///
-    /// See [`AssetDatabase::update_fn_boxed`] for the operation's guarantees
+    /// See [`AssetsDatabase::update_fn_boxed`] for the operation's guarantees
     async fn update_fn<Fn>(&self, id: AssetId, f: Fn) -> Result<Asset>
     where
         Fn: FnOnce(&mut Asset) -> std::result::Result<(), models::EntityError> + Send + 'static,
@@ -106,7 +106,7 @@ pub trait AssetDatabaseExt: AssetDatabase {
 
     /// Deletes an [`Asset`] after validating it with an [`DeleteFn`] callback
     ///
-    /// See [`AssetDatabase::delete_fn_boxed`] for the operation's guarantees
+    /// See [`AssetsDatabase::delete_fn_boxed`] for the operation's guarantees
     async fn delete_fn<Fn>(&self, id: AssetId, f: Fn) -> Result<()>
     where
         Fn: FnOnce(&Asset) -> std::result::Result<(), models::EntityError> + Send + 'static,
@@ -115,4 +115,4 @@ pub trait AssetDatabaseExt: AssetDatabase {
     }
 }
 
-impl<T> AssetDatabaseExt for T where T: AssetDatabase {}
+impl<T> AssetsDatabaseExt for T where T: AssetsDatabase {}
