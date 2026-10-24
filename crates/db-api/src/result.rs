@@ -4,6 +4,7 @@ pub enum DatabaseError {
     Entity(models::EntityError),
     PaginationOverflow,
     InvalidStoredData,
+    NotFound,
     Other(Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 
